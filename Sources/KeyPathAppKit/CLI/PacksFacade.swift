@@ -13,23 +13,29 @@ public struct PacksFacade: Sendable {
     /// Construct only; source hydration happens after admission.
     private let managerFactory: (@Sendable @MainActor () async -> RuleCollectionsManager)?
 
-    private var installedPackTracker: InstalledPackTracker {
-        operation?.installedPackTracker ?? .shared
-    }
+    private let installedPackTracker: InstalledPackTracker
 
-    private var operation: CLIConfigurationOperation?
+    private let operation: CLIConfigurationOperation?
 
     init(operation: CLIConfigurationOperation) {
-        self.init()
+        managerFactory = nil
+        installedPackTracker = operation.installedPackTracker
         self.operation = operation
     }
 
     public init() {
         managerFactory = nil
+        installedPackTracker = .shared
+        operation = nil
     }
 
-    init(managerFactory: @escaping @Sendable @MainActor () async -> RuleCollectionsManager) {
+    init(
+        installedPackTracker: InstalledPackTracker,
+        managerFactory: @escaping @Sendable @MainActor () async -> RuleCollectionsManager
+    ) {
+        self.installedPackTracker = installedPackTracker
         self.managerFactory = managerFactory
+        operation = nil
     }
 
     // MARK: - Pack Management

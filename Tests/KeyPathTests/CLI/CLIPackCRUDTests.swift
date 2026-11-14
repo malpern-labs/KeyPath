@@ -7,21 +7,17 @@ import KeyPathRulesCore
 final class CLIPackCRUDTests: XCTestCase {
     private var facade: PacksFacade!
     private var tempDir: URL!
-    private var originalInstalledPacks: [InstalledPackRecord] = []
+    private var installedPacks: InstalledPackTracker!
 
-    // Use a pack that's unlikely to be installed in the user's environment
     private let testPackSlug = "chord-groups"
     private let testPackID = "com.keypath.pack.chord-groups"
     private let testPackName = "Chord Groups"
 
     override func setUp() async throws {
         try await super.setUp()
-        TestEnvironment.forceTestMode = true
 
-        // Hermetic manager: temp-backed stores + config dir so install/configure
-        // never touch the real ~/.config/keypath or shared stores. On the CI
-        // runner's persistent HOME, the shared-store path fails config regen
-        // ("could not enable associated rule collection") — see #953.
+        // Keep the pack records, rule stores, and generated configuration
+        // together so concurrent tests cannot read or restore each other's state.
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cli-pack-crud-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -33,33 +29,20 @@ final class CLIPackCRUDTests: XCTestCase {
         let customStore = CustomRulesStore(
             fileURL: dir.appendingPathComponent("CustomRules.json")
         )
-        facade = PacksFacade(managerFactory: {
+        installedPacks = InstalledPackTracker(fileURL: dir.appendingPathComponent("installed-packs.json"))
+        facade = PacksFacade(installedPackTracker: installedPacks) {
             RuleCollectionsManager(
                 ruleCollectionStore: collectionStore,
                 customRulesStore: customStore,
                 configurationService: ConfigurationService(configDirectory: dir.path)
             )
-        })
-
-        originalInstalledPacks = await InstalledPackTracker.shared.allInstalled()
+        }
     }
 
     override func tearDown() async throws {
-        let current = await InstalledPackTracker.shared.allInstalled()
-        for record in current {
-            if !originalInstalledPacks.contains(where: { $0.packID == record.packID }) {
-                try await InstalledPackTracker.shared.remove(packID: record.packID)
-            }
-        }
-        for record in originalInstalledPacks {
-            if await !(InstalledPackTracker.shared.isInstalled(packID: record.packID)) {
-                try await InstalledPackTracker.shared.upsert(record)
-            }
-        }
         if let tempDir {
             try? FileManager.default.removeItem(at: tempDir)
         }
-        TestEnvironment.forceTestMode = false
         try await super.tearDown()
     }
 
@@ -126,8 +109,8 @@ final class CLIPackCRUDTests: XCTestCase {
     }
 
     private func ensureUninstalled(_ packID: String) async throws {
-        if await InstalledPackTracker.shared.isInstalled(packID: packID) {
-            try await InstalledPackTracker.shared.remove(packID: packID)
+        if await installedPacks.isInstalled(packID: packID) {
+            try await installedPacks.remove(packID: packID)
         }
     }
 
@@ -140,7 +123,7 @@ final class CLIPackCRUDTests: XCTestCase {
 
     func testListPacksShowsInstalledStatus() async throws {
         let record = InstalledPackRecord(packID: testPackID, version: "1.0.0")
-        try await InstalledPackTracker.shared.upsert(record)
+        try await installedPacks.upsert(record)
 
         let packs = await facade.listPacks()
         let found = packs.first(where: { $0.id == testPackID })
@@ -219,19 +202,19 @@ final class CLIPackCRUDTests: XCTestCase {
         XCTAssertEqual(installResult.action, "installed")
         XCTAssertEqual(installResult.packName, testPackName)
 
-        let isInstalled = await InstalledPackTracker.shared.isInstalled(packID: testPackID)
+        let isInstalled = await installedPacks.isInstalled(packID: testPackID)
         XCTAssertTrue(isInstalled)
 
         let uninstallResult = try await facade.uninstallPack(nameOrId: testPackSlug)
         XCTAssertEqual(uninstallResult.action, "uninstalled")
 
-        let stillInstalled = await InstalledPackTracker.shared.isInstalled(packID: testPackID)
+        let stillInstalled = await installedPacks.isInstalled(packID: testPackID)
         XCTAssertFalse(stillInstalled)
     }
 
     func testInstallAlreadyInstalledReturnsAlreadyInstalled() async throws {
         let record = InstalledPackRecord(packID: testPackID, version: "1.0.0")
-        try await InstalledPackTracker.shared.upsert(record)
+        try await installedPacks.upsert(record)
 
         let result = try await facade.installPack(nameOrId: testPackSlug)
         XCTAssertEqual(result.action, "already-installed")
@@ -250,18 +233,18 @@ final class CLIPackCRUDTests: XCTestCase {
         let result = try await facade.installPack(nameOrId: testPackSlug, dryRun: true)
         XCTAssertEqual(result.action, "would-install")
 
-        let isInstalled = await InstalledPackTracker.shared.isInstalled(packID: testPackID)
+        let isInstalled = await installedPacks.isInstalled(packID: testPackID)
         XCTAssertFalse(isInstalled)
     }
 
     func testUninstallDryRun() async throws {
         let record = InstalledPackRecord(packID: testPackID, version: "1.0.0")
-        try await InstalledPackTracker.shared.upsert(record)
+        try await installedPacks.upsert(record)
 
         let result = try await facade.uninstallPack(nameOrId: testPackSlug, dryRun: true)
         XCTAssertEqual(result.action, "would-uninstall")
 
-        let stillInstalled = await InstalledPackTracker.shared.isInstalled(packID: testPackID)
+        let stillInstalled = await installedPacks.isInstalled(packID: testPackID)
         XCTAssertTrue(stillInstalled)
     }
 
@@ -343,7 +326,7 @@ final class CLIPackCRUDTests: XCTestCase {
         XCTAssertEqual(result.quickSettingValues["holdTimeout"], 300)
 
         // Verify actual value unchanged
-        let current = await InstalledPackTracker.shared.record(for: "com.keypath.pack.home-row-mods")
+        let current = await installedPacks.record(for: "com.keypath.pack.home-row-mods")
         XCTAssertEqual(current?.quickSettingValues["holdTimeout"], 200)
     }
 
