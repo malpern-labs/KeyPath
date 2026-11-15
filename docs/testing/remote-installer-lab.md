@@ -94,6 +94,12 @@ on a disposable child before using a new shared base.
   12 seconds, and the remap and reopen check took 20 seconds on that run.
   Check the desktop before installing KeyPath and record any OS setup that
   reappears on the clone. This candidate remains opt-in.
+- On the Mini, use `/Users/malpern/local-code/vm-lab-prepared/bin/vm-lab`
+  for the opt-in controller and pass `--host malpern@localhost` before
+  `keypath`. Two fresh children qualified a different signed build and
+  reached an unlocked desktop without manual input. The startup runner handled
+  the recurring macOS screens. The first child also passed splash, consent
+  and virtual remapping before and after reopening.
 
 ## Host disk reserve
 
