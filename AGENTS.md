@@ -112,6 +112,10 @@ Notes:
 - Before VM admission, follow the pre-run iteration policy in
   `docs/testing/remote-installer-lab.md`. Batch same-artifact tests, verify scenario
   capabilities before setup, and keep clean-consent evidence separate from UI iteration.
+- For GUI tests, verify the desktop is unlocked before first launch. A trusted
+  automation bridge can report ready while the guest is on the lock screen.
+  Use the [smoke checklist](docs/testing/remote-installer-lab.md#desktop-smoke-checklist)
+  to capture the splash and verify consent and remapping on the same clone.
 
 - The lab now lives in its own repository and serves several projects. All
   disposable KeyPath VM work must go through the installed `vm-lab` CLI, which

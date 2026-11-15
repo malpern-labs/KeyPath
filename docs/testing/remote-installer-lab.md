@@ -30,6 +30,71 @@ Read the maintained lab checkout’s `docs/iteration-workflow.md` before creatin
 `--ttl` defaults to `2h` and accepts values from one second through two hours,
 matching the maximum lifecycle exposed by the existing launchers.
 
+## Desktop smoke checklist
+
+1. Run `vm-lab keypath preflight` and `vm-lab keypath list`. Build and sign once
+   for the selected commit, record the installer SHA-256, and reuse that exact
+   ZIP across retries. Admission can reuse an existing archive for that pair.
+2. Admit a fresh `unmanaged-ui` desktop lease. Record the guest OS build and
+   confirm KeyPath is absent before installing it. Run
+   `vm-lab keypath ui LEASE -- preflight`, then verify a visible, unlocked
+   desktop independently. A working accessibility bridge and the correct
+   console username can coexist with a locked screen. Keep the guest awake
+   for the bounded test session after verifying unlock.
+3. Install through the lab. Start capture before first launch to observe the
+   poster and its dismissal. Follow KeyPath's setup wizard and normal macOS
+   consent, then verify the installed CLI reports a running worker.
+4. Verify virtual keyboard input against a known baseline, apply a test remap,
+   and verify the changed output before and after quitting and reopening
+   KeyPath. Label this as virtual input coverage. Run the physical USB test
+   separately after verifying the fixture is present and in silent mode.
+5. Record time to ready, install, consent and remap separately. Save the
+   screenshots and results with the lease artifacts, then destroy the lease.
+
+Use Apple Setup Assistant when qualifying OS provisioning. A prepared base
+for routine product tests should have macOS setup complete and a working lab
+observer. Qualify KeyPath's initial permission state, first launch and remap
+on a disposable child before using a new shared base.
+
+### macOS 27.2.1 lab observations
+
+- Allow roughly two minutes for a warm-archive Parallels lease on the Mini.
+  One measured run took 2m 16s from provisioning dispatch to ready, including
+  the 90-second Parallels Tools stability window. The reused ZIP installed in
+  two seconds. Record both timings before tuning the readiness window.
+- Start the bounded wake assertion promptly after confirming console login and
+  unlock. A provider capture can return a black frame while a signed UI bridge
+  reports ready. Verify the guest lock state and a visible window before
+  launching KeyPath. If it already launched behind the lock screen, use a fresh
+  clone to capture first launch.
+- For the public-account workflow, open a Finder window and run
+  `rig/public_awake.py --verify-desktop` with the same account journal, wake
+  journal, boot UUID, and signed window probe used to hold the guest awake.
+  Continue only after the command reports `desktopReady: true`.
+- The prepared-base attempt on build 26B131 completed Apple Setup Assistant
+  and verified the signed lab Observer's access. The passive KeyPath report
+  had Accessibility denied and keyboard listening and posting unknown.
+  Functional qualification retains those raw statuses and requires both
+  effective access flags to be false. A candidate still needs child
+  qualification, normal consent, and a remap before it can become the
+  shared default. Use the existing desktop lane for clean consent meanwhile.
+- Prepared-base publication should register a verified copy of the stopped
+  source. Child provisioning should make a full clone from its own temporary
+  staging image. If the source manifest changes or staging cleanup fails,
+  preserve the journals and inspect the recorded image identities through the
+  lab before retrying. Continue to use the established desktop base until the
+  prepared child passes qualification.
+- With `--prepared-functional-base BASE_ID`, admit the test build by commit
+  and signed installer SHA-256. The child qualification must match its own
+  admitted artifact. The live macOS 27.2.1 child inherited the account and
+  passed its passive KeyPath check. macOS reopened Apple Account and FileVault
+  setup after login. After completing those screens, the child passed the
+  splash, normal KeyPath consent, and virtual remap before and after reopening.
+  Installation took 1 second, consent submission to worker readiness took
+  12 seconds, and the remap and reopen check took 20 seconds on that run.
+  Check the desktop before installing KeyPath and record any OS setup that
+  reappears on the clone. This candidate remains opt-in.
+
 ## Host disk reserve
 
 The Mini keeps a 90 GiB internal-data-volume reserve for runner builds,
