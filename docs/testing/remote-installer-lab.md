@@ -254,6 +254,55 @@ CrabBox's desktop capability; ordinary creation continues to use the launchers
 unchanged. Artifact collection captures a screenshot for desktop leases and
 records an explicit unavailable status otherwise.
 
+### Verify expired lease cleanup on the Mini
+
+From the Mini's console account, run `vm-lab --version` to record the checkout
+and commit. Use a disposable Parallels lease you created with the installed
+launcher. The prepared macOS 27 desktop completed provisioning with
+`--ttl 4m` in this check. Collect artifacts while the lease is ready and record its
+`expires_epoch` and `provider_resource` from `status`. The latter is the VM's
+Parallels UUID.
+
+```bash
+LEASE=cbx_example
+vm-lab --host malpern@localhost keypath status "$LEASE"
+vm-lab --host malpern@localhost keypath artifacts "$LEASE"
+```
+
+Let the lease expire naturally, then check which leases the cleanup would target.
+
+```bash
+vm-lab --host malpern@localhost keypath cleanup --dry-run
+```
+
+Run the timed cleanup only if the dry run lists exactly one `would_destroy`
+entry and it matches your lease. If other leases are listed, wait and repeat
+the dry run, or release your lease with
+`vm-lab --host malpern@localhost keypath destroy "$LEASE"` and skip the timed
+cleanup check. If the lease already shows `destroyed`, skip timing.
+
+```bash
+/usr/bin/time -p vm-lab --host malpern@localhost keypath cleanup
+vm-lab --host malpern@localhost keypath status "$LEASE"
+```
+
+Cleanup of one expired lease on the Mini took **16.12 seconds** through the
+installed launcher at `bf5cb3b` on November 16, 2026. Use **15–20 seconds**
+as a rough guide, excluding the TTL wait and artifact collection. Confirm
+the command reports deleting only your lease before using the timing. Check that cleanup exits with code 0 and emits no warnings or
+errors, including the GitHub Actions hydration stop-marker warning. In
+`status`, verify `status=destroyed`, `cleanup_status=complete`, and
+`cleanup_result=0`.
+
+From the same Mini account that owns the lease, check the full Parallels
+inventory, which includes stopped VMs.
+The inventory command must succeed and the recorded `provider_resource` UUID
+must be absent from its output.
+
+```bash
+"/Applications/Parallels Desktop.app/Contents/MacOS/prlctl" list -a
+```
+
 ### Desktop-base admission
 
 `--desktop` reserves a display-capable lease; it does not by itself prove that
