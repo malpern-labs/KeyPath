@@ -63,20 +63,23 @@ on a disposable child before using a new shared base.
 
 ### Daily UI and remapping
 
-Use one owned, unexpired prepared desktop lease for a batch of tests. Once
-KeyPath's normal grant is complete, keep the guest and its configuration for
-that batch. Record first-time provisioning and consent separately from the
-time to replace a build and rerun a scenario. For a new signed build on the
-same lease, use the prepared lab
-controller's `rig/replace_product.py` preflight and one-shot `--apply`.
-Provide the original desktop qualification journal, current boot UUID,
-installed executable SHA-256, new ZIP SHA-256, and source identity.
-See `docs/product-replacement.md` in the VM lab checkout for the full command.
-Quit KeyPath and any test capture apps before replacement. After relaunch,
-verify the new executable, runtime, and the behavior under
-test. Record the source commit, replacement ZIP SHA-256, and revision receipt
-with the results. The original lease manifest still records the initial build.
-Collect artifacts and destroy the lease when the batch ends.
+On the Mini, run `vm-lab keypath daily` as the console account. The daily
+command selects the local console account automatically. It reuses the
+verified warm guest or prepares a new guest when the previous lease has
+expired or been destroyed. Use `--ready-only` to require an existing guest.
+
+```bash
+vm-lab keypath daily
+vm-lab keypath daily --installer /absolute/KeyPath.zip --source-identity /absolute/source.json
+vm-lab keypath daily --close
+```
+
+The signed build swap uses the lab's guarded replacement workflow and preserves
+the guest's configuration and grant. Quit any test capture apps before swapping.
+Verify the installed executable, live runtime, and behavior under test. Record
+the source commit, replacement ZIP SHA-256, and revision receipt with the
+results. The lease manifest still identifies the initial build. At the end of
+the batch, `--close` collects artifacts and destroys the daily guest.
 
 On November 15, a macOS 27.2.1 Mini lease replaced one signed KeyPath build
 with a second signed build in 6 seconds. Preflight, replacement, relaunch, and

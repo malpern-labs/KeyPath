@@ -110,12 +110,11 @@ Notes:
 ### VM Lab Concurrency (mandatory admission path)
 
 - Before admission, follow the [pre-run iteration policy](docs/testing/remote-installer-lab.md#pre-run-iteration-policy).
-- For daily UI and remapping, follow the
-  [warm desktop workflow](docs/testing/remote-installer-lab.md#daily-ui-and-remapping).
-  Batch tests on one owned, unexpired lease and use the guarded replacement
-  command for new signed builds. That command routes revision admission through
-  the VM lab controller. Use a fresh clone for onboarding and
-  permission changes and for release qualification.
+- On the Mini, use `vm-lab keypath daily` for daily UI and remapping.
+  It reuses the verified warm guest and supports signed build swaps. Close
+  it with `vm-lab keypath daily --close`. Use
+  a fresh clone for onboarding, permission changes, and release qualification.
+  Follow the [VM lab guide](docs/testing/remote-installer-lab.md#daily-ui-and-remapping).
 - For GUI tests, verify the desktop is unlocked before first launch. A trusted
   automation bridge can report ready while the guest is on the lock screen.
   Use the [smoke checklist](docs/testing/remote-installer-lab.md#desktop-smoke-checklist)
@@ -139,7 +138,7 @@ Notes:
   current owners when full. Treat that as an infrastructure wait, not a KeyPath
   failure: continue non-VM work or retry after the owning lease is destroyed or
   expires. Never stop, adopt, or mutate another agent's lease.
-- A successful lease manifest is the reservation. Always collect artifacts and
+- For separately created guests, the lease manifest is the reservation. Collect artifacts and
   call `vm-lab keypath destroy <lease>` when finished; do not leave a VM
   running for another agent to infer ownership.
 - What stays in `Scripts/lab` is KeyPath's own: scenarios, MDM policy, the
