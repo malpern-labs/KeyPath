@@ -109,9 +109,13 @@ Notes:
 
 ### VM Lab Concurrency (mandatory admission path)
 
-- Before VM admission, follow the pre-run iteration policy in
-  `docs/testing/remote-installer-lab.md`. Batch same-artifact tests, verify scenario
-  capabilities before setup, and keep clean-consent evidence separate from UI iteration.
+- Before admission, follow the [pre-run iteration policy](docs/testing/remote-installer-lab.md#pre-run-iteration-policy).
+- For daily UI and remapping, follow the
+  [warm desktop workflow](docs/testing/remote-installer-lab.md#daily-ui-and-remapping).
+  Batch tests on one owned, unexpired lease and use the guarded replacement
+  command for new signed builds. That command routes revision admission through
+  the VM lab controller. Use a fresh clone for onboarding and
+  permission changes and for release qualification.
 - For GUI tests, verify the desktop is unlocked before first launch. A trusted
   automation bridge can report ready while the guest is on the lock screen.
   Use the [smoke checklist](docs/testing/remote-installer-lab.md#desktop-smoke-checklist)

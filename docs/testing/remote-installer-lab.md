@@ -17,7 +17,12 @@ remain beneath `KeyPathInstallerLab` on the external volume after cleanup.
 
 ## Pre-run iteration policy
 
-Read the maintained lab checkout’s `docs/iteration-workflow.md` before creating a VM (currently `/Users/malpern/local-code/vm-lab-automation-robustness`). Plan scenarios and pass conditions, verify action support, and batch tests of the same admitted artifact. Clean consent testing is a distinct gate from ordinary UI iteration. The current lab cannot replace the pinned installer in an existing lease; do not bypass admission. A cancelled permission prompt does not prove revoke/regrant. Keep the owned lease through useful same-artifact retests, then collect evidence and destroy it.
+Before creating a VM, read `docs/iteration-workflow.md` in the Mini's
+`/Users/malpern/local-code/vm-lab-prepared` checkout. Plan scenarios and pass conditions, check which actions the lab supports,
+and batch tests on the owned lease. Use the guarded replacement process below
+for a new signed build. A cancelled permission prompt does not prove that a
+grant can be revoked and granted again. Collect evidence and destroy the lease
+when the batch ends.
 
 ## Prerequisites
 
@@ -56,6 +61,34 @@ for routine product tests should have macOS setup complete and a working lab
 observer. Qualify KeyPath's initial permission state, first launch and remap
 on a disposable child before using a new shared base.
 
+### Daily UI and remapping
+
+Use one owned, unexpired prepared desktop lease for a batch of tests. Once
+KeyPath's normal grant is complete, keep the guest and its configuration for
+that batch. Record first-time provisioning and consent separately from the
+time to replace a build and rerun a scenario. For a new signed build on the
+same lease, use the prepared lab
+controller's `rig/replace_product.py` preflight and one-shot `--apply`.
+Provide the original desktop qualification journal, current boot UUID,
+installed executable SHA-256, new ZIP SHA-256, and source identity.
+See `docs/product-replacement.md` in the VM lab checkout for the full command.
+Quit KeyPath and any test capture apps before replacement. After relaunch,
+verify the new executable, runtime, and the behavior under
+test. Record the source commit, replacement ZIP SHA-256, and revision receipt
+with the results. The original lease manifest still records the initial build.
+Collect artifacts and destroy the lease when the batch ends.
+
+On November 15, a macOS 27.2.1 Mini lease replaced one signed KeyPath build
+with a second signed build in 6 seconds. Preflight, replacement, relaunch, and
+the independent virtual `q → a` check took 19 seconds from the stopped app.
+The same guest boot and config survived the swap, and build B remapped with
+the existing grant. These timings exclude creating and granting the lease.
+
+For onboarding or permission changes and release qualification, start a
+fresh clone, confirm KeyPath starts without effective permission, and exercise
+the normal Settings flow. A warm build replacement is functional evidence
+for that specific revision.
+
 ### macOS 27.2.1 lab observations
 
 - Allow roughly two minutes for a warm-archive Parallels lease on the Mini.
@@ -77,13 +110,12 @@ on a disposable child before using a new shared base.
   Functional qualification retains those raw statuses and requires both
   effective access flags to be false. A candidate still needs child
   qualification, normal consent, and a remap before it can become the
-  shared default. Use the existing desktop lane for clean consent meanwhile.
+  shared default. The November 15 runs below met those requirements.
 - Prepared-base publication should register a verified copy of the stopped
   source. Child provisioning should make a full clone from its own temporary
   staging image. If the source manifest changes or staging cleanup fails,
   preserve the journals and inspect the recorded image identities through the
-  lab before retrying. Continue to use the established desktop base until the
-  prepared child passes qualification.
+  lab before retrying.
 - With `--prepared-functional-base BASE_ID`, admit the test build by commit
   and signed installer SHA-256. The child qualification must match its own
   admitted artifact. The live macOS 27.2.1 child inherited the account and
@@ -93,13 +125,27 @@ on a disposable child before using a new shared base.
   Installation took 1 second, consent submission to worker readiness took
   12 seconds, and the remap and reopen check took 20 seconds on that run.
   Check the desktop before installing KeyPath and record any OS setup that
-  reappears on the clone. This candidate remains opt-in.
+  reappears on the clone. This earlier candidate was opt-in.
 - On the Mini, use `/Users/malpern/local-code/vm-lab-prepared/bin/vm-lab`
-  for the opt-in controller and pass `--host malpern@localhost` before
+  for the prepared controller and pass `--host malpern@localhost` before
   `keypath`. Two fresh children qualified a different signed build and
   reached an unlocked desktop without manual input. The startup runner handled
   the recurring macOS screens. The first child also passed splash, consent
   and virtual remapping before and after reopening.
+
+- The November 15 qualification passed on `cbx_1e17c8e26277` and
+  `cbx_0a4242e0bc29` using macOS 27.2.1 (26B131), prepared image
+  `observer-a3f3a048c65eb973f071f57778e09cef`, and KeyPath commit
+  `45f09b16307a78db7f19a951af5f72be1ac6f304`. Both runs logged poster load
+  and dismissal about 1.3 seconds apart, completed normal Settings consent,
+  and captured the same virtual remap after relaunch. A separate attempt
+  stopped before submitting authentication and was retired.
+- On the Mini, the prepared controller selects the qualified image for
+  `keypath create --macos 27 --lane unmanaged-ui --desktop` using the
+  console-owner route. Invoke
+  `/Users/malpern/local-code/vm-lab-prepared/bin/vm-lab --host malpern@localhost`
+  for that workflow. Use `--standard-desktop-base` for an explicit run against
+  the standard desktop template.
 
 ## Host disk reserve
 
