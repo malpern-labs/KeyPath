@@ -44,7 +44,7 @@ public final class ConfigurationService {
     @MainActor private var needsRecoveredDeviceRuntimeRestart = false
     @MainActor package private(set) var ruleRecoveryRevision: UInt64 = 0
 
-    package let operationGate: ConfigurationOperationGate
+    package nonisolated let operationGate: ConfigurationOperationGate
 
     /// Perform blocking file I/O off the main actor
     private let ioQueue = DispatchQueue(label: "com.keypath.configservice.io", qos: .utility)
