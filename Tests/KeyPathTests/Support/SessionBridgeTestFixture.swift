@@ -23,9 +23,8 @@ enum SessionBridgeTestFixture {
     }
 
     /// The capability profile the fixture's bridge gives. Tests that compare
-    /// `isSupportedInDriverlessSession` with a fixture admission install this as
-    /// `BackendCapabilityProfile.testOverride`, since `.shared` asks whatever
-    /// bridge the host process finds (an installed app's, possibly older).
+    /// `isSupportedInDriverlessSession` with fixture admission scope this to the test operation. The live profile
+    /// otherwise asks the bridge that the host process can find.
     static var profile: BackendCapabilityProfile {
         BackendCapabilityProfile { key in
             KanataHostBridge.sessionOutputKeySupported(

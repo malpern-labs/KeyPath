@@ -17,13 +17,9 @@ public final class BackendCapabilityProfile: Sendable {
     }
 
     #if DEBUG
-        /// Tests inject a profile; production always uses the bridge.
-        private static let override = Mutex<BackendCapabilityProfile?>(nil)
-
-        public static var testOverride: BackendCapabilityProfile? {
-            get { override.withLock { $0 } }
-            set { override.withLock { $0 = newValue } }
-        }
+        /// Scope fixture capabilities to each test and its child tasks.
+        /// Pass the profile explicitly across detached tasks and dispatch callbacks.
+        @TaskLocal package static var testOverride: BackendCapabilityProfile?
     #endif
 
     private static let live = BackendCapabilityProfile { key in
