@@ -1,5 +1,6 @@
 import Foundation
 @testable import KeyPathAppKit
+import KeyPathCore
 @preconcurrency import XCTest
 
 @MainActor

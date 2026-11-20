@@ -1,20 +1,19 @@
 import Darwin
 import Foundation
-import KeyPathRulesCore
 
 /// The file-persistence portion of a rule edit. Call off the main actor.
 /// Fixed caller-supplied roles resolve journal entries; journal data cannot choose
 /// arbitrary target paths. Staged writes retain recovery through runtime application;
 /// ordinary rule writes still commit at the file-persistence boundary.
-enum RecoverableRuleWrite {
-    enum Scope: Sendable, Equatable {
+package enum RecoverableRuleWrite {
+    package enum Scope: Sendable, Equatable {
         case rules
         case appKeymaps
         case packRules
         case rawConfig
         case deviceRules
 
-        var roles: Set<String> {
+        fileprivate var roles: Set<String> {
             switch self {
             case .rules: ["config", "collections", "customRules", "deviceTargetingManifest"]
             case .appKeymaps: ["config", "appKeymaps", "appInclude", "deviceTargetingManifest"]
@@ -27,7 +26,7 @@ enum RecoverableRuleWrite {
         /// Version 1 journals predate the device-targeting provenance sidecar.
         /// They remain recoverable: their entries never claimed that sidecar,
         /// so recovery must restore the recorded revision and leave it absent.
-        var legacyRoles: Set<String> {
+        fileprivate var legacyRoles: Set<String> {
             switch self {
             case .rules: ["config", "collections", "customRules"]
             case .appKeymaps: ["config", "appKeymaps", "appInclude"]
@@ -38,7 +37,7 @@ enum RecoverableRuleWrite {
         }
     }
 
-    struct PendingWrite: Sendable {
+    package struct PendingWrite: Sendable {
         fileprivate let files: [String: URL]
         fileprivate let directory: URL
         fileprivate let scope: Scope
@@ -46,20 +45,27 @@ enum RecoverableRuleWrite {
         fileprivate let preferences: PreferenceDefaults?
     }
 
-    struct Entry: Codable, Equatable, Sendable {
-        let role: String
-        let path: String
-        let before: Data?
-        let after: Data
+    package struct Entry: Codable, Equatable, Sendable {
+        package let role: String
+        package let path: String
+        package let before: Data?
+        package let after: Data
+
+        package init(role: String, path: String, before: Data?, after: Data) {
+            self.role = role
+            self.path = path
+            self.before = before
+            self.after = after
+        }
     }
 
-    struct Journal: Codable, Equatable, Sendable {
-        let version: Int
-        var committed: Bool
-        let entries: [Entry]
-        let preferences: [PreferenceEntry]
+    package struct Journal: Codable, Equatable, Sendable {
+        package let version: Int
+        package var committed: Bool
+        package let entries: [Entry]
+        package let preferences: [PreferenceEntry]
 
-        init(version: Int, committed: Bool, entries: [Entry], preferences: [PreferenceEntry] = []) {
+        package init(version: Int, committed: Bool, entries: [Entry], preferences: [PreferenceEntry] = []) {
             self.version = version
             self.committed = committed
             self.entries = entries
@@ -68,7 +74,7 @@ enum RecoverableRuleWrite {
 
         private enum CodingKeys: String, CodingKey { case version, committed, entries, preferences }
 
-        init(from decoder: Decoder) throws {
+        package init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             version = try container.decode(Int.self, forKey: .version)
             committed = try container.decode(Bool.self, forKey: .committed)
@@ -77,18 +83,24 @@ enum RecoverableRuleWrite {
         }
     }
 
-    struct PreferenceEntry: Codable, Equatable, Sendable {
-        let role: PreferenceRole
-        let before: Data?
-        let after: Data
+    package struct PreferenceEntry: Codable, Equatable, Sendable {
+        package let role: PreferenceRole
+        package let before: Data?
+        package let after: Data
+
+        package init(role: PreferenceRole, before: Data?, after: Data) {
+            self.role = role
+            self.before = before
+            self.after = after
+        }
     }
 
-    struct PreferenceChange: Sendable {
-        let role: PreferenceRole
-        let before: Data?
-        let after: Data
+    package struct PreferenceChange: Sendable {
+        package let role: PreferenceRole
+        package let before: Data?
+        package let after: Data
 
-        static func leader(before: Data?, after: Data) throws -> Self {
+        package static func leader(before: Data?, after: Data) throws -> Self {
             try .init(
                 role: .leader,
                 before: before.map(requiredPreferenceData),
@@ -96,7 +108,7 @@ enum RecoverableRuleWrite {
             )
         }
 
-        static func contextHUDTriggerMode(before: Any?, after: String) throws -> Self {
+        package static func contextHUDTriggerMode(before: Any?, after: String) throws -> Self {
             try .init(
                 role: .contextHUDTriggerMode,
                 before: preferenceData(before),
@@ -104,7 +116,7 @@ enum RecoverableRuleWrite {
             )
         }
 
-        static func contextHUDHoldDelayPreset(before: Any?, after: String) throws -> Self {
+        package static func contextHUDHoldDelayPreset(before: Any?, after: String) throws -> Self {
             try .init(
                 role: .contextHUDHoldDelayPreset,
                 before: preferenceData(before),
@@ -112,7 +124,7 @@ enum RecoverableRuleWrite {
             )
         }
 
-        static func contextHUDHoldDelayCustomMs(before: Any?, after: Int) throws -> Self {
+        package static func contextHUDHoldDelayCustomMs(before: Any?, after: Int) throws -> Self {
             try .init(
                 role: .contextHUDHoldDelayCustomMs,
                 before: preferenceData(before),
@@ -121,15 +133,15 @@ enum RecoverableRuleWrite {
         }
     }
 
-    enum PreferenceRole: Codable, Hashable, Sendable {
+    package enum PreferenceRole: Codable, Hashable, Sendable {
         case leader
         case contextHUDTriggerMode
         case contextHUDHoldDelayPreset
         case contextHUDHoldDelayCustomMs
 
-        var key: String {
+        package var key: String {
             switch self {
-            case .leader: PreferencesService.leaderKeyPreferenceKey
+            case .leader: "KeyPath.LeaderKey.Preference"
             case .contextHUDTriggerMode: "KeyPath.ContextHUD.TriggerMode"
             case .contextHUDHoldDelayPreset: "KeyPath.ContextHUD.HoldDelayPreset"
             case .contextHUDHoldDelayCustomMs: "KeyPath.ContextHUD.HoldDelayCustomMs"
@@ -137,18 +149,23 @@ enum RecoverableRuleWrite {
         }
     }
 
-    struct PreferenceDefaults: @unchecked Sendable {
-        let value: UserDefaults
-        init(_ value: UserDefaults) {
+    package struct PreferenceDefaults: @unchecked Sendable {
+        package let value: UserDefaults
+        package init(_ value: UserDefaults) {
             self.value = value
         }
     }
 
-    struct WriteFailure: LocalizedError {
-        let cause: Error
-        let recoveryError: Error?
+    package struct WriteFailure: LocalizedError {
+        package let cause: Error
+        package let recoveryError: Error?
 
-        var errorDescription: String? {
+        package init(cause: Error, recoveryError: Error?) {
+            self.cause = cause
+            self.recoveryError = recoveryError
+        }
+
+        package var errorDescription: String? {
             if let recoveryError {
                 return String(localized: "Rule files could not be saved: \(cause.localizedDescription). Recovery also failed: \(recoveryError.localizedDescription)")
             }
@@ -156,12 +173,12 @@ enum RecoverableRuleWrite {
         }
     }
 
-    enum Failure: LocalizedError {
+    package enum Failure: LocalizedError {
         case invalidJournal
         case changedFile(String)
         case changedPreference(String)
 
-        var errorDescription: String? {
+        package var errorDescription: String? {
             switch self {
             case .invalidJournal: String(localized: "The pending rule-write journal does not match these rule stores.")
             case let .changedFile(role): String(localized: "The \(role) file changed outside this operation. Recovery was stopped to preserve it.")
@@ -170,7 +187,7 @@ enum RecoverableRuleWrite {
         }
     }
 
-    static func apply(
+    package static func apply(
         files: [String: URL], contents: [String: Data], directory: URL,
         writeFile: (Data, URL) throws -> Void = DurableRuleFile.write
     ) throws {
@@ -179,7 +196,7 @@ enum RecoverableRuleWrite {
     }
 
     /// Retain the prior revision until the caller classifies runtime application.
-    static func stage(
+    package static func stage(
         files: [String: URL], contents: [String: Data], directory: URL, scope: Scope,
         expectedBefore: [String: Data]? = nil,
         preferences: UserDefaults? = nil, preferenceChanges: [PreferenceChange] = [],
@@ -282,7 +299,7 @@ enum RecoverableRuleWrite {
         }
     }
 
-    static func commit(_ pending: PendingWrite) throws {
+    package static func commit(_ pending: PendingWrite) throws {
         try withLock(directory: pending.directory) {
             try validatePending(pending)
             for entry in pending.journal.entries {
@@ -306,7 +323,7 @@ enum RecoverableRuleWrite {
         }
     }
 
-    static func rollback(_ pending: PendingWrite) throws {
+    package static func rollback(_ pending: PendingWrite) throws {
         try withLock(directory: pending.directory) {
             try validatePending(pending)
             try recoverLocked(files: pending.files, directory: pending.directory,
@@ -323,8 +340,8 @@ enum RecoverableRuleWrite {
     }
 
     @discardableResult
-    static func recover(files: [String: URL], directory: URL, scope: Scope = .rules,
-                        preferences: UserDefaults? = nil) throws -> Bool
+    package static func recover(files: [String: URL], directory: URL, scope: Scope = .rules,
+                                preferences: UserDefaults? = nil) throws -> Bool
     {
         try validateFiles(files, directory: directory, scope: scope)
         return try withLock(directory: directory) {
@@ -439,7 +456,7 @@ enum RecoverableRuleWrite {
         try defaults.set(preferenceValue(data), forKey: role.key)
     }
 
-    static func journalURL(_ directory: URL, scope: Scope = .rules) -> URL {
+    package static func journalURL(_ directory: URL, scope: Scope = .rules) -> URL {
         let name = switch scope {
         case .rules: ".keypath-rule-write.json"
         case .appKeymaps: ".keypath-app-write.json"

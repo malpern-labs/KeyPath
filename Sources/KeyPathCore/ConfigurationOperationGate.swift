@@ -1,30 +1,31 @@
 import CryptoKit
 import Darwin
 import Foundation
+import Synchronization
 
 /// FIFO admission within one service, plus a process-safe lease for its config
 /// directory. Owns no persistence/UI state; trusted nested work uses a permit.
-actor ConfigurationOperationGate {
-    struct Permit: Sendable {
+package actor ConfigurationOperationGate {
+    package struct Permit: Sendable {
         fileprivate let owner: UUID
         fileprivate let operation: UUID
 
         /// Identifies one admitted root operation without exposing the gate owner.
         /// Consumers use this only to avoid repeating preparation work for trusted
         /// nested calls that carry the same permit.
-        var operationID: UUID {
+        package var operationID: UUID {
             operation
         }
     }
 
-    enum Failure: LocalizedError {
+    package enum Failure: LocalizedError {
         case uninstalling
         case recursiveOperation
         case invalidPermit
         case fileLock(String, Int32)
         case invalidLockFile
 
-        var errorDescription: String? {
+        package var errorDescription: String? {
             switch self {
             case .uninstalling:
                 String(localized: "KeyPath is uninstalling; configuration changes are paused.")
@@ -50,13 +51,13 @@ actor ConfigurationOperationGate {
     private var active: Permit?
     private var waiters: [CheckedContinuation<Permit, Never>] = []
 
-    init(configurationDirectory: URL? = nil) {
+    package init(configurationDirectory: URL? = nil) {
         self.configurationDirectory = configurationDirectory
     }
 
     /// Keep locks in user-owned state, not a possibly read-only config parent.
     /// Never unlink at operation end; waiters must keep one inode even on restore.
-    nonisolated static func lockFileURL(for directory: URL) -> URL {
+    package nonisolated static func lockFileURL(for directory: URL) -> URL {
         let canonical = directory.standardizedFileURL.resolvingSymlinksInPath()
         var ancestor = canonical
         while !FileManager.default.fileExists(atPath: ancestor.path), ancestor.path != "/" {
@@ -73,17 +74,17 @@ actor ConfigurationOperationGate {
 
     /// Reject queued/new writes, then wait for the admitted writer to settle.
     /// Remains closed through successful uninstall and application termination.
-    func suspendForUninstall() async {
+    package func suspendForUninstall() async {
         uninstalling = true
         guard pendingOperations > 0 else { return }
         await withCheckedContinuation { uninstallWaiters.append($0) }
     }
 
-    func resumeAfterFailedUninstall() {
+    package func resumeAfterFailedUninstall() {
         uninstalling = false
     }
 
-    func withOperation<Result: Sendable>(
+    package func withOperation<Result: Sendable>(
         using permit: Permit? = nil,
         _ operation: @Sendable (Permit) async throws -> Result
     ) async throws -> Result {
@@ -164,23 +165,22 @@ actor ConfigurationOperationGate {
         waiters.removeFirst().resume(returning: next)
     }
 
-    private final nonisolated class FileLease: @unchecked Sendable {
+    private final nonisolated class FileLease: Sendable {
         struct Identity: Equatable, Sendable {
             let device: dev_t
             let inode: ino_t
         }
 
         let identity: Identity
-        private let stateLock = NSLock()
-        private var descriptor: Int32?
+        private let descriptor: Mutex<Int32?>
 
         private init(descriptor: Int32, identity: Identity) {
-            self.descriptor = descriptor
+            self.descriptor = Mutex(descriptor)
             self.identity = identity
         }
 
         var isActive: Bool {
-            stateLock.withLock { descriptor != nil }
+            descriptor.withLock { $0 != nil }
         }
 
         private static let ioQueue = DispatchQueue(label: "com.keypath.configuration-operation-lock", qos: .utility, attributes: .concurrent)
@@ -214,7 +214,7 @@ actor ConfigurationOperationGate {
         }
 
         func acquire() async throws {
-            guard let fd = stateLock.withLock({ descriptor }) else { throw Failure.invalidPermit }
+            guard let fd = descriptor.withLock({ $0 }) else { throw Failure.invalidPermit }
             while true {
                 try Task.checkCancellation()
                 if flock(fd, LOCK_EX | LOCK_NB) == 0 { return }
@@ -227,9 +227,9 @@ actor ConfigurationOperationGate {
         }
 
         func release() {
-            let fd = stateLock.withLock {
-                let previous = descriptor
-                descriptor = nil
+            let fd = descriptor.withLock { value in
+                let previous = value
+                value = nil
                 return previous
             }
             guard let fd else { return }
