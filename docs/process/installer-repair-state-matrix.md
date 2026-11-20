@@ -161,12 +161,10 @@ the result as user action required and name the approval surface.
   pin the synchronous provider contract, while
   `PgrepProcessDiscoveryLintTests.testServiceLifecycleCoordinatorDelegatesPgrepDiscoveryToSystemStateProvider`,
   `PgrepProcessDiscoveryLintTests.testSystemValidatorDelegatesPgrepDiscoveryToSystemStateProvider`,
-  `DiagnosticsServiceTests.testKarabinerGrabberDetectionUsesInjectedSystemStateProvider`,
-  `PgrepProcessDiscoveryLintTests.testDiagnosticsServiceDelegatesPgrepDiscoveryToSystemStateProvider`,
-  `PgrepProcessDiscoveryLintTests.testKanataProcessDetectorDelegatesPgrepDiscoveryToSystemStateProvider`,
   and `PgrepProcessDiscoveryLintTests.testProductionPgrepDiscoveryIsCentralizedInCoreProvider`
-  block runtime, system-validator, Karabiner-conflict, diagnostics and
-  external-Kanata detection consumers from bypassing it.
+  block live runtime and system-validator consumers from bypassing it.
+  The unused DiagnosticsService/KanataProcessDetector path and its tests were
+  removed after the function-level project review; shared diagnostic models remain.
 - Nothing reads `launchctl print`: the session runtime has no launchd service.
   The probe chain that read it was removed with its tests (project review
   2026-11-09, B3).
