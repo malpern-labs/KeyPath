@@ -84,7 +84,7 @@ let package = Package(
         ),
         .target(
             name: "KeyPathCLISupport",
-            dependencies: ["KeyPathInstallationWizard"],
+            dependencies: ["KeyPathCore", "KeyPathInstallationWizard", "KeyPathPermissions", "KeyPathWizardCore"],
             path: "Sources/KeyPathCLISupport",
             swiftSettings: [
                 .swiftLanguageMode(.v6)

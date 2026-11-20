@@ -22,7 +22,7 @@ final class InstallerEngineLintTests: KeyPathTestCase {
         let root = repositoryRoot()
         let cliSource = try String(
             contentsOf: root.appendingPathComponent(
-                "Sources/KeyPathAppKit/CLI/SystemFacade.swift"
+                "Sources/KeyPathCLISupport/SystemFacade.swift"
             ),
             encoding: .utf8
         )
@@ -91,7 +91,7 @@ final class InstallerEngineLintTests: KeyPathTestCase {
     func testClientsDoNotRecaptureInstallerMatrixEvidence() throws {
         let root = repositoryRoot()
         let consumers = [
-            root.appendingPathComponent("Sources/KeyPathAppKit/CLI/SystemFacade.swift"),
+            root.appendingPathComponent("Sources/KeyPathCLISupport/SystemFacade.swift"),
             root.appendingPathComponent("Sources/KeyPathAppKit/Services/MainAppStateController.swift"),
         ]
         let forbidden = [
