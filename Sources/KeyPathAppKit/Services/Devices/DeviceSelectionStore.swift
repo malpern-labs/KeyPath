@@ -1,27 +1,7 @@
 import Foundation
 import KeyPathCore
+import KeyPathRulesCore
 import Synchronization
-
-/// Persisted selection state for a single device.
-struct DeviceSelection: Codable, Equatable, Sendable {
-    let hash: String
-    let productKey: String
-    var isEnabled: Bool
-    var lastSeen: Date
-
-    /// Cleaned-up product name for display, matching `ConnectedDevice.displayName`.
-    var displayName: String {
-        DeviceDisplayNameFormatter.format(productKey)
-    }
-}
-
-/// A point-in-time device view used while generating a candidate configuration.
-/// It prevents a retained transaction from reading a cache that has already
-/// moved to a different selection.
-struct DeviceGenerationInput: Sendable {
-    let selections: [DeviceSelection]
-    let connectedDevices: [ConnectedDevice]
-}
 
 /// Thread-safe synchronous cache for UI and service-layer device snapshots.
 /// Configuration rendering receives a point-in-time `DeviceGenerationInput`

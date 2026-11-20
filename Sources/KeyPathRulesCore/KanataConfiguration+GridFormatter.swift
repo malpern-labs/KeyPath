@@ -1,6 +1,5 @@
 import Foundation
 import KeyPathCore
-import Network
 
 extension KanataConfiguration {
     /// Formats collection blocks into keyboard-shaped, padded rows for readability.

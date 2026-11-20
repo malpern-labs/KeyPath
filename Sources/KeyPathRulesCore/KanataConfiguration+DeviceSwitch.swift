@@ -1,7 +1,6 @@
 import Foundation
-import KeyPathRulesCore
 
-extension KanataConfiguration {
+package extension KanataConfiguration {
     /// Render a per-device switch expression for a key with device overrides.
     /// Returns the switch expression string (suitable for use inside an alias).
     ///

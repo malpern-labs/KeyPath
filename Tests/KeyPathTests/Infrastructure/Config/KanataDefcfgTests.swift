@@ -1,4 +1,5 @@
 @testable import KeyPathAppKit
+import KeyPathRulesCore
 import XCTest
 
 /// Byte-exact pins for the single-source-of-truth `defcfg` renderer.

@@ -1,9 +1,7 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
-import Network
 
-extension KanataConfiguration {
+package extension KanataConfiguration {
     /// Generate KeyMapping instances from HomeRowModsConfig
     static func generateHomeRowModsMappings(from config: HomeRowModsConfig) -> [KeyMapping] {
         var mappings: [KeyMapping] = []
@@ -147,7 +145,7 @@ extension KanataConfiguration {
     }
 
     /// Generate mappings for a layer preset picker collection (e.g., Symbol Layer)
-    static func generateLayerPresetMappings(from collection: RuleCollection) -> [KeyMapping] {
+    internal static func generateLayerPresetMappings(from collection: RuleCollection) -> [KeyMapping] {
         guard case let .layerPresetPicker(config) = collection.configuration else {
             return collection.mappings
         }

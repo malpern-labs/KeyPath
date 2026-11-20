@@ -1,5 +1,6 @@
 import Foundation
 import KeyPathCore
+import KeyPathRulesCore
 
 /// Parses `kanata --list` output into structured device records.
 /// Pure parsing logic kept separate from Process execution for testability.

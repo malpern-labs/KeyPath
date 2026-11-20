@@ -1,4 +1,5 @@
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 /// "While a Layer Is Active": everything KeyPath shows when you switch layers —

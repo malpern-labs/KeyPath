@@ -1,8 +1,7 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
-enum RuleCollectionDeduplicator {
+package enum RuleCollectionDeduplicator {
     // Conflict detection lives in `AdmissionEngine.conflicts(in:leaderKey:)`,
     // attributed by rule id. This type only applies the generator's structural
     // "first claim wins" after admission has refused every intentional overlap.
@@ -10,7 +9,7 @@ enum RuleCollectionDeduplicator {
     /// Deduplicates collections by removing duplicate input keys.
     /// - First collection to claim an input key (per layer) wins
     /// - Custom rules come before preset collections, so they take priority
-    static func dedupe(_ collections: [RuleCollection]) -> [RuleCollection] {
+    package static func dedupe(_ collections: [RuleCollection]) -> [RuleCollection] {
         var seenActivators: Set<ActivatorKey> = []
         // Track seen input keys per layer across ALL enabled collections
         var seenInputKeys: Set<InputKey> = []

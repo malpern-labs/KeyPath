@@ -1,5 +1,4 @@
 import Foundation
-import KeyPathRulesCore
 
 /// System-level preference for the primary leader key
 /// This defines which key activates the navigation/leader layer

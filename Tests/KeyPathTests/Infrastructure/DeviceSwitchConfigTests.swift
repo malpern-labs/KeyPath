@@ -341,7 +341,8 @@ final class DeviceSwitchConfigTests: XCTestCase {
         let (_, aliases, _, _) = KanataConfiguration.buildCollectionBlocks(
             from: [collection],
             leaderKeyPreference: nil,
-            connectedDevices: [device0, device1]
+            connectedDevices: [device0, device1],
+            navigationKeyCodes: []
         )
 
         let deviceAlias = aliases.first(where: { $0.aliasName.hasPrefix("dev_") })
@@ -363,7 +364,8 @@ final class DeviceSwitchConfigTests: XCTestCase {
 
         let (_, aliases, _, _) = KanataConfiguration.buildCollectionBlocks(
             from: [collection],
-            leaderKeyPreference: nil
+            leaderKeyPreference: nil,
+            navigationKeyCodes: []
         )
 
         let deviceAlias = aliases.first(where: { $0.aliasName.hasPrefix("dev_") })

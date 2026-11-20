@@ -13,6 +13,7 @@ struct ShortcutListGenerationInput: Sendable, Equatable {
     }
 }
 
+import KeyPathRulesCore
 import Observation
 
 /// Key label display style for modifier and action keys on the keyboard visualization.
@@ -94,21 +95,15 @@ enum ContextHUDDisplayMode: String, CaseIterable {
     }
 }
 
-/// How the overlay/HUD is triggered when the modifier (Hyper/Meh) is activated
-public enum ContextHUDTriggerMode: String, CaseIterable, Sendable {
-    /// Show while holding modifier, dismiss on release
-    case holdToShow
-    /// Tap modifier to toggle visibility on/off
-    case tapToToggle
-
-    public var displayName: String {
+public extension ContextHUDTriggerMode {
+    var displayName: String {
         switch self {
         case .holdToShow: String(localized: "Hold to Show")
         case .tapToToggle: String(localized: "Tap to Toggle")
         }
     }
 
-    public var description: String {
+    var description: String {
         switch self {
         case .holdToShow: String(localized: "Appears while holding, dismisses on release")
         case .tapToToggle: String(localized: "Tap to show, tap again or press Esc to dismiss")

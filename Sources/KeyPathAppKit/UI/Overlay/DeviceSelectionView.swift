@@ -1,4 +1,5 @@
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 /// Connected keyboard information. Driverless remapping applies to all keyboards;
