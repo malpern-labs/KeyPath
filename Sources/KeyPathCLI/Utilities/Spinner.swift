@@ -1,13 +1,14 @@
 import Foundation
 
-final class CLISpinner: @unchecked Sendable {
+@MainActor
+final class CLISpinner {
     private static let brailleFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
     private static let asciiFrames = ["-", "\\", "|", "/"]
 
     private let noColor: Bool
     private let isEnabled: Bool
     private var message: String
-    private var timer: Timer?
+    private var animation: Task<Void, Never>?
     private var frameIndex = 0
 
     init(context: OutputContext) {
@@ -16,13 +17,23 @@ final class CLISpinner: @unchecked Sendable {
         message = ""
     }
 
+    deinit {
+        animation?.cancel()
+    }
+
     func start(_ message: String) {
         guard isEnabled else { return }
+        animation?.cancel()
         self.message = message
         frameIndex = 0
         renderFrame()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
-            self?.tick()
+        animation = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(80)) }
+                catch { return }
+                guard !Task.isCancelled, let self else { return }
+                tick()
+            }
         }
     }
 
@@ -41,11 +52,10 @@ final class CLISpinner: @unchecked Sendable {
     }
 
     func stop() {
-        timer?.invalidate()
-        timer = nil
-        if isEnabled {
-            FileHandle.standardError.write(Data("\r\u{001b}[2K".utf8))
-        }
+        guard let animation else { return }
+        animation.cancel()
+        self.animation = nil
+        FileHandle.standardError.write(Data("\r\u{001b}[2K".utf8))
     }
 
     private func tick() {
