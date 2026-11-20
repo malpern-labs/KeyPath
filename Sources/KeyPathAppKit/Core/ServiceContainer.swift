@@ -20,18 +20,23 @@ final class ServiceContainer {
     let ruleCollectionStore: RuleCollectionStore
     let iconResolver: IconResolverService
     let faviconFetcher: FaviconFetcher
+    let scanForDuplicateApps: @Sendable () async -> [String]
 
     init(
         preferences: PreferencesService = .shared,
         appKeymapStore: AppKeymapStore = .shared,
         ruleCollectionStore: RuleCollectionStore = .shared,
         iconResolver: IconResolverService = .shared,
-        faviconFetcher: FaviconFetcher = .shared
+        faviconFetcher: FaviconFetcher = .shared,
+        scanForDuplicateApps: @escaping @Sendable () async -> [String] = {
+            await DuplicateAppDetector.detectDuplicateAppCopies()
+        }
     ) {
         self.preferences = preferences
         self.appKeymapStore = appKeymapStore
         self.ruleCollectionStore = ruleCollectionStore
         self.iconResolver = iconResolver
         self.faviconFetcher = faviconFetcher
+        self.scanForDuplicateApps = scanForDuplicateApps
     }
 }
