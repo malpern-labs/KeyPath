@@ -27,7 +27,7 @@ struct SystemValidatorTests {
     func cachedPermissionReadsStillCheckRuntimeReadiness() async {
         let runtime = StoppedRuntimeProbe()
         let validator = SystemValidator(
-            runtimeEvidence: { (await runtime.isRunning(), false) }
+            runtimeEvidence: { await (runtime.isRunning(), false) }
         )
 
         let first = await validator.checkSystem(freshness: .cached)
