@@ -8,24 +8,19 @@ import SwiftUI
 /// (unmapped) key leaves layer mode — rendering base-style — when the user
 /// prefers `.baseLayer`, while mapped keys keep full layer styling.
 @MainActor
-final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
-    private var savedStyle: UnmappedLayerKeyStyle!
+final class UnmappedLayerKeyStyleTests: XCTestCase {
+    private var fixture: IsolatedPreferenceDefaults!
+    private var preferences: PreferencesService!
 
     override func setUp() async throws {
         try await super.setUp()
-        // Tripwire: the isLayerMode tests drive the view through
-        // PreferencesService.shared, which only works because the default
-        // @Environment(\.services) ServiceContainer uses `.shared` for its
-        // preferences. Fail loudly (not silently) if that ever decouples.
-        XCTAssertTrue(
-            ServiceContainer().preferences === PreferencesService.shared,
-            "Tests assume the default ServiceContainer uses PreferencesService.shared"
-        )
-        savedStyle = PreferencesService.shared.unmappedLayerKeyStyle
+        fixture = try IsolatedPreferenceDefaults()
+        preferences = PreferencesService(leaderDefaults: fixture.defaults, defaults: fixture.defaults)
     }
 
     override func tearDown() async throws {
-        PreferencesService.shared.unmappedLayerKeyStyle = savedStyle
+        preferences = nil
+        fixture = nil
         try await super.tearDown()
     }
 
@@ -40,7 +35,7 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
             zoneSubtitle: zoneSubtitle,
             // Inject the container rather than reading @Environment: this view is
             // never installed in a hierarchy, and an uninstalled read warns.
-            servicesOverride: ServiceContainer()
+            servicesOverride: ServiceContainer(preferences: preferences)
         )
     }
 
@@ -61,12 +56,12 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
             zoneSubtitle: zoneSubtitle,
             // Inject the container rather than reading @Environment: this view is
             // never installed in a hierarchy, and an uninstalled read warns.
-            servicesOverride: ServiceContainer()
+            servicesOverride: ServiceContainer(preferences: preferences)
         )
     }
 
     func testUnmappedKey_baseLayerPref_leavesLayerMode() {
-        PreferencesService.shared.unmappedLayerKeyStyle = .baseLayer
+        preferences.unmappedLayerKeyStyle = .baseLayer
         let view = keycap(layer: "nav", info: .transparent(fallbackLabel: "Q"))
         XCTAssertFalse(
             view.isLayerMode,
@@ -77,7 +72,7 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
     func testUnmappedKey_nilInfo_baseLayerPref_leavesLayerMode() {
         // Production emits transparent LayerKeyInfo per key, but hand-built maps
         // (and passthrough) use nil — both mean "unmapped" and should render base.
-        PreferencesService.shared.unmappedLayerKeyStyle = .baseLayer
+        preferences.unmappedLayerKeyStyle = .baseLayer
         let view = keycap(layer: "nav", info: nil)
         XCTAssertFalse(view.isLayerMode, "A nil-info (unmapped) key should also render base-style")
     }
@@ -85,13 +80,13 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
     func testUnmappedKey_withZoneSubtitle_baseLayerPref_leavesLayerMode() {
         // A subtitle should not force a transparent/pass-through key into layer
         // styling. The subtitle can still render inline on the base-styled keycap.
-        PreferencesService.shared.unmappedLayerKeyStyle = .baseLayer
+        preferences.unmappedLayerKeyStyle = .baseLayer
         let view = keycap(layer: "nav", info: .transparent(fallbackLabel: "Q"), zoneSubtitle: "◀")
         XCTAssertFalse(view.isLayerMode, "Transparent keys keep base styling even when a subtitle exists")
     }
 
     func testExplicitlyBlockedKey_baseLayerPref_leavesLayerMode() {
-        PreferencesService.shared.unmappedLayerKeyStyle = .baseLayer
+        preferences.unmappedLayerKeyStyle = .baseLayer
         let view = keycap(
             keyCode: 47,
             label: ".",
@@ -112,7 +107,7 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
     }
 
     func testFallbackSameLabelNoOutput_baseLayerPref_leavesLayerMode() {
-        PreferencesService.shared.unmappedLayerKeyStyle = .baseLayer
+        preferences.unmappedLayerKeyStyle = .baseLayer
         let view = keycap(
             keyCode: 44,
             label: "/",
@@ -133,7 +128,7 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
     }
 
     func testLiteralPunctuationIdentity_baseLayerPref_leavesLayerMode() {
-        PreferencesService.shared.unmappedLayerKeyStyle = .baseLayer
+        preferences.unmappedLayerKeyStyle = .baseLayer
         let view = keycap(
             keyCode: 44,
             label: "/",
@@ -154,7 +149,7 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
     }
 
     func testTransparentFn_baseLayerPref_leavesLayerMode() {
-        PreferencesService.shared.unmappedLayerKeyStyle = .baseLayer
+        preferences.unmappedLayerKeyStyle = .baseLayer
         let view = keycap(
             keyCode: 63,
             label: "fn",
@@ -169,7 +164,7 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
     }
 
     func testFnModifierOutput_baseLayerPref_leavesLayerMode() {
-        PreferencesService.shared.unmappedLayerKeyStyle = .baseLayer
+        preferences.unmappedLayerKeyStyle = .baseLayer
         let view = keycap(
             keyCode: 63,
             label: "fn",
@@ -190,7 +185,7 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
     }
 
     func testMappedSlashWithCollection_baseLayerPref_keepsCollectionLayerColor() {
-        PreferencesService.shared.unmappedLayerKeyStyle = .baseLayer
+        preferences.unmappedLayerKeyStyle = .baseLayer
         let view = keycap(
             keyCode: 44,
             label: "/",
@@ -211,7 +206,7 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
     }
 
     func testNavIdentityMapping_baseLayerPref_keepsCollectionLayerColor() {
-        PreferencesService.shared.unmappedLayerKeyStyle = .baseLayer
+        preferences.unmappedLayerKeyStyle = .baseLayer
         let view = keycap(
             keyCode: 0,
             label: "A",
@@ -233,7 +228,7 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
     }
 
     func testUnmappedKey_dimmedPref_staysInLayerMode() {
-        PreferencesService.shared.unmappedLayerKeyStyle = .dimmed
+        preferences.unmappedLayerKeyStyle = .dimmed
         let view = keycap(layer: "nav", info: .transparent(fallbackLabel: "Q"))
         XCTAssertTrue(
             view.isLayerMode,
@@ -242,7 +237,7 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
     }
 
     func testMappedKey_baseLayerPref_staysInLayerMode() {
-        PreferencesService.shared.unmappedLayerKeyStyle = .baseLayer
+        preferences.unmappedLayerKeyStyle = .baseLayer
         let view = keycap(
             layer: "nav",
             info: .mapped(displayLabel: "←", outputKey: "left", outputKeyCode: 123)
@@ -254,7 +249,7 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
     }
 
     func testBaseLayer_isNeverLayerMode() {
-        PreferencesService.shared.unmappedLayerKeyStyle = .dimmed
+        preferences.unmappedLayerKeyStyle = .dimmed
         let view = keycap(layer: "base", info: .transparent(fallbackLabel: "Q"))
         XCTAssertFalse(view.isLayerMode, "The base layer is never in layer mode")
     }
