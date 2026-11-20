@@ -4,6 +4,7 @@ import KeyPathCore
 
 /// Copies or restores a snapshot under the configuration directory's existing operation gate.
 package struct ConfigurationArchive: Sendable {
+    private static let restoreStagingPrefix = ".keypath-restore-"
     private let configDirectory: String
 
     package init(configDirectory: String = KeyPathConstants.Config.directory) {
@@ -83,17 +84,7 @@ package struct ConfigurationArchive: Sendable {
             throw Self.error("Backup path resolves to the active config directory: \(sourceURL.path)")
         }
 
-        // Copy-over first, prune extras second: a failure at any point leaves the
-        // user with a superset of their config, never a gutted directory. The
-        // previous wipe-then-copy ordering lost data when a transient
-        // temp_validation_*.kbd file vanished mid-wipe and aborted the restore
-        // before anything was copied back (#881).
-        try overwriteDirectoryContents(from: resolvedSourceURL, to: restoreTargetURL, fileManager: fileManager)
-        try pruneExtraneousItems(
-            at: restoreTargetURL,
-            keeping: Set(fileManager.contentsOfDirectory(atPath: resolvedSourceURL.path)),
-            fileManager: fileManager
-        )
+        try restoreDirectoryContents(from: resolvedSourceURL, to: restoreTargetURL, fileManager: fileManager)
 
         // Only the running app can talk to its worker. Reuse the normal CLI request.
         let reloadSuccess = await reload ? (try? RuntimeControl.requestEngine(.reload)) != nil : nil
@@ -137,7 +128,7 @@ package struct ConfigurationArchive: Sendable {
             includingPropertiesForKeys: nil
         )
         for item in contents {
-            if isTransientValidationArtifact(item.lastPathComponent) { continue }
+            if isTransientArchiveItem(item.lastPathComponent) { continue }
             do {
                 try fileManager.copyItem(
                     at: item,
@@ -149,49 +140,82 @@ package struct ConfigurationArchive: Sendable {
         }
     }
 
-    /// Copy every backup item over the destination, replacing existing entries
-    /// in place. Unlike wipe-then-copy, an interruption never leaves the
-    /// destination with less data than it started with.
-    private func overwriteDirectoryContents(from source: URL, to destination: URL, fileManager: FileManager) throws {
-        let contents = try fileManager.contentsOfDirectory(
-            at: source,
-            includingPropertiesForKeys: nil
-        )
+    /// Stage the backup before changing live entries (#881). Keep the old
+    /// entries until all replacements and removals succeed or are undone.
+    private func restoreDirectoryContents(from source: URL, to destination: URL, fileManager: FileManager) throws {
+        let contents = try fileManager.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
+            .filter { !isTransientArchiveItem($0.lastPathComponent) }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        let names = Set(contents.map(\.lastPathComponent))
+        let staging = destination.appendingPathComponent(Self.restoreStagingPrefix + UUID().uuidString, isDirectory: true)
+        try fileManager.createDirectory(at: staging, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        var preserveStaging = false
+        defer {
+            if !preserveStaging { try? fileManager.removeItem(at: staging) }
+        }
+
         for item in contents {
-            if isTransientValidationArtifact(item.lastPathComponent) { continue }
-            let target = destination.appendingPathComponent(item.lastPathComponent)
-            do {
-                try fileManager.removeItem(at: target)
-            } catch where isFileNotFound(error) {
-                // Nothing to replace — fine.
+            try fileManager.copyItem(at: item, to: staging.appendingPathComponent(item.lastPathComponent))
+        }
+
+        var undo: [(source: String, target: String, flags: UInt32)] = []
+        do {
+            for item in contents {
+                let name = item.lastPathComponent
+                let stagedPath = staging.appendingPathComponent(name).path
+                let targetPath = destination.appendingPathComponent(name).path
+                // Exchange existing items. If absent, publish with an exclusive
+                // rename so a concurrently created file is preserved.
+                if renamex_np(stagedPath, targetPath, UInt32(RENAME_SWAP)) == 0 {
+                    undo.append((stagedPath, targetPath, UInt32(RENAME_SWAP)))
+                } else if errno == ENOENT {
+                    try renameWithoutReplacing(from: stagedPath, to: targetPath)
+                    undo.append((targetPath, stagedPath, UInt32(RENAME_EXCL)))
+                } else {
+                    throw Self.renameError(at: targetPath, code: errno)
+                }
             }
-            try fileManager.copyItem(at: item, to: target)
+
+            let liveItems = try fileManager.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
+            for item in liveItems {
+                let name = item.lastPathComponent
+                if names.contains(name) || isTransientArchiveItem(name) { continue }
+                let stagedPath = staging.appendingPathComponent(name).path
+                do {
+                    try renameWithoutReplacing(from: item.path, to: stagedPath)
+                    undo.append((stagedPath, item.path, UInt32(RENAME_EXCL)))
+                } catch where isFileNotFound(error) {
+                    // Another operation already removed the extra entry.
+                }
+            }
+        } catch {
+            for change in undo.reversed() {
+                if renamex_np(change.source, change.target, change.flags) != 0 {
+                    preserveStaging = true
+                }
+            }
+            if preserveStaging {
+                throw Self.error("Restore failed: \(error.localizedDescription). Rollback was incomplete. Remaining files are at \(staging.path).")
+            }
+            throw error
         }
     }
 
-    /// Remove destination items that aren't part of the backup. Tolerates
-    /// files that vanish mid-iteration (their owner cleaned up — that's the
-    /// goal state) and skips transient validation artifacts entirely.
-    private func pruneExtraneousItems(at directory: URL, keeping names: Set<String>, fileManager: FileManager) throws {
-        let contents = try fileManager.contentsOfDirectory(
-            at: directory,
-            includingPropertiesForKeys: nil
-        )
-        for item in contents {
-            let name = item.lastPathComponent
-            if names.contains(name) || isTransientValidationArtifact(name) { continue }
-            do {
-                try fileManager.removeItem(at: item)
-            } catch where isFileNotFound(error) {
-                // Already gone — pruning succeeded by other means.
-            }
+    private func renameWithoutReplacing(from source: String, to target: String) throws {
+        if renamex_np(source, target, UInt32(RENAME_EXCL)) != 0 {
+            throw Self.renameError(at: target, code: errno)
         }
     }
 
-    /// Validation candidates and their safe-save shadows are transient. Keep
-    /// recognizing old names when restoring backups from earlier builds (#881).
-    private func isTransientValidationArtifact(_ name: String) -> Bool {
-        name.hasPrefix(".keypath-session-validation-") || name.hasPrefix("temp_validation_")
+    private static func renameError(at path: String, code: Int32) -> NSError {
+        NSError(domain: NSPOSIXErrorDomain, code: Int(code), userInfo: [NSFilePathErrorKey: path])
+    }
+
+    /// Exclude in-progress validation and abandoned restore staging. Keep
+    /// recognizing old validation names in backups from earlier builds (#881).
+    private func isTransientArchiveItem(_ name: String) -> Bool {
+        name.hasPrefix(".keypath-session-validation-") || name.hasPrefix("temp_validation_") ||
+            name.hasPrefix(Self.restoreStagingPrefix)
     }
 
     private func isFileNotFound(_ error: Error) -> Bool {
