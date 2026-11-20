@@ -64,6 +64,7 @@ struct ContextHUDSettingsSection: View {
 
                         HStack(spacing: 10) {
                             SettingsOptionCard(
+                                identifier: "settings-context-hud-trigger-holdToShow",
                                 icon: "hand.tap",
                                 title: String(localized: "Hold", comment: "Layer trigger mode: show while the key is held"),
                                 subtitle: String(localized: "Show while held"),
@@ -72,10 +73,10 @@ struct ContextHUDSettingsSection: View {
                             ) {
                                 applyShortcutListInput(triggerMode: .holdToShow)
                             }
-                            .accessibilityIdentifier("settings-context-hud-trigger-holdToShow")
                             .accessibilityLabel("Hold trigger mode")
 
                             SettingsOptionCard(
+                                identifier: "settings-context-hud-trigger-tapToToggle",
                                 icon: "hand.point.up",
                                 title: String(localized: "Tap", comment: "Layer trigger mode: tap to toggle"),
                                 subtitle: String(localized: "Toggle on/off"),
@@ -84,7 +85,6 @@ struct ContextHUDSettingsSection: View {
                             ) {
                                 applyShortcutListInput(triggerMode: .tapToToggle)
                             }
-                            .accessibilityIdentifier("settings-context-hud-trigger-tapToToggle")
                             .accessibilityLabel("Tap trigger mode")
                         }
                     }
@@ -198,6 +198,7 @@ struct ContextHUDSettingsSection: View {
         subtitle: String
     ) -> some View {
         SettingsOptionCard(
+            identifier: "settings-context-hud-display-\(mode.rawValue)",
             icon: icon, title: title, subtitle: subtitle,
             isSelected: services.preferences.contextHUDDisplayMode == mode,
             cardWidth: nil
@@ -205,7 +206,6 @@ struct ContextHUDSettingsSection: View {
             displayMode = mode
             services.preferences.contextHUDDisplayMode = mode
         }
-        .accessibilityIdentifier("settings-context-hud-display-\(mode.rawValue)")
         .accessibilityLabel("\(title) display mode")
     }
 }
