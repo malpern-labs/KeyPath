@@ -224,34 +224,45 @@ extension LiveKeyboardOverlayController {
         }
     }
 
-    func observeDesiredContentHeight() {
-        Task { @MainActor [weak self] in
+    func observeWindowSizing(for window: NSWindow) {
+        windowSizingObserver?.cancel()
+        windowSizingObserver = Task { @MainActor [weak self, weak window] in
             var lastHeight: CGFloat?
-            while let self {
-                let height = uiState.desiredContentHeight
-                if height != lastHeight {
-                    lastHeight = height
-                    if !isUserResizing {
-                        applyDesiredContentHeight(height)
-                    }
-                }
-                try? await Task.sleep(for: .milliseconds(50))
-            }
-        }
-    }
-
-    func observeDesiredContentWidth() {
-        Task { @MainActor [weak self] in
             var lastWidth: CGFloat?
-            while let self {
-                let width = uiState.desiredContentWidth
-                if width != lastWidth {
-                    lastWidth = width
-                    if !isUserResizing {
-                        applyDesiredContentWidth(width)
+            var lastRatio: CGFloat?
+
+            // Apply the SwiftUI measurements in order and keep the observer
+            // tied to the window whose content produced them.
+            while !Task.isCancelled {
+                do {
+                    guard let self, let window, self.window === window else { return }
+                    let height = uiState.desiredContentHeight
+                    if height != lastHeight {
+                        lastHeight = height
+                        if !isUserResizing {
+                            applyDesiredContentHeight(height)
+                        }
+                    }
+                    let width = uiState.desiredContentWidth
+                    if width != lastWidth {
+                        lastWidth = width
+                        if !isUserResizing {
+                            applyDesiredContentWidth(width)
+                        }
+                    }
+                    let ratio = uiState.keyboardAspectRatio
+                    if ratio != lastRatio {
+                        lastRatio = ratio
+                        if !isUserResizing {
+                            resizeWindowForNewAspectRatio(ratio)
+                        }
                     }
                 }
-                try? await Task.sleep(for: .milliseconds(50))
+                do {
+                    try await Task.sleep(for: .milliseconds(50))
+                } catch {
+                    return
+                }
             }
         }
     }
@@ -295,22 +306,6 @@ extension LiveKeyboardOverlayController {
         hintBubbleObserver?.cancel()
         hintBubbleObserver = nil
         hintWindowController?.dismiss()
-    }
-
-    func observeKeyboardAspectRatio() {
-        Task { @MainActor [weak self] in
-            var lastRatio: CGFloat?
-            while let self {
-                let ratio = uiState.keyboardAspectRatio
-                if ratio != lastRatio {
-                    lastRatio = ratio
-                    if !isUserResizing {
-                        resizeWindowForNewAspectRatio(ratio)
-                    }
-                }
-                try? await Task.sleep(for: .milliseconds(50))
-            }
-        }
     }
 
     func resizeWindowForNewAspectRatio(_ newAspectRatio: CGFloat) {
