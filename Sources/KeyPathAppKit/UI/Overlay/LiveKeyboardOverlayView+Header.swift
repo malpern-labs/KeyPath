@@ -697,6 +697,13 @@ struct OverlayDragHeader: View {
         .help("Current layer: \(layerDisplayName). Click to see available layers.")
         .accessibilityIdentifier("overlay-layer-indicator")
         .accessibilityLabel("Current layer: \(layerDisplayName). Click to see available layers.")
+        .onDisappear {
+            layerGracePeriodTimer?.invalidate()
+            layerGracePeriodTimer = nil
+            layerCollapseTimer?.invalidate()
+            layerCollapseTimer = nil
+            isHoveringLayerPill = false
+        }
         .accessibilityValue(layerDisplayName)
     }
 
@@ -709,6 +716,7 @@ struct OverlayDragHeader: View {
         if hovering {
             // Mouse entered - cancel collapse and expand immediately
             layerCollapseTimer?.invalidate()
+            layerCollapseTimer = nil
             isHoveringLayerPill = true
 
             // If collapsed, expand with animation
@@ -720,7 +728,9 @@ struct OverlayDragHeader: View {
         } else {
             // Mouse left - start grace period before actually marking as not hovering
             layerGracePeriodTimer = Timer.scheduledTimer(withTimeInterval: layerPillGracePeriod, repeats: false) { _ in
-                Task { @MainActor in
+                // Scheduled on the main run loop. Handle the tick before a later hover.
+                MainActor.assumeIsolated {
+                    layerGracePeriodTimer = nil
                     isHoveringLayerPill = false
                     // Schedule collapse with longer delay since user was engaged
                     scheduleLayerPillCollapse(delay: layerPillHoverCollapseDelay)
@@ -738,6 +748,7 @@ struct OverlayDragHeader: View {
         // Cancel any timers
         layerCollapseTimer?.invalidate()
         layerGracePeriodTimer?.invalidate()
+        layerGracePeriodTimer = nil
 
         // Expand the pill to show the new layer name
         withAnimation(layerPillSpring) {
@@ -755,7 +766,8 @@ struct OverlayDragHeader: View {
 
         // Schedule collapse
         layerCollapseTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { _ in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
+                layerCollapseTimer = nil
                 // Don't collapse if hovering or picker is open
                 guard !isHoveringLayerPill, !isLayerPickerOpen else { return }
                 withAnimation(layerPillSpring) {

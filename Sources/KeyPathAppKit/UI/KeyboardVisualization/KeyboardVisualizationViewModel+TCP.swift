@@ -383,6 +383,7 @@ extension KeyboardVisualizationViewModel {
                 tapOutputClearTasks[outputKeyCode]?.cancel()
                 tapOutputClearTasks[outputKeyCode] = Task { @MainActor [weak self] in
                     try? await Task.sleep(for: .milliseconds(150))
+                    guard !Task.isCancelled else { return }
                     self?.recentTapOutputs.remove(outputKeyCode)
                     self?.tapOutputClearTasks.removeValue(forKey: outputKeyCode)
                 }
@@ -543,6 +544,7 @@ extension KeyboardVisualizationViewModel {
                 remapSourceClearTasks[keyCodeToSuppress]?.cancel()
                 remapSourceClearTasks[keyCodeToSuppress] = Task { @MainActor [weak self] in
                     try? await Task.sleep(for: .milliseconds(150))
+                    guard !Task.isCancelled else { return }
                     self?.recentRemapSourceKeyCodes.remove(keyCodeToSuppress)
                     self?.remapSourceClearTasks.removeValue(forKey: keyCodeToSuppress)
                 }
