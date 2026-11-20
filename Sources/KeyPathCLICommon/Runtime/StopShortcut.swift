@@ -1,9 +1,10 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
 
-struct StopShortcut: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+package struct StopShortcut: AsyncParsableCommand {
+    package init() {}
+
+    package static let configuration = CommandConfiguration(
         commandName: "stop",
         abstract: "Stop remapping (shortcut for 'service stop')",
         shouldDisplay: false
@@ -11,7 +12,7 @@ struct StopShortcut: AsyncParsableCommand {
 
     @OptionGroup var globals: GlobalOptions
 
-    mutating func run() async throws {
+    package mutating func run() async throws {
         var cmd = ServiceStop()
         cmd.globals = globals
         try await cmd.run()

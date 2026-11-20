@@ -1,4 +1,3 @@
-import AppKit
 import ArgumentParser
 import Foundation
 import KeyPathCore
@@ -6,22 +5,22 @@ import KeyPathCore
 /// Talks to the running KeyPath app over `RuntimeControl`. The app owns the
 /// driverless runtime, so status and lifecycle commands ask it rather than
 /// inspecting processes from outside.
-enum RuntimeControlClient {
+package enum RuntimeControlClient {
     /// Exit codes for the runtime commands (also listed in guides/cli.md):
     /// 0 done / running, 1 not running or the operation failed,
     /// 6 KeyPath.app is not running or did not answer.
     static let notRunningExit = ExitCode.failure
 
-    static func send(_ operation: RuntimeControl.Operation, timeout: Int, confirmed: Bool? = nil,
-                     argument: String? = nil) throws -> RuntimeControl.Response
+    package static func send(_ operation: RuntimeControl.Operation, timeout: Int, confirmed: Bool? = nil,
+                             argument: String? = nil) throws -> RuntimeControl.Response
     {
         try RuntimeControl.send(.init(operation: operation, confirmed: confirmed, argument: argument),
                                 timeout: TimeInterval(timeout))
     }
 
     /// Ask, launching the app first when it is not running.
-    static func sendLaunching(_ operation: RuntimeControl.Operation, timeout: Int, ctx: OutputContext,
-                              confirmed: Bool? = nil, argument: String? = nil) throws -> RuntimeControl.Response
+    package static func sendLaunching(_ operation: RuntimeControl.Operation, timeout: Int, ctx: OutputContext,
+                                      confirmed: Bool? = nil, argument: String? = nil) throws -> RuntimeControl.Response
     {
         do {
             return try send(operation, timeout: timeout, confirmed: confirmed, argument: argument)
@@ -32,7 +31,7 @@ enum RuntimeControlClient {
         }
     }
 
-    static func humanIssues(_ response: RuntimeControl.Response, noColor: Bool) -> String {
+    package static func humanIssues(_ response: RuntimeControl.Response, noColor: Bool) -> String {
         guard let issues = response.issues, !issues.isEmpty else {
             return response.ready == true ? ANSIColor.green("✓ Everything is ready.", noColor: noColor) : ""
         }
@@ -49,7 +48,7 @@ enum RuntimeControlClient {
     /// The admission engine's verdicts on the rules now on (doctor): a block
     /// is marked like a problem, a choice like something needing a person,
     /// and what the app resolves by itself is just said.
-    static func humanAdmission(_ response: RuntimeControl.Response, noColor: Bool) -> String {
+    package static func humanAdmission(_ response: RuntimeControl.Response, noColor: Bool) -> String {
         guard let findings = response.admission, !findings.isEmpty else { return "" }
         var lines = ["Rules:"]
         for finding in findings {
@@ -66,14 +65,14 @@ enum RuntimeControlClient {
     }
 
     /// 0 ready, 7 a person must grant a permission, 1 anything else.
-    static func readinessExit(_ response: RuntimeControl.Response) -> ExitCode? {
+    package static func readinessExit(_ response: RuntimeControl.Response) -> ExitCode? {
         if response.ready == true { return nil }
         if response.issues?.contains(where: \.needsUser) == true { return CLIExitCode.permissionBlocked.exitCode }
         return .failure
     }
 
     /// The app that contains this CLI, else the installed one.
-    static var appURL: URL {
+    package static var appURL: URL {
         let executable = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
         let bundle = executable.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         if bundle.pathExtension == "app" { return bundle }
@@ -95,7 +94,7 @@ enum RuntimeControlClient {
         throw RuntimeControl.ClientError.appNotRunning
     }
 
-    static func appUnreachable(_ error: Error, action: String) -> CLIError {
+    package static func appUnreachable(_ error: Error, action: String) -> CLIError {
         let message: String
         let hint: String
         switch error as? RuntimeControl.ClientError {
@@ -112,7 +111,7 @@ enum RuntimeControlClient {
         return CLIError(code: .serviceUnreachable, message: message, hint: hint, details: nil, docsUrl: nil)
     }
 
-    static func humanStatus(_ response: RuntimeControl.Response, noColor: Bool) -> String {
+    package static func humanStatus(_ response: RuntimeControl.Response, noColor: Bool) -> String {
         let mark: String = switch response.state {
         case .running: ANSIColor.green("●", noColor: noColor)
         case .starting: ANSIColor.yellow("●", noColor: noColor)

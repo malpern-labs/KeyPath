@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import KeyPathCLICommon
 import KeyPathCore
 
 struct Uninstall: AsyncParsableCommand {

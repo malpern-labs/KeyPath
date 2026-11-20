@@ -1,10 +1,11 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
 import KeyPathCore
 
-struct ServiceStatus: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+package struct ServiceStatus: AsyncParsableCommand {
+    package init() {}
+
+    package static let configuration = CommandConfiguration(
         commandName: "status",
         abstract: "Show whether remapping is running, as KeyPath.app sees it",
         discussion: "Exit codes: 0 running, 1 not running, 6 KeyPath.app is not running or did not answer."
@@ -12,7 +13,7 @@ struct ServiceStatus: AsyncParsableCommand {
 
     @OptionGroup var globals: GlobalOptions
 
-    mutating func run() async throws {
+    package mutating func run() async throws {
         let ctx = globals.outputContext
         let response: RuntimeControl.Response
         do {

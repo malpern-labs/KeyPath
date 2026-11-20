@@ -1,4 +1,5 @@
 import ArgumentParser
+import KeyPathCLICommon
 
 struct Service: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

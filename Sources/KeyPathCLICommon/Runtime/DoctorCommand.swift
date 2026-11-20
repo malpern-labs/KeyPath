@@ -2,8 +2,10 @@ import ArgumentParser
 import Foundation
 import KeyPathCore
 
-struct Doctor: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+package struct Doctor: AsyncParsableCommand {
+    package init() {}
+
+    package static let configuration = CommandConfiguration(
         commandName: "doctor",
         abstract: "Check everything KeyPath needs, with the fix for anything missing",
         discussion: """
@@ -16,7 +18,7 @@ struct Doctor: AsyncParsableCommand {
 
     @OptionGroup var globals: GlobalOptions
 
-    mutating func run() async throws {
+    package mutating func run() async throws {
         let ctx = globals.outputContext
         let response: RuntimeControl.Response
         do {
