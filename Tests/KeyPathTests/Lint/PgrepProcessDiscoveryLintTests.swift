@@ -62,7 +62,7 @@ final class PgrepProcessDiscoveryLintTests: XCTestCase {
 
     func testSystemValidatorDelegatesPgrepDiscoveryToSystemStateProvider() throws {
         let validator = repositoryRoot()
-            .appendingPathComponent("Sources/KeyPathAppKit/Services/System/SystemValidator.swift")
+            .appendingPathComponent("Sources/KeyPathWizardCore/SystemValidator.swift")
 
         let violations = try matchingLines(
             in: validator,
