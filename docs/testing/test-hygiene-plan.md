@@ -745,3 +745,12 @@ the product default or loosen precision to make the test pass.
 Final combined validation after merging current master passed all 5,524 tests
 with `KEYPATH_SWIFT_BUILD_JOBS=4 ./Scripts/test-full.sh`, including snapshots.
 The two real-Keychain integration tests remain explicitly opt-in.
+
+### CLI rule and collection store isolation
+
+CLIRuleCRUDTests, CLIRuleAddIntegrationTests, CLILayerCRUDTests and
+CLIKarabinerImportTests now use a unique per-test CLIStoreFixture and the
+existing facade store initializers. They no longer clear shared custom rules
+or snapshot/restore shared collections during teardown. The fixture removes
+only its own UUID directory. This does not claim that every other CLI or pack
+suite is isolated, or that all CI jobs can safely run concurrently yet.

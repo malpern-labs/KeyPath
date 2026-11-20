@@ -42,7 +42,8 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **O5** Events, health polling, stacked caches | ✅ | Removed the dead router and drove app validation from lifecycle health changes (#1406, #1442). Migrated key input, activation and resolution, and the remaining engine events to typed messages ([#1448](https://github.com/malpern-labs/KeyPath/pull/1448), [#1450](https://github.com/malpern-labs/KeyPath/pull/1450), [#1451](https://github.com/malpern-labs/KeyPath/pull/1451)). Made `PermissionOracle` the sole validation permission cache ([#1452](https://github.com/malpern-labs/KeyPath/pull/1452)) and consolidated async timeout helpers in `KeyPathCore` ([#1453](https://github.com/malpern-labs/KeyPath/pull/1453)). |
 | **O6** Plugin system | ✅ | Downloads removed (#1407); Insights linked into the app (#1411). |
 | **O7** Metal stage and first-run onboarding | ✅ | Keep the full Metal onboarding experience. Implementation simplifications can proceed when they preserve the first-run visuals and interactions. |
-| **O7** Packs and CLI split | ⬜ | Product decisions open. |
+| **O7** Packs | ✅ | Owner decision: keep the gallery and pack installation/dependency features. Remove only proven dead code around them; do not replace packs with built-in presets. |
+| **O7** CLI split | ⬜ | Evaluate the engine/core target boundary without removing CLI features. |
 | **O8** Unimplemented flags, wording, public-docs lint | ✅ | #1405. |
 | **O8** CLI link and service ownership | ✅ | New links install under `~/.local/bin` and uninstall removes matching links. `AGENTS.md` documents when to use `ServiceContainer` or a singleton (#1429). |
 | **O8** Test-mode checks and lint ratchets | 🟡 | Retired lint tests and passwordless sudo test mode (#1428). Replacing remaining production `TestEnvironment` checks with injected dependencies is open. |
@@ -262,7 +263,7 @@ inside the app bundle and drop the downloader. Product decision.
 |---|---|---|
 | Metal keyboard stage | 6,022 lines Swift + 1,190-line shader + build plugin | Keep the full Metal experience. Review shared scene state and fallback behavior for duplication, and verify visual and interaction parity before changing the implementation. |
 | First-success onboarding | 3,549 lines | Preserve the complete first-run flow when simplifying its implementation. |
-| Packs | ~8,000 lines (services, gallery, facade) | A second catalog over rule collections, all hardcoded in Swift. If packs will never be distributed, presets would do |
+| Packs | ~8,000 lines (services, gallery, facade) | Owner decision (November 19): retain the gallery, installation and dependency features. Keep their behavior while removing proven unused surrounding code. |
 | `keypath-cli` | imports AppKit in 57 files | Links SwiftUI and the Metal renderer. A `KeyPathEngine` target (config, rules, session runtime, networking) would be the split that pays |
 
 The Karabiner converter, QMK import and layout tracer are proportionate.
