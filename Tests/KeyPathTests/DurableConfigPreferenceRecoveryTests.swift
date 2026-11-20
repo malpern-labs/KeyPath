@@ -499,7 +499,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
     @MainActor
     private func makeManager(
         at directory: URL,
-        deviceSelectionStore: DeviceSelectionStore = .shared,
+        deviceSelectionStore: DeviceSelectionStore? = nil,
         synchronizePreferences: @escaping @Sendable (RecoverableRuleWrite.PreferenceDefaults) -> Bool = { $0.value.synchronize() }
     ) async throws -> (RuleCollectionsManager, ConfigurationService) {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

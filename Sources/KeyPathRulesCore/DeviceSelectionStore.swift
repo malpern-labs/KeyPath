@@ -54,6 +54,13 @@ package final class DeviceSelectionCache: Sendable {
 package actor DeviceSelectionStore {
     package static let shared = DeviceSelectionStore()
 
+    private static var defaultFileURL: URL {
+        let directory = TestEnvironment.isRunningTests
+            ? AppPaths.configDirectory
+            : URL(fileURLWithPath: WizardSystemPaths.userConfigDirectory, isDirectory: true)
+        return directory.appendingPathComponent("DeviceSelection.json")
+    }
+
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
     private let fileURL: URL
@@ -67,10 +74,7 @@ package actor DeviceSelectionStore {
     ) {
         self.fileManager = fileManager
         self.cache = cache
-        let defaultDirectory = URL(
-            fileURLWithPath: WizardSystemPaths.userConfigDirectory, isDirectory: true
-        )
-        self.fileURL = fileURL ?? defaultDirectory.appendingPathComponent("DeviceSelection.json")
+        self.fileURL = fileURL ?? Self.defaultFileURL
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -152,10 +156,7 @@ package actor DeviceSelectionStore {
         fileURL: URL? = nil,
         cache: DeviceSelectionCache = .shared
     ) {
-        let fileURL = fileURL ?? URL(
-            fileURLWithPath: WizardSystemPaths.userConfigDirectory,
-            isDirectory: true
-        ).appendingPathComponent("DeviceSelection.json")
+        let fileURL = fileURL ?? Self.defaultFileURL
 
         let fileManager = Foundation.FileManager()
         guard fileManager.fileExists(atPath: fileURL.path) else {

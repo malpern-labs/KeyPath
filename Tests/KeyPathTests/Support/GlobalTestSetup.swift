@@ -1,7 +1,6 @@
 @testable import KeyPathAppKit
 @testable import KeyPathCore
 @testable import KeyPathInstallationWizard
-import KeyPathRulesCore
 import XCTest
 
 /// Resets shared singleton state to prevent cross-test contamination.
@@ -27,11 +26,5 @@ enum TestSingletonReset {
         controller.validationState = nil
         controller.issues = []
         controller.lastValidationDate = nil
-
-        // Device detection caches
-        DeviceSelectionCache.shared.reset()
-
-        // Feature flags — in tests these live in FeatureFlags' in-memory
-        // override store, never UserDefaults (#896); clear to compiled defaults.
     }
 }
