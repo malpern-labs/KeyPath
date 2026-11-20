@@ -71,10 +71,13 @@ final class TooltipWindowController {
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.15
             window.animator().alphaValue = 0
-        } completionHandler: { [weak self] in
+        } completionHandler: { [weak self, weak window] in
             MainActor.assumeIsolated {
-                self?.window?.orderOut(nil)
-                self?.window = nil
+                guard let window else { return }
+                window.orderOut(nil)
+                if self?.window === window {
+                    self?.window = nil
+                }
             }
         }
     }
