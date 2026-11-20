@@ -169,16 +169,16 @@ public enum KindaVimLeaderHUDMode: String, CaseIterable, Sendable {
 }
 
 /// Manages KeyPath application preferences and settings
-// SAFETY: @unchecked Sendable — all mutable state is backed by UserDefaults (thread-safe)
-// and the shared instance is confined to @MainActor. @Observable macro prevents conforming
-// to Sendable directly; @unchecked bridges the gap.
+/// Observable values and their persistence updates share the UI's actor owner.
+/// Thread-safe UserDefaults alone does not protect the stored Swift properties.
+@MainActor
 @Observable
-final class PreferencesService: @unchecked Sendable {
+final class PreferencesService: Sendable {
     // MARK: - Shared instance (backward compatible)
 
-    @MainActor static let shared = PreferencesService()
+    static let shared = PreferencesService()
 
-    static var canonicalDefaults: UserDefaults {
+    nonisolated static var canonicalDefaults: UserDefaults {
         TestEnvironment.isRunningTests
             ? .standard
             : canonicalDefaults(using: UserDefaults(suiteName: "com.keypath.KeyPath"))
@@ -186,11 +186,11 @@ final class PreferencesService: @unchecked Sendable {
 
     /// The suite can be unavailable during early app launch. Preferences must
     /// still initialize so launchd does not restart the app in a crash loop.
-    static func canonicalDefaults(using suiteDefaults: UserDefaults?) -> UserDefaults {
+    nonisolated static func canonicalDefaults(using suiteDefaults: UserDefaults?) -> UserDefaults {
         suiteDefaults ?? .standard
     }
 
-    static let leaderKeyPreferenceKey = "KeyPath.LeaderKey.Preference"
+    nonisolated static let leaderKeyPreferenceKey = "KeyPath.LeaderKey.Preference"
     private let defaults: UserDefaults
     private let leaderDefaults: UserDefaults
     var persistenceDefaults: UserDefaults {
@@ -312,7 +312,7 @@ final class PreferencesService: @unchecked Sendable {
         }
     }
 
-    static func clampedOverlayOpacity(_ value: Double) -> Double {
+    nonisolated static func clampedOverlayOpacity(_ value: Double) -> Double {
         guard value.isFinite else { return 1.0 }
         return min(max(value, 0.3), 1.0)
     }
@@ -682,7 +682,7 @@ final class PreferencesService: @unchecked Sendable {
 }
 
 private extension PreferencesService {
-    static func clampedContextHUDHoldDelayCustomMs(_ delay: Int) -> Int {
+    nonisolated static func clampedContextHUDHoldDelayCustomMs(_ delay: Int) -> Int {
         min(max(delay, 100), 2000)
     }
 }

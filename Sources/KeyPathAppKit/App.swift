@@ -38,7 +38,6 @@ public struct KeyPathApp: App {
             SettingsContainerView()
                 .environment(viewModel) // Phase 4: Inject ViewModel
                 .environment(\.services, serviceContainer)
-                .environment(\.preferencesService, PreferencesService.shared)
                 .environment(\.permissionSnapshotProvider, SystemStateProvider.shared)
         }
         .commands {
