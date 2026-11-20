@@ -35,7 +35,7 @@ struct UpdatesSettingsSection: View {
                                 get: { updateService.updateChannel },
                                 set: { updateService.setUpdateChannel($0) }
                             )) {
-                                ForEach(UpdateChannel.allCases) { Text($0.rawValue).tag($0) }
+                                ForEach(UpdateChannel.allCases) { Text($0.displayName).tag($0) }
                             }
                             .pickerStyle(.menu)
                             .labelsHidden()

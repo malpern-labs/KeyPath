@@ -12,6 +12,13 @@ public enum UpdateChannel: String, CaseIterable, Identifiable {
     public var id: String {
         rawValue
     }
+
+    var displayName: String {
+        switch self {
+        case .stable: String(localized: "Stable", comment: "Update channel for regular releases")
+        case .beta: String(localized: "Beta", comment: "Update channel for prerelease builds")
+        }
+    }
 }
 
 /// Sparkle supplies its continuation as an Objective-C block without Sendable
