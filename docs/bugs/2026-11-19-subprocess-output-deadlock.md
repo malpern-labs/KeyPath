@@ -22,3 +22,19 @@ The migration process probe still has a separate synchronous `/bin/ps` path.
 Move its callers to bounded async execution in a follow-up after validating
 this shared runner; do not route it through a runner that waits for exit before
 draining output.
+
+## SystemProbeClient follow-up
+
+The synchronous system-probe helper had the same wait-before-read ordering.
+A standalone reproduction using the production implementation and a Python
+child writing 262,144 bytes on each stream returned exit 15, only 65,536 bytes
+of stdout and no stderr at a 0.5-second deadline. It was killed while blocked
+on the full stdout pipe. Process discovery could therefore look empty under
+a large listing even though the command itself was healthy.
+
+The probe now uses the same internal ProcessOutputCapture as SubprocessRunner.
+The identical reproduction returns exit zero and all 262,144 bytes on both
+streams. Launch failure explicitly abandons the reserved readers. Regression
+tests cover both cases. No public API, subprocess arguments, parsing rules or
+probe timeout policy changes. This does not add a process-tree timeout policy
+for arbitrary descendants holding inherited pipe descriptors.
