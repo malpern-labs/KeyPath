@@ -196,10 +196,9 @@ done
 
 ## Config Validation Debugging
 
-If config validation fails with a parse error and you need the exact generated config:
-
-- Set `KEYPATH_KEEP_FAILED_CONFIG=1` and retry the save.
-- The temp validation config path will be logged in `keypath-debug.log`.
+KeyPath validates edits with the same Kanata parser it uses at runtime. A failed
+validation leaves the existing configuration in place. Check the error shown in
+KeyPath and review entries tagged `[SessionRuntime]` in `keypath-debug.log`.
 
 ## Service Stopped Snapshot
 
