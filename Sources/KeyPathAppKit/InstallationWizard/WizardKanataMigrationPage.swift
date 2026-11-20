@@ -10,6 +10,7 @@ import SwiftUI
 /// Page 1 of the Kanata user migration flow
 /// Shows when existing Kanata config is detected (from running process or config files)
 struct WizardKanataMigrationPage: View {
+    @State private var isDetecting = true
     @State private var detectedConfig: DetectedConfig?
     @State private var runningKanataInfo: WizardSystemPaths.RunningKanataInfo?
     @State private var isMigrating = false
@@ -87,9 +88,10 @@ struct WizardKanataMigrationPage: View {
         .wizardDetailPage()
         .animation(.easeInOut(duration: 0.2), value: showSuccessBurst)
         .onAppear {
-            detectConfig()
             animateEntrance()
         }
+        .disabled(isDetecting)
+        .task { await detectConfig() }
         .fileImporter(
             isPresented: $showFilePicker,
             allowedContentTypes: [.plainText],
@@ -250,9 +252,12 @@ struct WizardKanataMigrationPage: View {
 
     // MARK: - Detection
 
-    private func detectConfig() {
+    private func detectConfig() async {
+        defer { isDetecting = false }
         // Priority 1: Running Kanata process (get config from args)
-        if let runningInfo = WizardSystemPaths.detectRunningKanataProcess(),
+        let detectedProcess = try? await WizardSystemPaths.detectRunningKanataProcess()
+        guard !Task.isCancelled, detectedConfig == nil else { return }
+        if let runningInfo = detectedProcess,
            !runningInfo.isKeyPathManaged
         {
             runningKanataInfo = runningInfo

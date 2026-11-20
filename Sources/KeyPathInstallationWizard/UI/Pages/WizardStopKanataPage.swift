@@ -47,8 +47,12 @@ public struct WizardStopKanataPage: View {
         .background(WizardDesign.Colors.wizardBackground)
         .wizardDetailPage()
         .onAppear {
-            runningInfo = wizardHost.externalKanata?.info()
             animateEntrance()
+        }
+        .task {
+            let info = await wizardHost.externalKanata?.info()
+            guard !Task.isCancelled else { return }
+            runningInfo = info
         }
     }
 
@@ -170,6 +174,13 @@ public struct WizardStopKanataPage: View {
         Task {
             let result = await externalKanata?.stop(info)
 
+            // Only a failed stop needs a second probe: successful stop already
+            // verifies its postcondition, so do not delay completion with ps.
+            let stillRunning: Bool? = if case .failure = result {
+                await externalKanata?.isRunning()
+            } else {
+                nil
+            }
             await MainActor.run {
                 isStopping = false
 
@@ -179,7 +190,7 @@ public struct WizardStopKanataPage: View {
 
                 case let .failure(error):
                     let message = error.localizedDescription
-                    if externalKanata?.isRunning() == false {
+                    if stillRunning == false {
                         // Process is gone even if there was a warning
                         onComplete()
                     } else {

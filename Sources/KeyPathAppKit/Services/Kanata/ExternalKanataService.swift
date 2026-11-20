@@ -53,16 +53,18 @@ public enum ExternalKanataService: Sendable {
     }
 
     /// Check if there's an external (non-KeyPath) Kanata process running
-    public static func hasExternalKanataRunning() -> Bool {
-        guard let info = WizardSystemPaths.detectRunningKanataProcess() else {
-            return false
+    public static func hasExternalKanataRunning() async -> Bool? {
+        do {
+            let info = try await WizardSystemPaths.detectRunningKanataProcess()
+            return info.map { !$0.isKeyPathManaged } ?? false
+        } catch {
+            return nil // Unknown must never prove that a failed stop succeeded.
         }
-        return !info.isKeyPathManaged
     }
 
     /// Get info about running external Kanata, or nil if none/only KeyPath-managed
-    public static func getExternalKanataInfo() -> WizardSystemPaths.RunningKanataInfo? {
-        guard let info = WizardSystemPaths.detectRunningKanataProcess(),
+    public static func getExternalKanataInfo() async -> WizardSystemPaths.RunningKanataInfo? {
+        guard let info = try? await WizardSystemPaths.detectRunningKanataProcess(),
               !info.isKeyPathManaged
         else {
             return nil
