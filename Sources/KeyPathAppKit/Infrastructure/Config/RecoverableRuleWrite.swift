@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import KeyPathRulesCore
 
 /// The file-persistence portion of a rule edit. Call off the main actor.
 /// Fixed caller-supplied roles resolve journal entries; journal data cannot choose
@@ -159,21 +160,19 @@ enum RecoverableRuleWrite {
         case invalidJournal
         case changedFile(String)
         case changedPreference(String)
-        case systemCall(String, Int32)
 
         var errorDescription: String? {
             switch self {
             case .invalidJournal: String(localized: "The pending rule-write journal does not match these rule stores.")
             case let .changedFile(role): String(localized: "The \(role) file changed outside this operation. Recovery was stopped to preserve it.")
             case let .changedPreference(key): String(localized: "The \(key) preference changed outside this operation. Recovery was stopped to preserve it.")
-            case let .systemCall(operation, code): String(localized: "Rule-write \(operation) failed (errno \(String(code))).")
             }
         }
     }
 
     static func apply(
         files: [String: URL], contents: [String: Data], directory: URL,
-        writeFile: (Data, URL) throws -> Void = durableWrite
+        writeFile: (Data, URL) throws -> Void = DurableRuleFile.write
     ) throws {
         _ = try write(files: files, contents: contents, directory: directory, scope: .rules,
                       commitImmediately: true, writeFile: writeFile)
@@ -185,7 +184,7 @@ enum RecoverableRuleWrite {
         expectedBefore: [String: Data]? = nil,
         preferences: UserDefaults? = nil, preferenceChanges: [PreferenceChange] = [],
         synchronizePreferences: (PreferenceDefaults) -> Bool = { $0.value.synchronize() },
-        writeFile: (Data, URL) throws -> Void = durableWrite
+        writeFile: (Data, URL) throws -> Void = DurableRuleFile.write
     ) throws -> PendingWrite {
         try write(files: files, contents: contents, directory: directory, scope: scope,
                   commitImmediately: false, expectedBefore: expectedBefore,
@@ -230,7 +229,7 @@ enum RecoverableRuleWrite {
                 )
             }
             var journal = Journal(version: 2, committed: false, entries: entries, preferences: preferenceEntries)
-            try durableWrite(JSONEncoder().encode(journal), journalURL(directory, scope: scope))
+            try DurableRuleFile.write(JSONEncoder().encode(journal), journalURL(directory, scope: scope))
             var committing = false
             do {
                 for entry in entries {
@@ -248,7 +247,7 @@ enum RecoverableRuleWrite {
                         try writePreference(change.after, role: change.role, to: preferences)
                     }
                     guard synchronizePreferences(PreferenceDefaults(preferences)) else {
-                        throw Failure.systemCall("preference synchronize", EIO)
+                        throw DurableRuleFile.SystemFailure("preference synchronize", EIO)
                     }
                     try requireAfterPreferences(preferenceEntries, in: preferences)
                 }
@@ -256,7 +255,7 @@ enum RecoverableRuleWrite {
                 if commitImmediately {
                     committing = true
                     journal.committed = true
-                    try durableWrite(JSONEncoder().encode(journal), journalURL(directory, scope: scope))
+                    try DurableRuleFile.write(JSONEncoder().encode(journal), journalURL(directory, scope: scope))
                 }
             } catch {
                 let cause = error
@@ -265,7 +264,7 @@ enum RecoverableRuleWrite {
                         // The marker write may have replaced the journal before
                         // fsync failed. Re-establish rollback intent durably first.
                         journal.committed = false
-                        try durableWrite(JSONEncoder().encode(journal), journalURL(directory, scope: scope))
+                        try DurableRuleFile.write(JSONEncoder().encode(journal), journalURL(directory, scope: scope))
                     }
                     try recoverLocked(files: files, directory: directory, scope: scope,
                                       preferences: preferences, writeFile: writeFile)
@@ -296,10 +295,10 @@ enum RecoverableRuleWrite {
             committed.committed = true
             let url = journalURL(pending.directory, scope: pending.scope)
             do {
-                try durableWrite(JSONEncoder().encode(committed), url)
+                try DurableRuleFile.write(JSONEncoder().encode(committed), url)
             } catch {
                 let cause = error
-                do { try durableWrite(JSONEncoder().encode(pending.journal), url) }
+                do { try DurableRuleFile.write(JSONEncoder().encode(pending.journal), url) }
                 catch { throw WriteFailure(cause: cause, recoveryError: error) }
                 throw cause
             }
@@ -311,7 +310,7 @@ enum RecoverableRuleWrite {
         try withLock(directory: pending.directory) {
             try validatePending(pending)
             try recoverLocked(files: pending.files, directory: pending.directory,
-                              scope: pending.scope, preferences: pending.preferences?.value, writeFile: durableWrite)
+                              scope: pending.scope, preferences: pending.preferences?.value, writeFile: DurableRuleFile.write)
         }
     }
 
@@ -331,7 +330,7 @@ enum RecoverableRuleWrite {
         return try withLock(directory: directory) {
             let hadJournal = try read(journalURL(directory, scope: scope)) != nil
             try recoverLocked(files: files, directory: directory, scope: scope,
-                              preferences: preferences, writeFile: durableWrite)
+                              preferences: preferences, writeFile: DurableRuleFile.write)
             return hadJournal
         }
     }
@@ -373,7 +372,7 @@ enum RecoverableRuleWrite {
                 try writeFile(previous, target)
             } else {
                 try FileManager.default.removeItem(at: target)
-                try syncDirectory(target.deletingLastPathComponent())
+                try DurableRuleFile.syncDirectory(target.deletingLastPathComponent())
             }
         }
         if let preferences, !journal.preferences.isEmpty {
@@ -384,7 +383,7 @@ enum RecoverableRuleWrite {
                     preferences.removeObject(forKey: entry.role.key)
                 }
             }
-            guard preferences.synchronize() else { throw Failure.systemCall("preference synchronize", EIO) }
+            guard preferences.synchronize() else { throw DurableRuleFile.SystemFailure("preference synchronize", EIO) }
             for entry in journal.preferences {
                 let actual = try readPreference(entry.role, from: preferences)
                 guard actual == entry.before else {
@@ -469,7 +468,7 @@ enum RecoverableRuleWrite {
 
     private static func removeJournal(_ directory: URL, scope: Scope) throws {
         try FileManager.default.removeItem(at: journalURL(directory, scope: scope))
-        try syncDirectory(directory)
+        try DurableRuleFile.syncDirectory(directory)
     }
 
     private static func read(_ url: URL) throws -> Data? {
@@ -480,32 +479,14 @@ enum RecoverableRuleWrite {
         }
     }
 
-    static func durableWrite(_ data: Data, _ url: URL) throws {
-        let parent = url.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
-        try data.write(to: url, options: .atomic)
-        let descriptor = open(url.path, O_RDONLY | O_CLOEXEC)
-        guard descriptor >= 0 else { throw Failure.systemCall("open", errno) }
-        defer { close(descriptor) }
-        guard fsync(descriptor) == 0 else { throw Failure.systemCall("fsync", errno) }
-        try syncDirectory(parent)
-    }
-
-    private static func syncDirectory(_ url: URL) throws {
-        let descriptor = open(url.path, O_RDONLY | O_CLOEXEC)
-        guard descriptor >= 0 else { throw Failure.systemCall("open directory", errno) }
-        defer { close(descriptor) }
-        guard fsync(descriptor) == 0 else { throw Failure.systemCall("fsync directory", errno) }
-    }
-
     private static func withLock<T>(directory: URL, operation: () throws -> T) throws -> T {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let lockURL = directory.appendingPathComponent(".keypath-rule-write.lock")
         let descriptor = open(lockURL.path, O_CREAT | O_RDWR | O_CLOEXEC, S_IRUSR | S_IWUSR)
-        guard descriptor >= 0 else { throw Failure.systemCall("open lock", errno) }
+        guard descriptor >= 0 else { throw DurableRuleFile.SystemFailure("open lock", errno) }
         defer { close(descriptor) }
         while flock(descriptor, LOCK_EX) != 0 {
-            if errno != EINTR { throw Failure.systemCall("lock", errno) }
+            if errno != EINTR { throw DurableRuleFile.SystemFailure("lock", errno) }
         }
         defer { flock(descriptor, LOCK_UN) }
         return try operation()

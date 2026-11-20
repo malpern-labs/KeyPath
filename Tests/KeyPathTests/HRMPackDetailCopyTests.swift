@@ -1,4 +1,5 @@
 @testable import KeyPathAppKit
+import KeyPathRulesCore
 import XCTest
 
 /// Regression tests for GitHub issue #805: HRM Pack Detail copy stayed

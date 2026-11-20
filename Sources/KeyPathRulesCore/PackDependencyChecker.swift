@@ -1,14 +1,13 @@
 import Foundation
-import KeyPathRulesCore
 
 /// Checks pack dependencies against current system state.
 ///
 /// Simple flat validation — iterates each pack's requirements and checks
 /// if they're met. No graph traversal needed for ~15 packs with 1-2 depth chains.
 /// Pure: it reads only the immutable registry, so any actor may ask.
-enum PackDependencyChecker {
+package enum PackDependencyChecker {
     /// Returns unmet hard requirements for a specific pack.
-    static func unmetRequirements(
+    package static func unmetRequirements(
         for packID: String,
         enabledCollections: [RuleCollection],
         installedPackIDs: Set<String>
@@ -26,7 +25,7 @@ enum PackDependencyChecker {
     /// Installed packs this pack declares `conflictsWith`, in either direction.
     /// Declared in the registry since M1; read here for the first time so the
     /// admission engine (phase 3) can turn them into verdicts.
-    static func conflicts(for packID: String, installedPackIDs: Set<String>) -> [PackDependency] {
+    package static func conflicts(for packID: String, installedPackIDs: Set<String>) -> [PackDependency] {
         guard let pack = PackRegistry.pack(id: packID) else { return [] }
         let declared = pack.dependencies.filter { $0.kind == .conflictsWith && installedPackIDs.contains($0.packID) }
         let reverse = PackRegistry.starterKit
@@ -42,7 +41,7 @@ enum PackDependencyChecker {
 
     /// Returns all unmet requirements across all enabled packs.
     /// Used to show warning badges in the rules list.
-    static func allUnmetRequirements(
+    package static func allUnmetRequirements(
         enabledCollections: [RuleCollection],
         installedPackIDs: Set<String>
     ) -> [String: [UnmetDependency]] {
@@ -76,7 +75,7 @@ enum PackDependencyChecker {
     }
 
     /// Returns soft suggestions for a pack (enabled packs it works well with).
-    static func suggestions(for packID: String, installedPackIDs: Set<String>) -> [PackDependency] {
+    package static func suggestions(for packID: String, installedPackIDs: Set<String>) -> [PackDependency] {
         guard let pack = PackRegistry.pack(id: packID) else { return [] }
         return pack.dependencies.filter { dep in
             dep.kind == .enhancedBy && !installedPackIDs.contains(dep.packID)
@@ -84,7 +83,7 @@ enum PackDependencyChecker {
     }
 
     /// Returns packs that depend on a given pack (for disable warnings).
-    static func dependents(
+    package static func dependents(
         of packID: String,
         enabledCollections: [RuleCollection],
         installedPackIDs: Set<String>

@@ -40,7 +40,7 @@ public actor InstalledPackTracker {
     public static let shared = InstalledPackTracker()
 
     private let fileURL: URL
-    private var writeFile: @Sendable (Data, URL) throws -> Void = { try RecoverableRuleWrite.durableWrite($0, $1) }
+    private var writeFile: @Sendable (Data, URL) throws -> Void = { try DurableRuleFile.write($0, $1) }
     private var lastReadableRecords: [String: InstalledPackRecord] = [:]
 
     public init(fileURL: URL? = nil) {
@@ -64,52 +64,52 @@ public actor InstalledPackTracker {
         }
     }
 
-    init(fileURL: URL, writeFile: @escaping @Sendable (Data, URL) throws -> Void) {
+    package init(fileURL: URL, writeFile: @escaping @Sendable (Data, URL) throws -> Void) {
         self.fileURL = fileURL
         self.writeFile = writeFile
     }
 
     /// Mutating decisions cannot rely on the display-only fallback snapshot.
     /// Call under configuration admission before staging source changes.
-    func validateForMutation() throws {
+    package func validateForMutation() throws {
         lastReadableRecords = try readRecords()
     }
 
-    var persistenceURL: URL {
+    package var persistenceURL: URL {
         fileURL
     }
 
-    struct RecordChange: Sendable {
-        let tracker: InstalledPackTracker
-        let packID: String
-        let record: InstalledPackRecord?
+    package struct RecordChange: Sendable {
+        package let tracker: InstalledPackTracker
+        package let packID: String
+        package let record: InstalledPackRecord?
 
-        init(tracker: InstalledPackTracker, record: InstalledPackRecord) {
+        package init(tracker: InstalledPackTracker, record: InstalledPackRecord) {
             self.tracker = tracker
             packID = record.packID
             self.record = record
         }
 
-        init(tracker: InstalledPackTracker, removing packID: String) {
+        package init(tracker: InstalledPackTracker, removing packID: String) {
             self.tracker = tracker
             self.packID = packID
             record = nil
         }
     }
 
-    struct PreparedRecordUpdate: Sendable {
-        let tracker: InstalledPackTracker
-        let fileURL: URL
-        let before: Data?
-        let contents: Data
-        let previousRecords: [String: InstalledPackRecord]
-        let records: [String: InstalledPackRecord]
-        let writeFile: @Sendable (Data, URL) throws -> Void
+    package struct PreparedRecordUpdate: Sendable {
+        package let tracker: InstalledPackTracker
+        package let fileURL: URL
+        package let before: Data?
+        package let contents: Data
+        package let previousRecords: [String: InstalledPackRecord]
+        package let records: [String: InstalledPackRecord]
+        package let writeFile: @Sendable (Data, URL) throws -> Void
     }
 
     /// Build a metadata revision without writing or notifying. The configuration
     /// transaction compares this preimage before staging it with the rule files.
-    func prepareUpdate(_ change: RecordChange) throws -> PreparedRecordUpdate {
+    package func prepareUpdate(_ change: RecordChange) throws -> PreparedRecordUpdate {
         let before: Data?
         do { before = try Data(contentsOf: fileURL) }
         catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError { before = nil }
@@ -121,12 +121,12 @@ public actor InstalledPackTracker {
                                         records: updated, writeFile: writeFile)
     }
 
-    func publishCommittedUpdate(_ update: PreparedRecordUpdate) async {
+    package func publishCommittedUpdate(_ update: PreparedRecordUpdate) async {
         lastReadableRecords = update.records
         await postChangeNotification()
     }
 
-    func restorePublishedUpdate(_ update: PreparedRecordUpdate) {
+    package func restorePublishedUpdate(_ update: PreparedRecordUpdate) {
         lastReadableRecords = update.previousRecords
     }
 
@@ -251,4 +251,11 @@ public actor InstalledPackTracker {
             "📦 [PackTracker] Persisted \(records.count) installed pack record(s)"
         )
     }
+}
+
+package extension Notification.Name {
+    /// `InstalledPackTracker` upserted or removed a pack record. Observers
+    /// such as the KindaVim mode monitor controller use this to start/stop
+    /// based on whether their pack is installed.
+    static let installedPacksChanged = Notification.Name("KeyPath.Packs.InstalledPacksChanged")
 }

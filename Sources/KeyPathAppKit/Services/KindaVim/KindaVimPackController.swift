@@ -8,6 +8,7 @@
 
 import Foundation
 import KeyPathCore
+import KeyPathRulesCore
 
 @MainActor
 final class KindaVimPackController {
