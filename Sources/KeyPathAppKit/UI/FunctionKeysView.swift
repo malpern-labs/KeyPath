@@ -192,69 +192,6 @@ private struct DisplayModeToggle: View {
     }
 }
 
-// MARK: - Icon Segmented Control
-
-/// A segmented control that displays SF Symbol icons with labels
-private struct IconSegmentedControl<T: Hashable>: NSViewRepresentable {
-    @Binding var selection: T
-    let segments: [(value: T, icon: String, label: String)]
-
-    func makeNSView(context: Context) -> NSSegmentedControl {
-        let control = NSSegmentedControl()
-        control.segmentCount = segments.count
-        control.segmentStyle = .texturedRounded
-        control.trackingMode = .selectOne
-        control.target = context.coordinator
-        control.action = #selector(Coordinator.segmentChanged(_:))
-
-        for (index, segment) in segments.enumerated() {
-            // Create image from SF Symbol
-            if let image = NSImage(systemSymbolName: segment.icon, accessibilityDescription: segment.label) {
-                let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
-                let configuredImage = image.withSymbolConfiguration(config)
-                control.setImage(configuredImage, forSegment: index)
-            }
-            control.setLabel(segment.label, forSegment: index)
-            control.setWidth(0, forSegment: index) // Auto-size
-        }
-
-        // Select initial segment
-        if let index = segments.firstIndex(where: { $0.value == selection }) {
-            control.selectedSegment = index
-        }
-
-        return control
-    }
-
-    func updateNSView(_ nsView: NSSegmentedControl, context _: Context) {
-        if let index = segments.firstIndex(where: { $0.value == selection }) {
-            if nsView.selectedSegment != index {
-                nsView.selectedSegment = index
-            }
-        }
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    @MainActor
-    class Coordinator: NSObject {
-        var parent: IconSegmentedControl
-
-        init(_ parent: IconSegmentedControl) {
-            self.parent = parent
-        }
-
-        @objc func segmentChanged(_ sender: NSSegmentedControl) {
-            let index = sender.selectedSegment
-            if index >= 0, index < parent.segments.count {
-                parent.selection = parent.segments[index].value
-            }
-        }
-    }
-}
-
 // MARK: - Function Key Info Model
 
 private struct FunctionKeyInfo {
