@@ -3,25 +3,25 @@ import Foundation
 // MARK: - Input Models
 
 /// A key tap event to simulate (press + delay + release)
-struct SimulatorKeyTap: Identifiable, Equatable, Hashable {
-    let id = UUID()
-    let kanataKey: String // e.g., "a", "lctl", "spc", "lsft"
-    let displayLabel: String // e.g., "A", "Ctrl", "Space", "Shift"
-    let delayAfterMs: UInt64 // Default: 200ms for tap, 400ms for hold
-    let isHold: Bool // Whether this is a long-press (hold) vs tap
+package struct SimulatorKeyTap: Identifiable, Equatable, Hashable, Sendable {
+    package let id = UUID()
+    package let kanataKey: String // e.g., "a", "lctl", "spc", "lsft"
+    package let displayLabel: String // e.g., "A", "Ctrl", "Space", "Shift"
+    package let delayAfterMs: UInt64 // Default: 200ms for tap, 400ms for hold
+    package let isHold: Bool // Whether this is a long-press (hold) vs tap
 
-    init(kanataKey: String, displayLabel: String, delayAfterMs: UInt64, isHold: Bool = false) {
+    package init(kanataKey: String, displayLabel: String, delayAfterMs: UInt64, isHold: Bool = false) {
         self.kanataKey = kanataKey
         self.displayLabel = displayLabel
         self.delayAfterMs = delayAfterMs
         self.isHold = isHold
     }
 
-    static func == (lhs: SimulatorKeyTap, rhs: SimulatorKeyTap) -> Bool {
+    package static func == (lhs: SimulatorKeyTap, rhs: SimulatorKeyTap) -> Bool {
         lhs.id == rhs.id
     }
 
-    func hash(into hasher: inout Hasher) {
+    package func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
 }
@@ -29,10 +29,16 @@ struct SimulatorKeyTap: Identifiable, Equatable, Hashable {
 // MARK: - Output Models (matching Kanata JSON schema)
 
 /// Complete simulation result from kanata-simulator --json
-struct SimulationResult: Codable, Equatable {
-    let events: [SimEvent]
-    let finalLayer: String?
-    let durationMs: UInt64
+package struct SimulationResult: Codable, Equatable, Sendable {
+    package let events: [SimEvent]
+    package let finalLayer: String?
+    package let durationMs: UInt64
+
+    package init(events: [SimEvent], finalLayer: String?, durationMs: UInt64) {
+        self.events = events
+        self.finalLayer = finalLayer
+        self.durationMs = durationMs
+    }
 
     enum CodingKeys: String, CodingKey {
         case events
@@ -43,7 +49,7 @@ struct SimulationResult: Codable, Equatable {
 
 /// Structured simulation event from Kanata
 /// Uses internally-tagged enum format: {"type": "input", "t": 0, ...}
-enum SimEvent: Codable, Equatable {
+package enum SimEvent: Codable, Equatable, Sendable {
     case input(t: UInt64, action: SimKeyAction, key: String)
     case output(t: UInt64, action: SimKeyAction, key: String)
     case layer(t: UInt64, from: String, to: String)
@@ -56,7 +62,7 @@ enum SimEvent: Codable, Equatable {
         case type, t, action, key, from, to, char, data
     }
 
-    init(from decoder: Decoder) throws {
+    package init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(String.self, forKey: .type)
 
@@ -99,7 +105,7 @@ enum SimEvent: Codable, Equatable {
         }
     }
 
-    func encode(to encoder: Encoder) throws {
+    package func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         switch self {
@@ -137,7 +143,7 @@ enum SimEvent: Codable, Equatable {
     // MARK: - Convenience
 
     /// Timestamp in milliseconds from simulation start
-    var timestamp: UInt64 {
+    package var timestamp: UInt64 {
         switch self {
         case let .input(t, _, _): t
         case let .output(t, _, _): t
@@ -148,7 +154,7 @@ enum SimEvent: Codable, Equatable {
     }
 
     /// Human-readable description for display
-    var displayDescription: String {
+    package var displayDescription: String {
         switch self {
         case let .input(_, action, key):
             "\(action.symbol)\(key)"
@@ -164,32 +170,32 @@ enum SimEvent: Codable, Equatable {
     }
 
     /// Whether this is an input event (user pressed)
-    var isInput: Bool {
+    package var isInput: Bool {
         if case .input = self { return true }
         return false
     }
 
     /// Whether this is an output event (Kanata would emit)
-    var isOutput: Bool {
+    package var isOutput: Bool {
         if case .output = self { return true }
         return false
     }
 
     /// Whether this is a layer change
-    var isLayerChange: Bool {
+    package var isLayerChange: Bool {
         if case .layer = self { return true }
         return false
     }
 }
 
 /// Key action type matching Kanata's SimKeyAction
-enum SimKeyAction: String, Codable, Equatable {
+package enum SimKeyAction: String, Codable, Equatable, Sendable {
     case press
     case release
     case `repeat`
 
     /// Symbol for display (↓ for press, ↑ for release, ⟳ for repeat)
-    var symbol: String {
+    package var symbol: String {
         switch self {
         case .press: "↓"
         case .release: "↑"
@@ -199,7 +205,7 @@ enum SimKeyAction: String, Codable, Equatable {
 }
 
 /// Mouse action type matching Kanata's SimMouseAction
-enum SimMouseAction: String, Codable, Equatable {
+package enum SimMouseAction: String, Codable, Equatable, Sendable {
     case click
     case release
     case move
@@ -208,14 +214,14 @@ enum SimMouseAction: String, Codable, Equatable {
 
 // MARK: - Errors
 
-enum SimulatorError: Error, LocalizedError {
+package enum SimulatorError: Error, LocalizedError {
     case featureDisabled
     case simulatorNotFound
     case configNotFound(String)
     case processFailedWithCode(Int, String)
     case invalidJSON(String)
 
-    var errorDescription: String? {
+    package var errorDescription: String? {
         switch self {
         case .featureDisabled:
             String(localized: "Simulator is disabled by feature flag")

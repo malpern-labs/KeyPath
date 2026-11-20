@@ -1,3 +1,4 @@
+import KeyPathRulesCore
 import SwiftUI
 
 /// Displays simulation results in a readable format.
