@@ -24,8 +24,12 @@ public final class ConfigurationService: FileConfigurationProviding {
     public let configDirectory: String
     public let configFileName = KeyPathConstants.Config.fileName
 
-    private var currentConfiguration: KanataConfiguration?
-    private var lastContentHash: String?
+    private struct CachedConfiguration {
+        let configuration: KanataConfiguration
+        let reloadedContentHash: String?
+    }
+
+    private var currentConfiguration: CachedConfiguration?
     private var fileWatcher: FileWatcher?
     private var observers: [UUID: @Sendable (Config) async -> Void] = [:]
     @MainActor var onWillStageConfigurationWrite: ((String) -> Void)?
@@ -168,14 +172,16 @@ public final class ConfigurationService: FileConfigurationProviding {
 
             let contentHash = SHA256.hash(data: Data(content.utf8))
                 .map { String(format: "%02x", $0) }.joined()
-            if contentHash == lastContentHash, let cached = currentConfiguration {
+            let cached = stateLock.withLock {
+                currentConfiguration?.reloadedContentHash == contentHash ? currentConfiguration?.configuration : nil
+            }
+            if let cached {
                 AppLogger.shared.debug("⏭️ [ConfigService] Content unchanged, skipping re-parse")
                 return cached
             }
 
             let config = try validate(content: content)
-            lastContentHash = contentHash
-            setCurrentConfiguration(config)
+            setCurrentConfiguration(config, reloadedContentHash: contentHash)
 
             // Notify observers on main actor
             let snapshot = observersSnapshot()
@@ -1403,7 +1409,7 @@ extension ConfigurationService {
     func withLockedCurrentConfig() -> KanataConfiguration? {
         stateLock.lock()
         defer { stateLock.unlock() }
-        return currentConfiguration
+        return currentConfiguration?.configuration
     }
 
     func loadPreservedChordGroups() -> [ChordGroupConfig] {
@@ -1435,10 +1441,10 @@ extension ConfigurationService {
         return sequences
     }
 
-    func setCurrentConfiguration(_ config: KanataConfiguration) {
-        stateLock.lock()
-        defer { stateLock.unlock() }
-        currentConfiguration = config
+    func setCurrentConfiguration(_ config: KanataConfiguration, reloadedContentHash: String? = nil) {
+        stateLock.withLock {
+            currentConfiguration = CachedConfiguration(configuration: config, reloadedContentHash: reloadedContentHash)
+        }
     }
 
     func observersSnapshot() -> [@Sendable (Config) async -> Void] {

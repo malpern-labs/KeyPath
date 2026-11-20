@@ -1719,6 +1719,23 @@ class ConfigurationServiceTests: KeyPathTestCase {
         XCTAssertTrue(fired, "Observer should fire on main actor for UI safety")
     }
 
+    func testReloadReadsExternallyRestoredConfigurationAfterWrite() async throws {
+        let initial = "(defsrc a)\n(deflayer base b)\n"
+        let replacement = "(defsrc a)\n(deflayer base c)\n"
+        let url = URL(fileURLWithPath: configService.configurationPath)
+        try initial.write(to: url, atomically: true, encoding: .utf8)
+        let firstRead = try await configService.reload()
+        XCTAssertEqual(firstRead.content, initial)
+
+        try await configService.writeConfigurationContent(replacement)
+        let afterWrite = await configService.current()
+        XCTAssertEqual(afterWrite.content, replacement)
+
+        try initial.write(to: url, atomically: true, encoding: .utf8)
+        let restored = try await configService.reload()
+        XCTAssertEqual(restored.content, initial)
+    }
+
     func testReloadCreatesDefaultConfigWhenMissing() async throws {
         let configPath = tempDirectory.appendingPathComponent("keypath.kbd")
         try? FileManager.default.removeItem(at: configPath)
