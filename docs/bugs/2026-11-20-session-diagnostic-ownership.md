@@ -31,3 +31,8 @@ checks passed. The full safe gate compiled without warnings and passed its
 test budget in the snapshot run. This is retained as a timeout, not a full pass.
 Master's owner-lifetime changes were subsequently merged normally; integrated
 focused validation and required CI remain the merge acceptance gates.
+
+After integrating master 7537f7e07, all sixteen focused service-group checks
+passed again with zero Swift warnings (98-second incremental test build,
+4-second test phase). The merged actor changes therefore compile with the new
+Sendable diagnostic handler. Required CI still determines merge readiness.
