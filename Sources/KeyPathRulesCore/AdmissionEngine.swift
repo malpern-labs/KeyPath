@@ -1,6 +1,5 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
 /// One place that decides whether the current rules can be admitted, and why
 /// not: key conflicts, needs the backend or Mac cannot meet, the reserved Caps
@@ -11,19 +10,37 @@ import KeyPathRulesCore
 /// computed here from claims — what each rule puts on which slot — attributed
 /// by rule id, never by display name (§4.4g). Pure: value types in, verdicts
 /// out, no actor; the save gate, the CLI and the UI all call it directly.
-enum AdmissionEngine {
-    struct State {
-        var collections: [RuleCollection]
-        var customRules: [CustomRule] = []
-        var leaderKey: LeaderKeyPreference?
-        var installedPackIDs: Set<String> = []
+package enum AdmissionEngine {
+    package struct State {
+        package var collections: [RuleCollection]
+        package var customRules: [CustomRule]
+        package var leaderKey: LeaderKeyPreference?
+        package var installedPackIDs: Set<String>
         /// The live Caps Lock intermediate (Kanata name such as `f18`), when
         /// managed Caps is active; nil otherwise.
-        var capsIntermediate: String?
+        package var capsIntermediate: String?
         /// Intermediate candidates already taken by other apps' mappings.
-        var occupiedIntermediates: Set<String> = []
+        package var occupiedIntermediates: Set<String>
         /// Another app that remaps Caps Lock on the chosen keyboard, if any.
-        var foreignCapsOwner: String?
+        package var foreignCapsOwner: String?
+
+        package init(
+            collections: [RuleCollection],
+            customRules: [CustomRule] = [],
+            leaderKey: LeaderKeyPreference? = nil,
+            installedPackIDs: Set<String> = [],
+            capsIntermediate: String? = nil,
+            occupiedIntermediates: Set<String> = [],
+            foreignCapsOwner: String? = nil
+        ) {
+            self.collections = collections
+            self.customRules = customRules
+            self.leaderKey = leaderKey
+            self.installedPackIDs = installedPackIDs
+            self.capsIntermediate = capsIntermediate
+            self.occupiedIntermediates = occupiedIntermediates
+            self.foreignCapsOwner = foreignCapsOwner
+        }
     }
 
     /// The live Caps Lock environment (phase 4d): what the session runtime
@@ -31,37 +48,37 @@ enum AdmissionEngine {
     /// `RuleCollectionsManager.admissionEnvironment` so every evaluation —
     /// toggle, editor save, pack preview — sees the same reserved key, the
     /// same occupied candidates and the same foreign Caps owner.
-    struct Environment: Equatable, Sendable {
+    package struct Environment: Equatable, Sendable {
         /// The intermediate the runtime reserved (Kanata name, `f18`), or
         /// nil when the profile does not use managed Caps.
-        var capsIntermediate: String?
+        package var capsIntermediate: String?
         /// Pool keys other apps' mappings or macOS shortcuts already use.
-        var occupiedIntermediates: Set<String> = []
+        package var occupiedIntermediates: Set<String> = []
         /// Another app remapping Caps Lock on the chosen keyboard.
-        var foreignCapsOwner: String?
+        package var foreignCapsOwner: String?
 
         /// Before the first session start nothing is known: the engine then
         /// behaves as in phases 1–3 and the runtime's own re-pick at reload
         /// (`SessionCapsRuntimeSupport.admit`) remains the backstop.
-        static let unknown = Environment()
+        package static let unknown = Environment()
 
-        init(capsIntermediate: String? = nil, occupiedIntermediates: Set<String> = [], foreignCapsOwner: String? = nil) {
+        package init(capsIntermediate: String? = nil, occupiedIntermediates: Set<String> = [], foreignCapsOwner: String? = nil) {
             self.capsIntermediate = capsIntermediate
             self.occupiedIntermediates = occupiedIntermediates
             self.foreignCapsOwner = foreignCapsOwner
         }
 
         /// From the runtime's usage numbers.
-        init(intermediateUsage: UInt32?, occupied: Set<UInt32>, foreignCapsOwner: String?) {
+        package init(intermediateUsage: UInt32?, occupied: Set<UInt32>, foreignCapsOwner: String?) {
             capsIntermediate = intermediateUsage.map { SessionCapsIntermediate.kanataName($0).lowercased() }
             occupiedIntermediates = Set(occupied.map { SessionCapsIntermediate.kanataName($0).lowercased() })
             self.foreignCapsOwner = foreignCapsOwner
         }
     }
 
-    static func evaluate(_ state: State,
-                         profile: BackendCapabilityProfile = .shared,
-                         fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) })
+    package static func evaluate(_ state: State,
+                                 profile: BackendCapabilityProfile = .shared,
+                                 fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) })
         -> [AdmissionVerdict]
     {
         let rules = state.customRules.filter(\.isEnabled)
@@ -99,7 +116,7 @@ enum AdmissionEngine {
     /// in as collections) plus the leader key. Pure, so the save gate and the CLI
     /// call it directly. Order is the slot order of the claims; callers
     /// that need a total order sort (see `mappingConflicts`).
-    static func conflicts(in collections: [RuleCollection], leaderKey: LeaderKeyPreference? = nil)
+    package static func conflicts(in collections: [RuleCollection], leaderKey: LeaderKeyPreference? = nil)
         -> [AdmissionVerdict]
     {
         let owners: [(subject: AdmissionSubject, collection: RuleCollection)] =
@@ -108,7 +125,7 @@ enum AdmissionEngine {
     }
 
     /// The same, for the save gate and the CLI, in the error type they report.
-    static func mappingConflicts(in collections: [RuleCollection], leaderKey: LeaderKeyPreference? = nil)
+    package static func mappingConflicts(in collections: [RuleCollection], leaderKey: LeaderKeyPreference? = nil)
         -> [KeyPathError.MappingConflictInfo]
     {
         let names = Dictionary(collections.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
@@ -388,7 +405,7 @@ enum AdmissionEngine {
     }
 }
 
-extension AdmissionEngine.State {
+package extension AdmissionEngine.State {
     /// Rules plus the live environment the manager holds.
     init(collections: [RuleCollection], customRules: [CustomRule] = [], leaderKey: LeaderKeyPreference? = nil,
          installedPackIDs: Set<String> = [], environment: AdmissionEngine.Environment)

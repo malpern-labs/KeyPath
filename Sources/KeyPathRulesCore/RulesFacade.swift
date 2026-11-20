@@ -1,10 +1,9 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
 public struct RulesFacade: Sendable {
     private let store: CustomRulesStore
-    private let operation: CLIConfigurationOperation?
+    private let admission: (gate: ConfigurationOperationGate, permit: ConfigurationOperationGate.Permit)?
     /// Loads the rule collections the generated config will be built from.
     ///
     /// Only the CLI-operation path supplies this. A custom rule can collide with a
@@ -18,29 +17,28 @@ public struct RulesFacade: Sendable {
 
     public init() {
         store = .shared
-        operation = nil
+        admission = nil
         collectionLoader = nil
     }
 
-    init(operation: CLIConfigurationOperation) {
-        let directory = URL(fileURLWithPath: operation.directory)
-        store = CustomRulesStore(fileURL: directory.appendingPathComponent("CustomRules.json"))
-        self.operation = operation
+    package init(configDirectory: URL, gate: ConfigurationOperationGate, permit: ConfigurationOperationGate.Permit) {
+        store = CustomRulesStore(fileURL: configDirectory.appendingPathComponent("CustomRules.json"))
+        admission = (gate, permit)
         let collectionStore = RuleCollectionStore(
-            fileURL: directory.appendingPathComponent("RuleCollections.json")
+            fileURL: configDirectory.appendingPathComponent("RuleCollections.json")
         )
         collectionLoader = { await collectionStore.loadCollections() }
     }
 
-    init(store: CustomRulesStore) {
+    package init(store: CustomRulesStore) {
         self.store = store
-        operation = nil
+        admission = nil
         collectionLoader = nil
     }
 
-    init(store: CustomRulesStore, collectionLoader: @escaping @Sendable () async -> [RuleCollection]) {
+    package init(store: CustomRulesStore, collectionLoader: @escaping @Sendable () async -> [RuleCollection]) {
         self.store = store
-        operation = nil
+        admission = nil
         self.collectionLoader = collectionLoader
     }
 
@@ -64,8 +62,8 @@ public struct RulesFacade: Sendable {
     private func withMutation<Result: Sendable>(
         _ body: @Sendable () async throws -> Result
     ) async throws -> Result {
-        if let operation {
-            return try await operation.service.operationGate.withOperation(using: operation.permit) { _ in
+        if let admission {
+            return try await admission.gate.withOperation(using: admission.permit) { _ in
                 try await body()
             }
         }
@@ -259,7 +257,7 @@ public struct RulesFacade: Sendable {
         }
     }
 
-    static func mergeRules(existing: CustomRule, newAction: KeyAction, newBehavior: MappingBehavior?) throws -> CustomRule {
+    package static func mergeRules(existing: CustomRule, newAction: KeyAction, newBehavior: MappingBehavior?) throws -> CustomRule {
         let existingIsSimple = existing.behavior == nil
         let newIsSimple = newBehavior == nil
 
