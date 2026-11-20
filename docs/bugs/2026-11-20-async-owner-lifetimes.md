@@ -57,3 +57,12 @@ claim a live Touch ID test.
 The full safe gate and review are recorded with the final change. Physical USB
 qualification remains deferred. None of these tests proves a host deployment or
 changes the VM base fingerprint contract.
+
+## Final gate evidence
+
+The local review gate passed with no blocking findings. The full safe gate
+compiled with zero Swift warnings and passed 4,456 XCTest cases (46 skipped),
+then reached the unchanged snapshot target before its shared 240-second test
+budget expired. This is a timeout, not a passing full gate. The snapshot class
+was subsequently checked separately with rendering explicitly enabled; see the
+PR validation record for its result. CI remains required before merge.
