@@ -81,8 +81,8 @@ final class SystemPackTransactionTests: KeyPathTestCase {
 
     @discardableResult
     private func install(using tracker: InstalledPackTracker? = nil) async throws -> InstalledPackRecord {
-        try await PackInstaller.shared.install(pack, managedDefaultPolicy: .useRecommended, manager: manager,
-                                               installedPackTracker: tracker ?? self.tracker)
+        try await PackInstaller.testInstaller().install(pack, managedDefaultPolicy: .useRecommended, manager: manager,
+                                                        installedPackTracker: tracker ?? self.tracker)
     }
 
     func testSnapshotIsPresentInJournaledRecordBeforeRuntimeApplication() async throws {
@@ -152,7 +152,7 @@ final class SystemPackTransactionTests: KeyPathTestCase {
             return Self.reload(reloads == 1 ? .rejected : .applied)
         }
         do {
-            try await PackInstaller.shared.uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
+            try await PackInstaller.testInstaller().uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
             XCTFail("Rejected removal must fail")
         } catch {}
         XCTAssertEqual(reloads, 2, "A runtime rejection must not trigger a conflict-disable retry")
@@ -167,7 +167,7 @@ final class SystemPackTransactionTests: KeyPathTestCase {
         try await install()
         var reloads = 0
         manager.onRulesChanged = { reloads += 1; return Self.reload(.pending) }
-        try await PackInstaller.shared.uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
+        try await PackInstaller.testInstaller().uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
         XCTAssertEqual(reloads, 1)
         for managed in pack.managedDefaults {
             XCTAssertEqual(manager.ruleCollections.first { $0.id == managed.collectionID }, before.first { $0.id == managed.collectionID })
@@ -186,7 +186,7 @@ final class SystemPackTransactionTests: KeyPathTestCase {
         let collections = manager.ruleCollections
         manager.onRulesChanged = { XCTFail("Invalid restore data must not reload"); return Self.reload(.applied) }
         do {
-            try await PackInstaller.shared.uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
+            try await PackInstaller.testInstaller().uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
             XCTFail("Invalid saved settings must block removal")
         } catch {}
         XCTAssertEqual(try files(), before)
@@ -201,7 +201,7 @@ final class SystemPackTransactionTests: KeyPathTestCase {
         try await tracker.upsert(record)
         try await withLegacySnapshot(JSONEncoder().encode(saved)) {
             self.manager.onRulesChanged = { Self.reload(.pending) }
-            try await PackInstaller.shared.uninstall(packID: self.pack.id, manager: self.manager, installedPackTracker: self.tracker)
+            try await PackInstaller.testInstaller().uninstall(packID: self.pack.id, manager: self.manager, installedPackTracker: self.tracker)
             for managed in self.pack.managedDefaults {
                 XCTAssertEqual(self.manager.ruleCollections.first { $0.id == managed.collectionID }, original.first { $0.id == managed.collectionID })
             }
@@ -219,7 +219,7 @@ final class SystemPackTransactionTests: KeyPathTestCase {
         try await withLegacySnapshot(Data("corrupt legacy snapshot".utf8)) {
             self.manager.onRulesChanged = { XCTFail("Corrupt restore data must not reload"); return Self.reload(.applied) }
             do {
-                try await PackInstaller.shared.uninstall(packID: self.pack.id, manager: self.manager, installedPackTracker: self.tracker)
+                try await PackInstaller.testInstaller().uninstall(packID: self.pack.id, manager: self.manager, installedPackTracker: self.tracker)
                 XCTFail("Unreadable legacy data must block removal")
             } catch {}
             XCTAssertEqual(try self.files(), before)

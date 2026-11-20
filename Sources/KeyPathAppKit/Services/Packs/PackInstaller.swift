@@ -19,14 +19,16 @@ public final class PackInstaller {
         case useRecommended
     }
 
-    #if DEBUG
-        /// Test-only overrides for dialog responses. When set, bypasses NSAlert
-        /// and returns this value instead.
-        static var testOverrideApplyDefault: Bool?
-        static var testOverrideRestore: Bool?
-    #endif
+    private let applyManagedDefault: (@MainActor () -> Bool)?
+    private let restoreManagedDefaults: (@MainActor () -> Bool)?
 
-    private init() {}
+    init(
+        applyManagedDefault: (@MainActor () -> Bool)? = nil,
+        restoreManagedDefaults: (@MainActor () -> Bool)? = nil
+    ) {
+        self.applyManagedDefault = applyManagedDefault
+        self.restoreManagedDefaults = restoreManagedDefaults
+    }
 
     // MARK: - Errors
 
@@ -906,12 +908,7 @@ public final class PackInstaller {
             return true
         }
 
-        if TestEnvironment.isRunningTests {
-            #if DEBUG
-                if let override = Self.testOverrideApplyDefault { return override }
-            #endif
-            return true
-        }
+        if let applyManagedDefault { return applyManagedDefault() }
 
         let diffs = RuleCollectionConfiguration.diffSettings(
             current: existingCollection.configuration,
@@ -1001,38 +998,32 @@ public final class PackInstaller {
             }
         }
 
-        let shouldRestore: Bool
-        if !userModified {
-            shouldRestore = true
-        } else if TestEnvironment.isRunningTests {
-            #if DEBUG
-                shouldRestore = Self.testOverrideRestore ?? true
-            #else
-                shouldRestore = true
-            #endif
+        let shouldRestore: Bool = if !userModified {
+            true
+        } else if let restoreManagedDefaults {
+            restoreManagedDefaults()
         } else {
-            shouldRestore =
-                await withCheckedContinuation { continuation in
-                    let alert = NSAlert()
-                    alert.messageText = String(localized: "Restore Previous Settings?")
-                    alert.alertStyle = .informational
-                    alert.addButton(withTitle: String(localized: "Restore Previous"))
-                    alert.addButton(withTitle: String(localized: "Keep Current"))
+            await withCheckedContinuation { continuation in
+                let alert = NSAlert()
+                alert.messageText = String(localized: "Restore Previous Settings?")
+                alert.alertStyle = .informational
+                alert.addButton(withTitle: String(localized: "Restore Previous"))
+                alert.addButton(withTitle: String(localized: "Keep Current"))
 
-                    if !allDiffs.isEmpty {
-                        alert.informativeText = String(localized: "You modified settings after installing \(pack.name). Restore your previous configuration?")
-                        alert.accessoryView = Self.buildComparisonView(
-                            diffs: allDiffs,
-                            currentLabel: String(localized: "Current"),
-                            proposedLabel: String(localized: "Previous")
-                        )
-                    } else {
-                        alert.informativeText = String(localized: "You modified settings after installing \(pack.name). Restore your previous configuration, or keep the current settings?")
-                    }
-
-                    let response = alert.runModal()
-                    continuation.resume(returning: response == .alertFirstButtonReturn)
+                if !allDiffs.isEmpty {
+                    alert.informativeText = String(localized: "You modified settings after installing \(pack.name). Restore your previous configuration?")
+                    alert.accessoryView = Self.buildComparisonView(
+                        diffs: allDiffs,
+                        currentLabel: String(localized: "Current"),
+                        proposedLabel: String(localized: "Previous")
+                    )
+                } else {
+                    alert.informativeText = String(localized: "You modified settings after installing \(pack.name). Restore your previous configuration, or keep the current settings?")
                 }
+
+                let response = alert.runModal()
+                continuation.resume(returning: response == .alertFirstButtonReturn)
+            }
         }
 
         if shouldRestore {

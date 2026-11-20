@@ -81,7 +81,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
         manager.onConflictResolution = { _ in .keepExisting }
         manager.onRulesChanged = { XCTFail("Declined conflict must not reload"); return Self.reload(.applied) }
         do {
-            _ = try await PackInstaller.shared.install(pack, autoResolveCollectionConflicts: false, manager: manager, installedPackTracker: tracker)
+            _ = try await PackInstaller.testInstaller().install(pack, autoResolveCollectionConflicts: false, manager: manager, installedPackTracker: tracker)
             XCTFail("Declined installation must fail")
         } catch {
             XCTAssertFalse(error is CancellationError)
@@ -102,7 +102,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
             XCTAssertTrue(self.manager.ruleCollections.contains { $0.id == RuleCollectionIdentifier.capsLockRemap && $0.isEnabled })
             return Self.reload(.applied)
         }
-        _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
         XCTAssertEqual(reloads, 1)
         XCTAssertEqual(manager.customRules, rules)
         let storedCollections = await manager.ruleCollectionStore.loadCollections()
@@ -209,7 +209,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
             XCTAssertTrue(FileManager.default.fileExists(atPath: RecoverableRuleWrite.journalURL(self.directory, scope: .packRules).path))
             return Self.reload(.applied)
         }
-        _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
         XCTAssertEqual(reloads, 1)
         XCTAssertFalse(FileManager.default.fileExists(atPath: RecoverableRuleWrite.journalURL(directory, scope: .packRules).path))
     }
@@ -223,7 +223,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
         })
         manager.onRulesChanged = { XCTFail("Failed staging must not reload"); return Self.reload(.applied) }
         do {
-            _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: failing)
+            _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: failing)
             XCTFail("Metadata staging failure must fail installation")
         } catch let error as PackInstaller.InstallError {
             guard case let .saveFailed(reason) = error else { return XCTFail("Wrong failure: \(error)") }
@@ -246,7 +246,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
             return Self.reload(reloads == 1 ? .rejected : .applied)
         }
         do {
-            _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+            _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
             XCTFail("Rejected collection installation must fail")
         } catch {}
         XCTAssertEqual(reloads, 2)
@@ -256,7 +256,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
 
     func testRejectedCollectionPackUninstallRestoresRecordAndCollection() async throws {
         pack = PackRegistry.homeRowMods
-        _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
         let before = try snapshot()
         let collections = manager.ruleCollections
         var reloads = 0
@@ -268,7 +268,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
             return Self.reload(reloads == 1 ? .rejected : .applied)
         }
         do {
-            try await PackInstaller.shared.uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
+            try await PackInstaller.testInstaller().uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
             XCTFail("Rejected removal must fail")
         } catch {}
         XCTAssertEqual(reloads, 2)
@@ -278,10 +278,10 @@ final class PackRuleTransactionTests: KeyPathTestCase {
 
     func testCollectionPackUninstallPendingCommitsRecordRemovalWithOneReload() async throws {
         pack = PackRegistry.homeRowMods
-        _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
         var reloads = 0
         manager.onRulesChanged = { reloads += 1; return Self.reload(.pending) }
-        try await PackInstaller.shared.uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
+        try await PackInstaller.testInstaller().uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
         XCTAssertEqual(reloads, 1)
         let record = await tracker.record(for: pack.id)
         XCTAssertNil(record)
@@ -302,7 +302,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
             return Self.reload(.rejected)
         }
         do {
-            _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+            _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
             XCTFail("External conflict must fail")
         } catch {}
         XCTAssertEqual(reloads, 1)
@@ -325,7 +325,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
             XCTAssertTrue(FileManager.default.fileExists(atPath: RecoverableRuleWrite.journalURL(self.directory, scope: .packRules).path))
             return Self.reload(.applied)
         }
-        _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
         XCTAssertEqual(reloads, 1)
         let notifications = await count.value
         XCTAssertEqual(notifications, 1)
@@ -349,7 +349,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
             return Self.reload(reloads == 1 ? .rejected : .applied)
         }
         do {
-            _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+            _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
             XCTFail("Rejected installation must fail")
         } catch {}
         XCTAssertEqual(reloads, 2)
@@ -367,7 +367,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
         manager.onConflictResolution = { _ in .keepExisting }
         manager.onRulesChanged = { XCTFail("A declined batch must not reload"); return Self.reload(.applied) }
         do {
-            _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+            _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
             XCTFail("Conflict should cancel preparation")
         } catch {}
         XCTAssertEqual(try snapshot(), before)
@@ -376,7 +376,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
 
     func testSkippedReloadCommitsTheWholeBatchWithoutCallingRuntime() async throws {
         manager.onRulesChanged = { XCTFail("Explicit skip must remain a skip"); return Self.reload(.applied) }
-        _ = try await PackInstaller.shared.install(pack, manager: manager, skipFinalReload: true, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(pack, manager: manager, skipFinalReload: true, installedPackTracker: tracker)
         let record = await tracker.record(for: pack.id)
         XCTAssertNotNil(record)
         XCTAssertEqual(manager.customRules.count, 3)
@@ -385,7 +385,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
     func testPendingReloadCommitsWithoutRecoveryOrSecondReload() async throws {
         var reloads = 0
         manager.onRulesChanged = { reloads += 1; return Self.reload(.pending) }
-        _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
         XCTAssertEqual(reloads, 1)
         let record = await tracker.record(for: pack.id)
         XCTAssertNotNil(record)
@@ -405,7 +405,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
             return Self.reload(.applied)
         }
         operation = Task { @MainActor in
-            try await PackInstaller.shared.install(self.pack, manager: self.manager, installedPackTracker: self.tracker)
+            try await PackInstaller.testInstaller().install(self.pack, manager: self.manager, installedPackTracker: self.tracker)
         }
         do {
             _ = try await operation!.value
@@ -460,7 +460,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
         let tracker = tracker!
 
         try await service.operationGate.withOperation { permit in
-            try await PackInstaller.shared.recoverAndValidateState(
+            try await PackInstaller.testInstaller().recoverAndValidateState(
                 manager: freshManager, tracker: tracker, permit: permit
             )
         }
@@ -478,8 +478,8 @@ final class PackRuleTransactionTests: KeyPathTestCase {
                 packRecord: .init(tracker: self.tracker, record: InstalledPackRecord(packID: self.pack.id, version: "2"))
             )
         }
-        _ = try await PackInstaller.shared.setVisualPackEnabled(PackRegistry.keystrokeHistory, enabled: true,
-                                                                manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().setVisualPackEnabled(PackRegistry.keystrokeHistory, enabled: true,
+                                                                         manager: manager, installedPackTracker: tracker)
         let after = try snapshot()
         for name in ["keypath.kbd", "RuleCollections.json", "CustomRules.json"] {
             XCTAssertEqual(after[name], before[name])
@@ -503,7 +503,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
             )
         }
         manager.customRules = []
-        _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
         XCTAssertTrue(manager.customRules.contains(where: { $0.id == priorRules[0].id }))
         let stored = try await manager.customRulesStore.loadForMutation()
         XCTAssertEqual(stored.count, priorRules.count + pack.bindings.count)
@@ -512,13 +512,13 @@ final class PackRuleTransactionTests: KeyPathTestCase {
     }
 
     func testUninstallCommitsAllRemovalsWithOneReload() async throws {
-        _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
         var reloads = 0
         manager.onRulesChanged = {
             reloads += 1
             return Self.reload(.applied)
         }
-        try await PackInstaller.shared.uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
+        try await PackInstaller.testInstaller().uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
         XCTAssertEqual(reloads, 1)
         XCTAssertEqual(manager.customRules.map(\.input), ["f20"])
         let record = await tracker.record(for: pack.id)
@@ -528,7 +528,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
     }
 
     func testRejectedUninstallRestoresRulesAndInstalledRecord() async throws {
-        _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
         let before = try snapshot()
         let rules = try await manager.customRulesStore.loadForMutation()
         var reloads = 0
@@ -537,7 +537,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
             return Self.reload(reloads == 1 ? .rejected : .applied)
         }
         do {
-            try await PackInstaller.shared.uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
+            try await PackInstaller.testInstaller().uninstall(packID: pack.id, manager: manager, installedPackTracker: tracker)
             XCTFail("Rejected removal must fail")
         } catch {}
         XCTAssertEqual(reloads, 2)
@@ -546,7 +546,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
     }
 
     func testUninstallMetadataWriteFailureRestoresExactRevisionWithoutReload() async throws {
-        _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
         let before = try snapshot()
         let rules = try await manager.customRulesStore.loadForMutation()
         let failingTracker = InstalledPackTracker(fileURL: directory.appendingPathComponent("installed-packs.json")) { _, _ in
@@ -554,7 +554,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
         }
         manager.onRulesChanged = { XCTFail("Failed stage must not reload"); return Self.reload(.applied) }
         do {
-            try await PackInstaller.shared.uninstall(packID: pack.id, manager: manager, installedPackTracker: failingTracker)
+            try await PackInstaller.testInstaller().uninstall(packID: pack.id, manager: manager, installedPackTracker: failingTracker)
             XCTFail("Metadata failure must fail removal")
         } catch {}
         XCTAssertEqual(try snapshot(), before)
@@ -574,7 +574,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
         try await prepareHomeRowSettings()
         var reloads = 0
         manager.onRulesChanged = { reloads += 1; return Self.reload(.pending) }
-        try await PackInstaller.shared.updateQuickSettings(packID: PackRegistry.homeRowMods.id, newValues: ["holdTimeout": 280], manager: manager, installedPackTracker: tracker)
+        try await PackInstaller.testInstaller().updateQuickSettings(packID: PackRegistry.homeRowMods.id, newValues: ["holdTimeout": 280], manager: manager, installedPackTracker: tracker)
         XCTAssertEqual(reloads, 1)
         let record = await tracker.record(for: PackRegistry.homeRowMods.id)
         XCTAssertEqual(record?.quickSettingValues["holdTimeout"], 280)
@@ -613,7 +613,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
         let collections = manager.ruleCollections
         manager.onRulesChanged = { XCTFail("Invalid target must not reload"); return Self.reload(.applied) }
         do {
-            try await PackInstaller.shared.updateQuickSettings(packID: PackRegistry.homeRowMods.id, newValues: ["holdTimeout": 280], manager: manager, installedPackTracker: tracker)
+            try await PackInstaller.testInstaller().updateQuickSettings(packID: PackRegistry.homeRowMods.id, newValues: ["holdTimeout": 280], manager: manager, installedPackTracker: tracker)
             XCTFail("Invalid timing target must fail")
         } catch { XCTAssertTrue(error.localizedDescription.contains("timing collection")) }
         XCTAssertEqual(try snapshot(), before)
@@ -627,7 +627,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
         var reloads = 0
         manager.onRulesChanged = { reloads += 1; return Self.reload(reloads == 1 ? .rejected : .applied) }
         do {
-            try await PackInstaller.shared.updateQuickSettings(packID: PackRegistry.homeRowMods.id, newValues: ["holdTimeout": 280], manager: manager, installedPackTracker: tracker)
+            try await PackInstaller.testInstaller().updateQuickSettings(packID: PackRegistry.homeRowMods.id, newValues: ["holdTimeout": 280], manager: manager, installedPackTracker: tracker)
             XCTFail("Rejected timing must fail")
         } catch {}
         XCTAssertEqual(reloads, 2)
@@ -647,7 +647,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
         var reloads = 0
         manager.onRulesChanged = { reloads += 1; return Self.reload(.rejected) }
         do {
-            _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+            _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
             XCTFail("Install must wait for successful recovery")
         } catch let PackInstaller.InstallError.saveFailed(reason) {
             XCTAssertTrue(reason.contains("Recovered files could not be applied"))
@@ -671,7 +671,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
             return Self.reload(.rejected)
         }
         do {
-            _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+            _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
             XCTFail("Recovery conflict must fail")
         } catch { XCTAssertTrue(error.localizedDescription.contains("Recovery needs attention")) }
         XCTAssertEqual(reloads, 1)

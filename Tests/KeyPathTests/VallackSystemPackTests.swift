@@ -195,7 +195,7 @@ final class VallackSystemPackTests: XCTestCase {
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let record = try await PackInstaller.shared.install(
+        let record = try await PackInstaller.testInstaller().install(
             PackRegistry.vallackSystem,
             manager: manager, installedPackTracker: tracker
         )
@@ -249,7 +249,7 @@ final class VallackSystemPackTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: tempDir) }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
 
-        _ = try await PackInstaller.shared.install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
 
         XCTAssertFalse(
             manager.ruleCollections.first { $0.id == RuleCollectionIdentifier.homeRowArrows }?.isEnabled ?? true,
@@ -275,7 +275,7 @@ final class VallackSystemPackTests: XCTestCase {
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let installed = try await PackInstaller.shared.install(
+        let installed = try await PackInstaller.testInstaller().install(
             PackRegistry.vallackSystem,
             manager: manager, installedPackTracker: tracker
         )
@@ -307,8 +307,8 @@ final class VallackSystemPackTests: XCTestCase {
         }
 
         // Install then uninstall
-        _ = try await PackInstaller.shared.install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
-        try await PackInstaller.shared.uninstall(packID: PackRegistry.vallackSystem.id, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
+        try await PackInstaller.testInstaller().uninstall(packID: PackRegistry.vallackSystem.id, manager: manager, installedPackTracker: tracker)
 
         let collections = manager.ruleCollections
 
@@ -372,8 +372,8 @@ final class VallackSystemPackTests: XCTestCase {
         manager.ruleCollections[modsIndex].isEnabled = true
         manager.ruleCollections[arrowsIndex].isEnabled = true
 
-        _ = try await PackInstaller.shared.install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
-        try await PackInstaller.shared.uninstall(packID: PackRegistry.vallackSystem.id, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
+        try await PackInstaller.testInstaller().uninstall(packID: PackRegistry.vallackSystem.id, manager: manager, installedPackTracker: tracker)
 
         let restoredMods = try XCTUnwrap(
             manager.ruleCollections
@@ -444,7 +444,7 @@ final class VallackSystemPackTests: XCTestCase {
         defer { service.onWillStageConfigurationWrite = nil }
 
         do {
-            _ = try await PackInstaller.shared.install(
+            _ = try await PackInstaller.testInstaller().install(
                 PackRegistry.vallackSystem,
                 manager: manager,
                 installedPackTracker: tracker
@@ -560,7 +560,7 @@ final class VallackSystemPackTests: XCTestCase {
         )
 
         do {
-            _ = try await PackInstaller.shared.install(
+            _ = try await PackInstaller.testInstaller().install(
                 PackRegistry.vallackSystem,
                 manager: manager,
                 installedPackTracker: tracker
@@ -617,7 +617,7 @@ final class VallackSystemPackTests: XCTestCase {
         try? FileManager.default.removeItem(at: snapshotURL)
 
         // Uninstall should not crash — just skip the revert
-        try await PackInstaller.shared.uninstall(
+        try await PackInstaller.testInstaller().uninstall(
             packID: PackRegistry.vallackSystem.id,
             manager: manager, installedPackTracker: tracker
         )

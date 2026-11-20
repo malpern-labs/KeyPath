@@ -15,15 +15,15 @@ final class PackMetadataOperationTests: KeyPathTestCase {
         try await withFixture { fixture in
             let pack = PackRegistry.kindaVim
             try await fixture.manager.configurationService.operationGate.withOperation { permit in
-                let record = try await PackInstaller.shared.setVisualPackEnabled(
+                let record = try await PackInstaller.testInstaller().setVisualPackEnabled(
                     pack, enabled: true, quickSettingValues: ["retained": 42], manager: fixture.manager,
                     installedPackTracker: fixture.tracker, mutationPermit: permit
                 )
                 XCTAssertEqual(record?.quickSettingValues, ["retained": 42])
             }
-            let repeated = try await PackInstaller.shared.setVisualPackEnabled(pack, enabled: true, manager: fixture.manager, installedPackTracker: fixture.tracker)
+            let repeated = try await PackInstaller.testInstaller().setVisualPackEnabled(pack, enabled: true, manager: fixture.manager, installedPackTracker: fixture.tracker)
             XCTAssertEqual(repeated?.quickSettingValues, ["retained": 42])
-            try await PackInstaller.shared.setVisualPackEnabled(pack, enabled: false, manager: fixture.manager, installedPackTracker: fixture.tracker)
+            try await PackInstaller.testInstaller().setVisualPackEnabled(pack, enabled: false, manager: fixture.manager, installedPackTracker: fixture.tracker)
             let installed = await fixture.tracker.isInstalled(packID: pack.id)
             XCTAssertFalse(installed)
             XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.directory.appendingPathComponent("keypath.kbd").path))
@@ -34,7 +34,7 @@ final class PackMetadataOperationTests: KeyPathTestCase {
         try await withFixture { fixture in
             let pack = try XCTUnwrap(PackRegistry.pack(id: "com.keypath.pack.caps-lock-to-escape"))
             do {
-                try await PackInstaller.shared.setVisualPackEnabled(pack, enabled: true, manager: fixture.manager, installedPackTracker: fixture.tracker)
+                try await PackInstaller.testInstaller().setVisualPackEnabled(pack, enabled: true, manager: fixture.manager, installedPackTracker: fixture.tracker)
                 XCTFail("Nonvisual packs require full installation")
             } catch {}
             let records = await fixture.tracker.allInstalled()
@@ -46,11 +46,11 @@ final class PackMetadataOperationTests: KeyPathTestCase {
         try await withFixture { fixture in
             try await fixture.tracker.upsert(InstalledPackRecord(packID: "com.keypath.pack.vim-navigation", version: "1"))
             do {
-                try await PackInstaller.shared.install(PackRegistry.kindaVim, manager: fixture.manager, installedPackTracker: fixture.tracker)
+                try await PackInstaller.testInstaller().install(PackRegistry.kindaVim, manager: fixture.manager, installedPackTracker: fixture.tracker)
                 XCTFail("Catalog installation must retain its conflict gate")
             } catch PackInstaller.InstallError.mutuallyExclusive {} catch { XCTFail("Unexpected error: \(error)") }
             // The existing Rules toggle policy is intentionally unchanged in this internal slice.
-            try await PackInstaller.shared.setVisualPackEnabled(PackRegistry.kindaVim, enabled: true, manager: fixture.manager, installedPackTracker: fixture.tracker)
+            try await PackInstaller.testInstaller().setVisualPackEnabled(PackRegistry.kindaVim, enabled: true, manager: fixture.manager, installedPackTracker: fixture.tracker)
         }
     }
 
@@ -63,11 +63,11 @@ final class PackMetadataOperationTests: KeyPathTestCase {
             fixture.manager.ruleCollections = collections
             collections[index].isEnabled = false
             try await fixture.manager.ruleCollectionStore.saveCollections(collections)
-            let absent = try await PackInstaller.shared.reconcileInstallRecord(for: pack, manager: fixture.manager, installedPackTracker: fixture.tracker)
+            let absent = try await PackInstaller.testInstaller().reconcileInstallRecord(for: pack, manager: fixture.manager, installedPackTracker: fixture.tracker)
             XCTAssertNil(absent)
             collections[index].isEnabled = true
             try await fixture.manager.ruleCollectionStore.saveCollections(collections)
-            let restored = try await PackInstaller.shared.reconcileInstallRecord(for: pack, manager: fixture.manager, installedPackTracker: fixture.tracker)
+            let restored = try await PackInstaller.testInstaller().reconcileInstallRecord(for: pack, manager: fixture.manager, installedPackTracker: fixture.tracker)
             XCTAssertEqual(restored?.packID, pack.id)
         }
     }
@@ -104,7 +104,7 @@ final class PackMetadataOperationTests: KeyPathTestCase {
                 } catch { XCTFail("Could not read restored source: \(error)") }
                 return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
             }
-            let record = try await PackInstaller.shared.reconcileInstallRecord(for: pack, manager: fixture.manager, installedPackTracker: fixture.tracker)
+            let record = try await PackInstaller.testInstaller().reconcileInstallRecord(for: pack, manager: fixture.manager, installedPackTracker: fixture.tracker)
             XCTAssertNil(record)
             XCTAssertEqual(recoveryReloads, 1)
             XCTAssertEqual(try Data(contentsOf: sourceURL), original)
@@ -142,7 +142,7 @@ final class PackMetadataOperationTests: KeyPathTestCase {
                 throw NSError(domain: "write", code: 1)
             }
             do {
-                _ = try await PackInstaller.shared.reconcileInstallRecord(for: pack, manager: fixture.manager, installedPackTracker: tracker)
+                _ = try await PackInstaller.testInstaller().reconcileInstallRecord(for: pack, manager: fixture.manager, installedPackTracker: tracker)
                 XCTFail("A failed record write must throw")
             } catch {}
             let installed = await tracker.isInstalled(packID: pack.id)
@@ -156,7 +156,7 @@ final class PackMetadataOperationTests: KeyPathTestCase {
             let corrupt = Data("not json".utf8)
             try corrupt.write(to: file)
             do {
-                try await PackInstaller.shared.setVisualPackEnabled(PackRegistry.kindaVim, enabled: true, manager: fixture.manager, installedPackTracker: fixture.tracker)
+                try await PackInstaller.testInstaller().setVisualPackEnabled(PackRegistry.kindaVim, enabled: true, manager: fixture.manager, installedPackTracker: fixture.tracker)
                 XCTFail("Corrupt metadata must prevent mutation")
             } catch {}
             XCTAssertEqual(try Data(contentsOf: file), corrupt)
@@ -165,7 +165,7 @@ final class PackMetadataOperationTests: KeyPathTestCase {
 
     private static func deferredRepair(_ pack: Pack, fixture: Fixture, started: XCTestExpectation) async throws -> InstalledPackRecord? {
         started.fulfill()
-        return try await PackInstaller.shared.reconcileInstallRecord(for: pack, manager: fixture.manager, installedPackTracker: fixture.tracker)
+        return try await PackInstaller.testInstaller().reconcileInstallRecord(for: pack, manager: fixture.manager, installedPackTracker: fixture.tracker)
     }
 
     private func withFixture(_ body: (Fixture) async throws -> Void) async throws {
