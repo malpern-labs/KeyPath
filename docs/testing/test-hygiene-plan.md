@@ -760,3 +760,8 @@ CLIStoreIsolationTests regression passed concurrent writes of the same input
 through two private facades and verified that deleting one fixture leaves the
 other fixture's persisted rule intact. This is 70 focused tests, not a claim
 that the entire repository is ready for unrestricted parallel execution.
+
+The CLI store-isolation branch also passed the full safe gate on November 19:
+5,525 tests, zero Swift warnings, 201 s build and 218 s tests (421 s total).
+Log: `/private/tmp/keypath-cli-isolation-full-tests.log`. The 70 focused
+checks remain the direct evidence for the changed CLI persistence paths.
