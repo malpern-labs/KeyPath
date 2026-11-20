@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathCore
 
 struct LayerSwitch: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -15,11 +15,10 @@ struct LayerSwitch: AsyncParsableCommand {
 
     mutating func run() async throws {
         let ctx = globals.outputContext
-        let facade = ConfigFacade()
 
         let layers: [String]
         do {
-            layers = try await facade.tcpGetLayers()
+            layers = try await RuntimeControl.requestEngine(.layers).layers ?? []
         } catch {
             let cliError = CLIError.serviceUnreachable()
             CLIOutput.writeError(cliError, context: ctx)
@@ -32,7 +31,7 @@ struct LayerSwitch: AsyncParsableCommand {
             throw error.code.exitCode
         }
 
-        let success = await switchLayerAndConfirm(name, facade: facade, timeoutSeconds: globals.timeout)
+        let success = await switchLayerAndConfirm(name, timeoutSeconds: globals.timeout)
         if success {
             CLIOutput.write(["layer": name], context: ctx) {
                 "Switched to layer '\(name)'"
@@ -48,20 +47,18 @@ struct LayerSwitch: AsyncParsableCommand {
 
     private func switchLayerAndConfirm(
         _ name: String,
-        facade: ConfigFacade,
         timeoutSeconds: Int
     ) async -> Bool {
         let switchTask = Task {
-            await facade.tcpChangeLayer(name)
+            try? await RuntimeControl.requestEngine(.changeLayer, argument: name)
         }
-        let observed = await waitForObservedLayer(name, facade: facade, timeoutSeconds: timeoutSeconds)
+        let observed = await waitForObservedLayer(name, timeoutSeconds: timeoutSeconds)
         switchTask.cancel()
         return observed
     }
 
     private func waitForObservedLayer(
         _ name: String,
-        facade: ConfigFacade,
         timeoutSeconds: Int
     ) async -> Bool {
         let deadline = Date().addingTimeInterval(TimeInterval(max(1, timeoutSeconds)))
@@ -69,7 +66,7 @@ struct LayerSwitch: AsyncParsableCommand {
             if Task.isCancelled {
                 return false
             }
-            if let currentLayer = try? await facade.tcpGetCurrentLayer(),
+            if let currentLayer = try? await RuntimeControl.requestEngine(.layer).layer,
                currentLayer == name
             {
                 return true

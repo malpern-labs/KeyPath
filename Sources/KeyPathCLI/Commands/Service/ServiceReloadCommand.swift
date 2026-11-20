@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathCore
 
 struct ServiceReload: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -14,8 +14,7 @@ struct ServiceReload: AsyncParsableCommand {
         let ctx = globals.outputContext
         CLIOutput.progress("Reloading Kanata configuration...", context: ctx)
 
-        let facade = ConfigFacade()
-        let success = await facade.tcpReload()
+        let success = await (try? RuntimeControl.requestEngine(.reload)) != nil
 
         if success {
             CLIOutput.write(["reloaded": true], context: ctx) {
