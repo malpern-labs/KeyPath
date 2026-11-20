@@ -1,7 +1,7 @@
 import Foundation
 @testable import KeyPathAppKit
 @testable import KeyPathCLI
-import KeyPathCLISupport
+@testable import KeyPathCLISupport
 import KeyPathRulesCore
 import XCTest
 
