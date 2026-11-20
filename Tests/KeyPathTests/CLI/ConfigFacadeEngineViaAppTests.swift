@@ -90,25 +90,18 @@ final class ConfigFacadeEngineViaAppTests: XCTestCase {
     }
 
     private var fake: FakeApp?
-    private var savedPath = ""
-    private var savedAccess = ConfigFacade.EngineAccess.viaApp
-
-    override func setUp() {
-        savedPath = ConfigFacade.appControlSocketPath
-        savedAccess = ConfigFacade.engineAccess
-        ConfigFacade.engineAccess = .viaApp
-    }
-
     override func tearDown() {
         fake?.stop()
-        ConfigFacade.appControlSocketPath = savedPath
-        ConfigFacade.engineAccess = savedAccess
+        fake = nil
+    }
+
+    private func makeFacade() throws -> ConfigFacade {
+        try ConfigFacade(appControlSocketPath: XCTUnwrap(fake).path)
     }
 
     private func useFakeApp(_ respond: @escaping @Sendable (RuntimeControl.Request) -> RuntimeControl.Response) throws -> FakeApp {
         let app = try FakeApp(respond: respond)
         fake = app
-        ConfigFacade.appControlSocketPath = app.path
         return app
     }
 
@@ -120,7 +113,7 @@ final class ConfigFacadeEngineViaAppTests: XCTestCase {
             default: Self.answer(request.operation, ok: false, error: "unexpected")
             }
         }
-        let facade = ConfigFacade()
+        let facade = try makeFacade()
         let layer = try await facade.tcpGetCurrentLayer()
         let layers = try await facade.tcpGetLayers()
         XCTAssertEqual(layer, "nav")
@@ -132,7 +125,7 @@ final class ConfigFacadeEngineViaAppTests: XCTestCase {
         let app = try useFakeApp { request in
             Self.answer(.changeLayer, ok: request.argument == "nav", error: "no such layer")
         }
-        let facade = ConfigFacade()
+        let facade = try makeFacade()
         let switched = await facade.tcpChangeLayer("nav")
         let refused = await facade.tcpChangeLayer("missing")
         XCTAssertTrue(switched)
@@ -142,12 +135,12 @@ final class ConfigFacadeEngineViaAppTests: XCTestCase {
 
     func testReloadIsAskedOfTheAppAndFailsWhenItSaysSo() async throws {
         let app = try useFakeApp { _ in Self.answer(.reload) }
-        let reloaded = await ConfigFacade().tcpReload()
+        let reloaded = try await makeFacade().tcpReload()
         XCTAssertTrue(reloaded)
         XCTAssertEqual(app.received.map(\.operation), [.reload])
 
         app.answer { _ in Self.answer(.reload, ok: false, error: "config invalid") }
-        let failed = await ConfigFacade().tcpReload()
+        let failed = try await makeFacade().tcpReload()
         XCTAssertFalse(failed)
     }
 
@@ -155,7 +148,7 @@ final class ConfigFacadeEngineViaAppTests: XCTestCase {
     func testRefusalSurfacesTheAppsMessage() async throws {
         _ = try useFakeApp { _ in Self.answer(.layer, ok: false, error: "The remapping engine did not answer") }
         do {
-            _ = try await ConfigFacade().tcpGetCurrentLayer()
+            _ = try await makeFacade().tcpGetCurrentLayer()
             XCTFail("expected an error")
         } catch {
             XCTAssertTrue("\(error)".contains("did not answer"), "\(error)")
@@ -165,11 +158,11 @@ final class ConfigFacadeEngineViaAppTests: XCTestCase {
     /// Health means the engine answered through the app, not just "running".
     func testHealthNeedsAnEngineAnswer() async throws {
         let app = try useFakeApp { _ in Self.answer(.layer, layer: "base") }
-        let healthy = await ConfigFacade().tcpCheckHealth()
+        let healthy = try await makeFacade().tcpCheckHealth()
         XCTAssertTrue(healthy)
 
         app.answer { _ in Self.answer(.layer, layer: nil) }
-        let unhealthy = await ConfigFacade().tcpCheckHealth()
+        let unhealthy = try await makeFacade().tcpCheckHealth()
         XCTAssertFalse(unhealthy)
     }
 
@@ -179,7 +172,7 @@ final class ConfigFacadeEngineViaAppTests: XCTestCase {
                 ? Self.answer(.hrmStats, hrm: .init(totalDecisions: 9, tapCount: 6, holdCount: 3))
                 : Self.answer(request.operation)
         }
-        let facade = ConfigFacade()
+        let facade = try makeFacade()
         let stats = try await facade.tcpGetHrmStats()
         try await facade.tcpResetHrmStats()
         XCTAssertEqual([stats.totalDecisions, stats.tapCount, stats.holdCount], [9, 6, 3])
@@ -187,10 +180,27 @@ final class ConfigFacadeEngineViaAppTests: XCTestCase {
     }
 
     func testNoAppMeansNotAvailable() async {
-        ConfigFacade.appControlSocketPath = "/tmp/kp-no-app-\(UUID().uuidString.prefix(8)).sock"
-        let healthy = await ConfigFacade().tcpCheckHealth()
-        let reloaded = await ConfigFacade().tcpReload()
+        let facade = ConfigFacade(appControlSocketPath: "/tmp/kp-no-app-\(UUID().uuidString.prefix(8)).sock")
+        let healthy = await facade.tcpCheckHealth()
+        let reloaded = await facade.tcpReload()
         XCTAssertFalse(healthy)
         XCTAssertFalse(reloaded)
+    }
+
+    func testConcurrentFacadesKeepTheirOwnAppEndpoints() async throws {
+        let firstApp = try FakeApp { _ in Self.answer(.layer, layer: "first") }
+        defer { firstApp.stop() }
+        let secondApp = try FakeApp { _ in Self.answer(.layer, layer: "second") }
+        defer { secondApp.stop() }
+        let firstFacade = ConfigFacade(appControlSocketPath: firstApp.path)
+        let secondFacade = ConfigFacade(appControlSocketPath: secondApp.path)
+
+        async let firstLayer = firstFacade.tcpGetCurrentLayer()
+        async let secondLayer = secondFacade.tcpGetCurrentLayer()
+        let layers = try await (firstLayer, secondLayer)
+        XCTAssertEqual(layers.0, "first")
+        XCTAssertEqual(layers.1, "second")
+        XCTAssertEqual(firstApp.received.map(\.operation), [.layer])
+        XCTAssertEqual(secondApp.received.map(\.operation), [.layer])
     }
 }

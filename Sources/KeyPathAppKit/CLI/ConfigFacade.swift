@@ -2,9 +2,12 @@ import Darwin
 import Foundation
 import KeyPathCore
 import KeyPathRulesCore
+import Synchronization
 
 public struct ConfigFacade: Sendable {
     private var operation: CLIConfigurationOperation?
+    private var engineAccessOverride: EngineAccess?
+    private var controlSocketPath = RuntimeControl.socketURL.path
     private let configDirectory: String
     private let ruleCollectionLoader: @Sendable () async -> [RuleCollection]
     private let customRuleLoader: @Sendable () async -> [CustomRule]
@@ -35,6 +38,13 @@ public struct ConfigFacade: Sendable {
     init(operation: CLIConfigurationOperation) {
         self.init(configDirectory: operation.directory)
         self.operation = operation
+    }
+
+    /// An owned fake app endpoint, without changing routing for other facades.
+    init(appControlSocketPath: String) {
+        self.init()
+        engineAccessOverride = .viaApp
+        controlSocketPath = appControlSocketPath
     }
 
     // MARK: - Configuration
@@ -312,10 +322,16 @@ public struct ConfigFacade: Sendable {
         case viaApp
     }
 
-    public nonisolated(unsafe) static var engineAccess: EngineAccess = .viaApp
+    private static let engineAccessState = Mutex<EngineAccess>(.viaApp)
 
-    /// The app's runtime-control socket. Tests point it at a fake app.
-    nonisolated(unsafe) static var appControlSocketPath = RuntimeControl.socketURL.path
+    public static var engineAccess: EngineAccess {
+        get { engineAccessState.withLock { $0 } }
+        set { engineAccessState.withLock { $0 = newValue } }
+    }
+
+    private var resolvedEngineAccess: EngineAccess {
+        engineAccessOverride ?? Self.engineAccess
+    }
 
     /// Engine requests answered by the app. A missing app, or one that cannot
     /// answer, reads as "not available".
@@ -327,7 +343,7 @@ public struct ConfigFacade: Sendable {
         // the runtime is in transition; give it room so a slow success is not
         // reported as a failure.
         let timeout: TimeInterval = operation == .reload ? 30 : 10
-        let path = Self.appControlSocketPath
+        let path = controlSocketPath
         let response = try await Task.detached {
             try RuntimeControl.send(request, timeout: timeout, socketPath: path)
         }.value
@@ -342,7 +358,7 @@ public struct ConfigFacade: Sendable {
     }
 
     public func tcpCheckHealth() async -> Bool {
-        switch Self.engineAccess {
+        switch resolvedEngineAccess {
         case .direct: await engineClient().checkServerStatus()
         // The engine must answer, not only the app report "running".
         case .viaApp: await (try? askApp(.layer))?.layer != nil
@@ -350,7 +366,7 @@ public struct ConfigFacade: Sendable {
     }
 
     public func tcpGetCurrentLayer() async throws -> String {
-        switch Self.engineAccess {
+        switch resolvedEngineAccess {
         case .direct: return try await engineClient().requestCurrentLayerName()
         case .viaApp:
             guard let layer = try await askApp(.layer).layer else { throw Self.error("No current layer reported") }
@@ -359,14 +375,14 @@ public struct ConfigFacade: Sendable {
     }
 
     public func tcpGetLayers() async throws -> [String] {
-        switch Self.engineAccess {
+        switch resolvedEngineAccess {
         case .direct: try await engineClient().requestLayerNames()
         case .viaApp: try await askApp(.layers).layers ?? []
         }
     }
 
     public func tcpReload() async -> Bool {
-        switch Self.engineAccess {
+        switch resolvedEngineAccess {
         case .direct:
             if case .success = await engineClient().reloadConfig() { return true }
             return false
@@ -375,7 +391,7 @@ public struct ConfigFacade: Sendable {
     }
 
     public func tcpGetHrmStats() async throws -> CLIHrmStats {
-        switch Self.engineAccess {
+        switch resolvedEngineAccess {
         case .direct:
             let stats = try await engineClient().requestHrmStats()
             return CLIHrmStats(
@@ -390,14 +406,14 @@ public struct ConfigFacade: Sendable {
     }
 
     public func tcpResetHrmStats() async throws {
-        switch Self.engineAccess {
+        switch resolvedEngineAccess {
         case .direct: try await engineClient().resetHrmStats()
         case .viaApp: _ = try await askApp(.resetHrmStats)
         }
     }
 
     public func tcpChangeLayer(_ layerName: String) async -> Bool {
-        switch Self.engineAccess {
+        switch resolvedEngineAccess {
         case .direct:
             if case .success = await engineClient().changeLayer(layerName) { return true }
             return false

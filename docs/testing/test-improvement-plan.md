@@ -175,7 +175,7 @@ Prioritize by blast radius:
 - `SignatureHealthCheck` — verifies code signing. Test with mock signing state.
 
 **Low priority (side-effect heavy, mock-heavy):**
-- `AppRestarter` — restarts the app. Test: verify it calls the right API. Mock: NSWorkspace.
+- The unused `AppRestarter` utility and its retired-behavior tests were removed after verifying it had no production callers. The app retains its legacy restore-key reader for older builds.
 - `SoundManager` / `SoundPlayer` — audio playback. Test: mute in test mode, correct sound selection.
 - `OneShotProbeEnvironment` — one-time system probe. Test: probe runs once, caches result.
 
