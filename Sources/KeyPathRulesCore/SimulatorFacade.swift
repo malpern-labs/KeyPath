@@ -1,6 +1,5 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
 public struct SimulatorFacade: Sendable {
     public init() {}
@@ -10,11 +9,7 @@ public struct SimulatorFacade: Sendable {
         configPath: String?,
         simulatorProvider: CLISimulatorProvider? = nil
     ) async throws -> CLISimulationResult {
-        let config: String = if let configPath {
-            configPath
-        } else {
-            await MainActor.run { ConfigurationService().configurationPath }
-        }
+        let config = configPath ?? KeyPathConstants.Config.mainConfigPath
 
         let provider = simulatorProvider ?? RealSimulatorProvider()
         return try await provider.simulate(taps: keys, configPath: config)
@@ -25,11 +20,7 @@ public struct SimulatorFacade: Sendable {
         configPath: String?,
         simulatorProvider: CLISimulatorProvider? = nil
     ) async throws -> CLISimulationResult {
-        let config: String = if let configPath {
-            configPath
-        } else {
-            await MainActor.run { ConfigurationService().configurationPath }
-        }
+        let config = configPath ?? KeyPathConstants.Config.mainConfigPath
 
         let provider = simulatorProvider ?? RealSimulatorProvider()
         return try await provider.simulateRaw(simContent: simContent, configPath: config)
@@ -59,6 +50,12 @@ public struct CLISimulationResult: Codable, Sendable {
     public let events: [CLISimEvent]
     public let finalLayer: String
     public let durationMs: UInt64
+
+    package init(events: [CLISimEvent], finalLayer: String, durationMs: UInt64) {
+        self.events = events
+        self.finalLayer = finalLayer
+        self.durationMs = durationMs
+    }
 }
 
 public struct CLISimEvent: Codable, Sendable {

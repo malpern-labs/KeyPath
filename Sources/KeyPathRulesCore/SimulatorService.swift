@@ -6,7 +6,7 @@ import KeyPathCore
 /// 1. Generate simulation input files from key tap sequences
 /// 2. Invoke the kanata-simulator CLI with the user's config
 /// 3. Parse JSON output into structured SimulationResult
-actor SimulatorService {
+package actor SimulatorService {
     private let simulatorPath: String
     private let fileManager: FileManager
     /// Injectable feature-flag check. Defaults to the persisted flag; tests inject a
@@ -14,7 +14,7 @@ actor SimulatorService {
     /// UserDefaults state that other test classes may mutate (#896).
     private let simulatorEnabled: @Sendable () -> Bool
 
-    init(
+    package init(
         simulatorPath: String? = nil,
         fileManager: FileManager = Foundation.FileManager(),
         simulatorEnabled: @escaping @Sendable () -> Bool = { FeatureFlags.simulatorAndVirtualKeysEnabled }
@@ -31,7 +31,7 @@ actor SimulatorService {
     ///   - taps: Key taps to simulate (each tap = press + delay + release)
     ///   - configPath: Path to the kanata config file
     /// - Returns: Parsed simulation result with events, layers, and timing
-    func simulate(
+    package func simulate(
         taps: [SimulatorKeyTap],
         configPath: String
     ) async throws -> SimulationResult {
@@ -81,7 +81,7 @@ actor SimulatorService {
     ///   - simContent: Raw simulation content (e.g., "d:a t:50 u:a").
     ///     Prepend "ls:layername " to start in a specific layer.
     ///   - configPath: Path to the kanata config file
-    func simulateRaw(
+    package func simulateRaw(
         simContent: String,
         configPath: String
     ) async throws -> SimulationResult {
@@ -109,7 +109,7 @@ actor SimulatorService {
 
     /// Generate sim.txt content from key taps
     /// Format: "d:key t:delay u:key" for each tap
-    func generateSimContent(from taps: [SimulatorKeyTap]) -> String {
+    package func generateSimContent(from taps: [SimulatorKeyTap]) -> String {
         taps.map { tap in
             // Each tap = press, wait, release
             "d:\(tap.kanataKey) t:\(tap.delayAfterMs) u:\(tap.kanataKey)"
@@ -159,7 +159,7 @@ actor SimulatorService {
 
 // MARK: - Testing Support
 
-extension SimulatorService {
+package extension SimulatorService {
     /// Create a service with a custom simulator path (for testing).
     /// Pins the simulator feature flag ON so tests are hermetic against
     /// UserDefaults-backed flag state mutated by other test classes (#896).

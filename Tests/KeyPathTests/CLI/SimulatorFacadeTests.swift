@@ -1,4 +1,4 @@
-@testable import KeyPathAppKit
+import KeyPathRulesCore
 import XCTest
 
 final class SimulatorFacadeTests: XCTestCase {
