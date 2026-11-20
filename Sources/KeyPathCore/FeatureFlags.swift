@@ -6,25 +6,9 @@ public final class FeatureFlags: Sendable {
 
     private let startupMode = Mutex(false)
 
-    // Test seam: allow injecting startup mode during unit tests
-    #if DEBUG
-        private static let startupModeOverride = Mutex<Bool?>(nil)
-
-        public static var testStartupMode: Bool? {
-            get { startupModeOverride.withLock { $0 } }
-            set { startupModeOverride.withLock { $0 = newValue } }
-        }
-    #endif
-
     /// True while we want to avoid potentially-blocking permission checks during early startup.
     public var startupModeActive: Bool {
-        // Test seam: use injected value in tests
-        #if DEBUG
-            if TestEnvironment.isRunningTests, let override = Self.testStartupMode {
-                return override
-            }
-        #endif
-        return startupMode.withLock { $0 }
+        startupMode.withLock { $0 }
     }
 
     /// Activate startup mode. Deactivated explicitly by MainAppStateController
@@ -42,34 +26,27 @@ public final class FeatureFlags: Sendable {
 // MARK: - Persisted flags (UserDefaults-backed)
 
 public extension FeatureFlags {
-    /// In-memory flag store used instead of `UserDefaults.standard` while running tests.
-    ///
-    /// `UserDefaults.standard` is process-global AND persistent, so a test suite that
-    /// flips a flag can leak state into every other suite in the run (and into later
-    /// runs, or the developer's real app) if a throw skips its tearDown — the exact
-    /// mechanism behind the #896 RemapEndToEndTests flake. Under
-    /// `TestEnvironment.isRunningTests`, flag setters write here and readers resolve
-    /// override-then-compiled-default, never touching real UserDefaults.
-    private enum TestOverride: Sendable {
+    fileprivate enum TestOverride: Sendable {
         case bool(Bool)
         case string(String)
     }
 
-    private static let testOverrides = Mutex<[String: TestOverride]>([:])
+    /// One in-memory store per explicit test scope. Child tasks inherit the scope.
+    package final class TestOverrides: Sendable {
+        fileprivate let values = Mutex<[String: TestOverride]>([:])
 
-    /// Memoized: the detection signals are process-stable, and re-evaluating them
-    /// (Bundle.allBundles scan) on every flag read is wasteful.
-    private static let isRunningTests = TestEnvironment.isRunningTests
-
-    /// Clear all in-memory test overrides, returning every flag to its compiled
-    /// default. Called between tests (KeyPathTestCase) and by suites that flip flags.
-    static func resetTestOverrides() {
-        testOverrides.withLock { $0.removeAll() }
+        package init() {}
     }
+
+    @TaskLocal package static var testOverrides: TestOverrides?
+
+    /// Test processes without a scope read compiled defaults and never write
+    /// the app's real defaults. Detection is process-stable.
+    private static let isRunningTests = TestEnvironment.isRunningTests
 
     private static func boolFlag(forKey key: String, default defaultValue: Bool) -> Bool {
         if isRunningTests {
-            guard case let .bool(value) = testOverrides.withLock({ $0[key] }) else { return defaultValue }
+            guard case let .bool(value) = testOverrides?.values.withLock({ $0[key] }) else { return defaultValue }
             return value
         }
         if UserDefaults.standard.object(forKey: key) == nil {
@@ -80,7 +57,7 @@ public extension FeatureFlags {
 
     private static func setBoolFlag(_ enabled: Bool, forKey key: String) {
         if isRunningTests {
-            testOverrides.withLock { $0[key] = .bool(enabled) }
+            testOverrides?.values.withLock { $0[key] = .bool(enabled) }
             return
         }
         UserDefaults.standard.set(enabled, forKey: key)
@@ -88,7 +65,7 @@ public extension FeatureFlags {
 
     private static func stringFlag(forKey key: String) -> String? {
         if isRunningTests {
-            guard case let .string(value) = testOverrides.withLock({ $0[key] }) else { return nil }
+            guard case let .string(value) = testOverrides?.values.withLock({ $0[key] }) else { return nil }
             return value
         }
         return UserDefaults.standard.string(forKey: key)
@@ -96,7 +73,7 @@ public extension FeatureFlags {
 
     private static func setStringFlag(_ value: String, forKey key: String) {
         if isRunningTests {
-            testOverrides.withLock { $0[key] = .string(value) }
+            testOverrides?.values.withLock { $0[key] = .string(value) }
             return
         }
         UserDefaults.standard.set(value, forKey: key)

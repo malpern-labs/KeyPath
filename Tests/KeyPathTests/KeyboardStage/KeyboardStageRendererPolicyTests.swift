@@ -43,13 +43,13 @@ final class KeyboardStageRendererPolicyTests: XCTestCase {
     }
 
     func testAutomaticSelectionHonorsTheDeveloperFeatureFlag() {
-        FeatureFlags.setKeyboardStageRendererPreference(.swiftUI)
-        defer { FeatureFlags.resetTestOverrides() }
-
-        XCTAssertEqual(
-            KeyboardStageRendererPolicy.effectivePreference(requested: .automatic),
-            .swiftUI
-        )
+        FeatureFlags.$testOverrides.withValue(.init()) {
+            FeatureFlags.setKeyboardStageRendererPreference(.swiftUI)
+            XCTAssertEqual(
+                KeyboardStageRendererPolicy.effectivePreference(requested: .automatic),
+                .swiftUI
+            )
+        }
     }
 
     func testDrawableRecoveryRetriesAreBoundedAndRearmable() {
