@@ -325,19 +325,7 @@ public struct ConfigFacade: Sendable {
     private func askApp(_ operation: RuntimeControl.Operation, argument: String? = nil) async throws
         -> RuntimeControl.Response
     {
-        let request = RuntimeControl.Request(operation: operation, argument: argument)
-        // A reload waits on the app's reload coordinator, which can retry while
-        // the runtime is in transition; give it room so a slow success is not
-        // reported as a failure.
-        let timeout: TimeInterval = operation == .reload ? 30 : 10
-        let path = controlSocketPath
-        let response = try await Task.detached {
-            try RuntimeControl.send(request, timeout: timeout, socketPath: path)
-        }.value
-        guard response.ok else {
-            throw Self.error(response.lastError ?? response.failure ?? "KeyPath could not reach the remapping engine")
-        }
-        return response
+        try await RuntimeControl.requestEngine(operation, argument: argument, socketPath: controlSocketPath)
     }
 
     func engineClient() -> KanataTCPClient {

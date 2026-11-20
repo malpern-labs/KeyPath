@@ -203,6 +203,25 @@ public enum RuntimeControl {
         catch { throw ClientError.protocolError("Unreadable response from KeyPath") }
     }
 
+    /// Ask the app to perform an engine operation and require its success.
+    /// A reload can wait for runtime transition and retry through the app's coordinator.
+    package static func requestEngine(
+        _ operation: Operation,
+        argument: String? = nil,
+        socketPath: String = socketURL.path
+    ) async throws -> Response {
+        let request = Request(operation: operation, argument: argument)
+        let timeout: TimeInterval = operation == .reload ? 30 : 10
+        let response = try await Task.detached {
+            try send(request, timeout: timeout, socketPath: socketPath)
+        }.value
+        guard response.ok else {
+            let message = response.lastError ?? response.failure ?? "KeyPath could not reach the remapping engine"
+            throw NSError(domain: "KeyPath.ConfigFacade", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
+        }
+        return response
+    }
+
     // MARK: - Shared socket helpers
 
     public static func makeAddress(_ path: String) throws -> sockaddr_un {
