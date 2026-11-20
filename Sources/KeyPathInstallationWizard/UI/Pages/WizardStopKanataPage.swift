@@ -9,6 +9,7 @@ public struct WizardStopKanataPage: View {
     @Environment(\.wizardHost) private var wizardHost
     @State private var isStopping = false
     @State private var stopError: String?
+    @State private var detectionAttempt = 0
     @State private var runningInfo: WizardSystemPaths.RunningKanataInfo?
 
     // Animation states
@@ -47,8 +48,22 @@ public struct WizardStopKanataPage: View {
         .background(WizardDesign.Colors.wizardBackground)
         .wizardDetailPage()
         .onAppear {
-            runningInfo = wizardHost.externalKanata?.info()
             animateEntrance()
+        }
+        .task(id: detectionAttempt) {
+            do {
+                guard let operations = wizardHost.externalKanata else {
+                    stopError = String(localized: "External Kanata service not configured")
+                    return
+                }
+                let info = try await operations.prepareStop(onNoProcess: onComplete)
+                guard !Task.isCancelled else { return }
+                runningInfo = info
+                stopError = nil
+            } catch {
+                guard !Task.isCancelled else { return }
+                stopError = error.localizedDescription
+            }
         }
     }
 
@@ -136,6 +151,11 @@ public struct WizardStopKanataPage: View {
                 .padding(.horizontal, WizardDesign.Spacing.pageVertical)
             }
 
+            if runningInfo == nil, stopError != nil {
+                Button("Retry") { detectionAttempt += 1 }
+                    .accessibilityIdentifier("stop-kanata-retry-detection")
+            }
+
             // Action buttons
             HStack(spacing: WizardDesign.Spacing.elementGap) {
                 Button(isStopping ? "Stopping..." : "Stop Kanata Engine") {
@@ -170,6 +190,13 @@ public struct WizardStopKanataPage: View {
         Task {
             let result = await externalKanata?.stop(info)
 
+            // Only a failed stop needs a second probe: successful stop already
+            // verifies its postcondition, so do not delay completion with ps.
+            let stillRunning: Bool? = if case .failure = result {
+                await externalKanata?.isRunning()
+            } else {
+                nil
+            }
             await MainActor.run {
                 isStopping = false
 
@@ -179,7 +206,7 @@ public struct WizardStopKanataPage: View {
 
                 case let .failure(error):
                     let message = error.localizedDescription
-                    if externalKanata?.isRunning() == false {
+                    if stillRunning == false {
                         // Process is gone even if there was a warning
                         onComplete()
                     } else {

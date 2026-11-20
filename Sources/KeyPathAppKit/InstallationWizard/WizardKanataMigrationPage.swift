@@ -10,6 +10,9 @@ import SwiftUI
 /// Page 1 of the Kanata user migration flow
 /// Shows when existing Kanata config is detected (from running process or config files)
 struct WizardKanataMigrationPage: View {
+    @State private var isDetecting = true
+    @State private var detectionError: String?
+    @State private var detectionAttempt = 0
     @State private var detectedConfig: DetectedConfig?
     @State private var runningKanataInfo: WizardSystemPaths.RunningKanataInfo?
     @State private var isMigrating = false
@@ -51,13 +54,22 @@ struct WizardKanataMigrationPage: View {
                     icon: "keyboard",
                     iconColor: .blue,
                     title: String(localized: "Welcome, Kanata user!"),
-                    subtitle: detectedConfig != nil
+                    subtitle: isDetecting
+                        ? String(localized: "Checking...")
+                        : detectedConfig != nil
                         ? String(localized: "We detected your config")
                         : String(localized: "No existing Kanata config detected")
                 )
                 .scaleEffect(heroScale)
                 .opacity(heroOpacity)
 
+                if let error = detectionError {
+                    VStack {
+                        Text(error)
+                        Button("Retry") { detectionAttempt += 1 }
+                            .accessibilityIdentifier("migration-retry-detection")
+                    }
+                }
                 if let config = detectedConfig {
                     configDetectedView(config: config)
                 } else {
@@ -84,12 +96,13 @@ struct WizardKanataMigrationPage: View {
         .frame(maxWidth: .infinity)
         .fixedSize(horizontal: false, vertical: true)
         .background(WizardDesign.Colors.wizardBackground)
+        .disabled(isDetecting)
         .wizardDetailPage()
         .animation(.easeInOut(duration: 0.2), value: showSuccessBurst)
         .onAppear {
-            detectConfig()
             animateEntrance()
         }
+        .task(id: detectionAttempt) { await detectConfig() }
         .fileImporter(
             isPresented: $showFilePicker,
             allowedContentTypes: [.plainText],
@@ -186,7 +199,7 @@ struct WizardKanataMigrationPage: View {
                     }
 
                     Button("Skip for now") {
-                        onSkip()
+                        skipMigration()
                     }
                     .buttonStyle(.plain)
                     .foregroundColor(.secondary)
@@ -218,12 +231,22 @@ struct WizardKanataMigrationPage: View {
                 .accessibilityIdentifier("kanata-migration-choose-file-button")
 
                 Button("Continue without migration") {
-                    onSkip()
+                    skipMigration()
                 }
                 .buttonStyle(WizardDesign.Component.SecondaryButton())
                 .accessibilityIdentifier("kanata-migration-continue-button")
             }
             .padding(.horizontal, WizardDesign.Spacing.pageVertical)
+        }
+    }
+
+    private func skipMigration() {
+        if detectionError != nil {
+            // Choosing not to migrate is allowed, but an unreadable process
+            // table must still route through the explicit external-stop check.
+            onMigrationComplete(true)
+        } else {
+            onSkip()
         }
     }
 
@@ -250,9 +273,22 @@ struct WizardKanataMigrationPage: View {
 
     // MARK: - Detection
 
-    private func detectConfig() {
+    private func detectConfig() async {
+        isDetecting = true
+        detectionError = nil
+        defer { isDetecting = false }
         // Priority 1: Running Kanata process (get config from args)
-        if let runningInfo = WizardSystemPaths.detectRunningKanataProcess(),
+        var detectedProcess: WizardSystemPaths.RunningKanataInfo?
+        do {
+            detectedProcess = try await WizardSystemPaths.detectRunningKanataProcess()
+        } catch {
+            guard !Task.isCancelled else { return }
+            detectionError = error.localizedDescription
+        }
+        guard !Task.isCancelled else { return }
+        runningKanataInfo = detectedProcess
+        guard detectedConfig == nil else { return }
+        if let runningInfo = detectedProcess,
            !runningInfo.isKeyPathManaged
         {
             runningKanataInfo = runningInfo
@@ -295,14 +331,14 @@ struct WizardKanataMigrationPage: View {
                 await MainActor.run {
                     isMigrating = false
                     // Store completion state and show burst
-                    let hasRunning = runningKanataInfo != nil && !(runningKanataInfo?.isKeyPathManaged ?? true)
+                    let hasRunning = detectionError != nil || (runningKanataInfo != nil && !(runningKanataInfo?.isKeyPathManaged ?? true))
                     triggerSuccessBurst(hasRunningKanata: hasRunning)
                 }
             } catch let error as KanataConfigMigrationService.MigrationError {
                 await MainActor.run {
                     if case .includeAlreadyPresent = error {
                         // Not really an error - proceed with burst
-                        let hasRunning = runningKanataInfo != nil && !(runningKanataInfo?.isKeyPathManaged ?? true)
+                        let hasRunning = detectionError != nil || (runningKanataInfo != nil && !(runningKanataInfo?.isKeyPathManaged ?? true))
                         triggerSuccessBurst(hasRunningKanata: hasRunning)
                     } else {
                         migrationError = error.localizedDescription
