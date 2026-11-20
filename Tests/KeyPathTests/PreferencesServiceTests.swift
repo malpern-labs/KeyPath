@@ -3,46 +3,59 @@ import XCTest
 
 @MainActor
 final class PreferencesServiceTests: XCTestCase {
+    private var fixture: IsolatedPreferenceDefaults!
+
+    override func setUp() async throws {
+        try await super.setUp()
+        fixture = try IsolatedPreferenceDefaults()
+    }
+
+    override func tearDown() async throws {
+        fixture = nil
+        try await super.tearDown()
+    }
+
+    private func makePreferences() -> PreferencesService {
+        PreferencesService(leaderDefaults: fixture.defaults, defaults: fixture.defaults)
+    }
+
     func testCanonicalDefaultsFallsBackToStandardWhenSuiteIsUnavailable() {
-        let key = "PreferencesServiceTests.canonicalDefaultsFallback"
         let defaults = PreferencesService.canonicalDefaults(using: nil)
-        defer { UserDefaults.standard.removeObject(forKey: key) }
-
-        defaults.set(true, forKey: key)
-
-        XCTAssertTrue(UserDefaults.standard.bool(forKey: key))
+        XCTAssertTrue(defaults === UserDefaults.standard)
     }
 
     // MARK: - Communication Config Description
 
     func testCommunicationConfigDescriptionNamesTheOwnerCheckedSocket() {
-        let desc = PreferencesService().communicationConfigDescription
+        let desc = makePreferences().communicationConfigDescription
         XCTAssertTrue(desc.contains("Unix-domain socket"))
+        XCTAssertTrue(desc.contains("owner-checked"))
         XCTAssertFalse(desc.contains("37001"))
+        XCTAssertFalse(desc.localizedCaseInsensitiveContains("no authentication"))
     }
 
     // MARK: - Context HUD Hold Delay
 
     func testContextHUDHoldDelayMs_ShortPreset() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         prefs.contextHUDHoldDelayPreset = .short
         XCTAssertEqual(prefs.contextHUDHoldDelayMs, 150)
     }
 
     func testContextHUDHoldDelayMs_MediumPreset() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         prefs.contextHUDHoldDelayPreset = .medium
         XCTAssertEqual(prefs.contextHUDHoldDelayMs, 200)
     }
 
     func testContextHUDHoldDelayMs_LongPreset() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         prefs.contextHUDHoldDelayPreset = .long
         XCTAssertEqual(prefs.contextHUDHoldDelayMs, 300)
     }
 
     func testContextHUDHoldDelayMs_CustomPresetUsesCustomValue() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         prefs.contextHUDHoldDelayCustomMs = 175
         prefs.contextHUDHoldDelayPreset = .custom
         XCTAssertEqual(prefs.contextHUDHoldDelayMs, 175)
@@ -51,14 +64,14 @@ final class PreferencesServiceTests: XCTestCase {
     // MARK: - Preferred Protocol
 
     func testPreferredProtocol_AlwaysTCP() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         XCTAssertEqual(prefs.preferredProtocol, .tcp)
     }
 
     // MARK: - Reset Communication Settings
 
     func testResetCommunicationSettings_RestoresDefaults() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         prefs.resetCommunicationSettings()
         XCTAssertEqual(prefs.communicationProtocol, .tcp)
     }

@@ -784,3 +784,23 @@ The CLI store-isolation branch also passed the full safe gate on November 19:
 5,525 tests, zero Swift warnings, 201 s build and 218 s tests (421 s total).
 Log: `/private/tmp/keypath-cli-isolation-full-tests.log`. The 70 focused
 checks remain the direct evidence for the changed CLI persistence paths.
+
+### November 20: remaining preference fixtures
+
+PreferencesServiceTests, UnitTestSuite's preference-default check, and
+UnmappedLayerKeyStyleTests' persistence check now use private UUID defaults
+domains. Both the leader and general defaults dependencies are injected. The
+fallback check verifies standard-defaults identity without writing to it.
+The obsolete KeychainServiceTests source-text UDP ratchet was intentionally
+removed; its current socket-description assertions moved into PreferencesServiceTests.
+No functional Keychain integration coverage was removed. The runtime lane no
+longer names the deleted class.
+
+Focused validation passed 17 preference, 10 unit-suite and 16 unmapped-style
+tests (43 total), with no Swift warnings after using async XCTest lifecycle
+methods. This batch does not qualify unrelated notification or singleton state
+for unrestricted parallel execution.
+
+The November 20 batch passed the serialized full safe gate: 5,525 tests, zero
+Swift warnings, build 171 s and tests 210 s (384 s total). Evidence:
+`/private/tmp/keypath-preference-fixtures-full.log`.
