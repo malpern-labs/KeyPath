@@ -26,10 +26,6 @@ final class CLISpinner: @unchecked Sendable {
         }
     }
 
-    func update(_ message: String) {
-        self.message = message
-    }
-
     func succeed(_ message: String) {
         guard isEnabled else { return }
         stop()

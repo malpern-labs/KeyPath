@@ -193,14 +193,6 @@ final class CLICommandValidationTests: XCTestCase {
         )
     }
 
-    // MARK: - System command parsing
-
-    func testSystemRepairAcceptsOpenPermissions() throws {
-        let cmd = try SystemRepair.parse(["--dry-run", "--open-permissions"])
-        XCTAssertTrue(cmd.globals.dryRun)
-        XCTAssertTrue(cmd.openPermissions)
-    }
-
     // MARK: - Global options
 
     func testGlobalOptionsDryRun() throws {

@@ -48,7 +48,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **O8** Test-mode checks and lint ratchets | 🟡 | Retired lint tests and passwordless sudo test mode (#1428). Replacing remaining production `TestEnvironment` checks with injected dependencies is open. |
 | **B1** Dead view and images | ✅ | #1398. |
 | **B2** Scripts | ✅ | #1395. |
-| **B3** Dead Swift | ✅ | Deletion pass merged (#1398, #1406). Function-level Periphery scan remains open. |
+| **B3** Dead Swift | ✅ | Deletion pass merged (#1398, #1406). Function-level Periphery scan completed with 3.8.0; retired unregistered CLI commands and their formatter are removed in this follow-up. Candidate diagnostics are not automatically safe deletions. |
 | **B4** Tests for removed behaviour | ✅ | Dead tests removed and two stale references refreshed (#1420). A later General Settings snapshot mismatch reproduced on the base of #1434 and remains a separate follow-up. |
 | **B5** Binary assets | 🟡 | Unused assets removed (#1397). Help asset compression and deduplication are in open PR #1422. Metal snapshot sizing remains open. |
 | **B6** Root and package stragglers | 🟡 | Root cleanup merged (#1395). Process probes moved into Core and the unused wizard screenshot and resource bundle were removed (#1440). Unused library products remain. |
