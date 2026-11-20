@@ -1,18 +1,5 @@
 import Foundation
 import KeyPathCore
-
-/// The three shortcut-list values that affect generated Kanata configuration.
-/// A mutation captures this immutable candidate before it writes any defaults.
-struct ShortcutListGenerationInput: Sendable, Equatable {
-    let triggerMode: ContextHUDTriggerMode
-    let holdDelayPreset: ContextHUDHoldDelayPreset
-    let customHoldDelayMs: Int
-
-    var holdDelayMs: Int {
-        holdDelayPreset.milliseconds ?? customHoldDelayMs
-    }
-}
-
 import KeyPathRulesCore
 import Observation
 
@@ -111,28 +98,13 @@ public extension ContextHUDTriggerMode {
     }
 }
 
-/// Hold-duration presets for triggering the Shortcut List/navigation layer.
-public enum ContextHUDHoldDelayPreset: String, CaseIterable, Sendable {
-    case short
-    case medium
-    case long
-    case custom
-
-    public var displayName: String {
+public extension ContextHUDHoldDelayPreset {
+    var displayName: String {
         switch self {
         case .short: String(localized: "Short")
         case .medium: String(localized: "Medium")
         case .long: String(localized: "Long")
         case .custom: String(localized: "Custom")
-        }
-    }
-
-    var milliseconds: Int? {
-        switch self {
-        case .short: 150
-        case .medium: 200
-        case .long: 300
-        case .custom: nil
         }
     }
 }
@@ -429,14 +401,11 @@ final class PreferencesService: Sendable {
     /// retained write settles. This intentionally avoids emitting the legacy
     /// notification-driven regeneration path.
     func reloadShortcutListGenerationInput(from defaults: UserDefaults? = nil) {
-        let source = defaults ?? leaderDefaults
-        let trigger = source.string(forKey: Keys.contextHUDTriggerMode) ?? Defaults.contextHUDTriggerMode.rawValue
-        let preset = source.string(forKey: Keys.contextHUDHoldDelayPreset) ?? Defaults.contextHUDHoldDelayPreset.rawValue
-        let custom = source.object(forKey: Keys.contextHUDHoldDelayCustomMs) as? Int ?? Defaults.contextHUDHoldDelayCustomMs
+        let input = ShortcutListGenerationInput(persistedIn: defaults ?? leaderDefaults)
         stageShortcutListGenerationInput(ShortcutListGenerationInput(
-            triggerMode: ContextHUDTriggerMode(rawValue: trigger) ?? Defaults.contextHUDTriggerMode,
-            holdDelayPreset: ContextHUDHoldDelayPreset(rawValue: preset) ?? Defaults.contextHUDHoldDelayPreset,
-            customHoldDelayMs: Self.clampedContextHUDHoldDelayCustomMs(custom)
+            triggerMode: input.triggerMode,
+            holdDelayPreset: input.holdDelayPreset,
+            customHoldDelayMs: Self.clampedContextHUDHoldDelayCustomMs(input.customHoldDelayMs)
         ))
     }
 
@@ -483,9 +452,9 @@ final class PreferencesService: Sendable {
         static let accessibilityTestMode = "KeyPath.Testing.AccessibilityTestMode"
         static let leaderKeyPreference = PreferencesService.leaderKeyPreferenceKey
         static let contextHUDDisplayMode = "KeyPath.ContextHUD.DisplayMode"
-        static let contextHUDTriggerMode = "KeyPath.ContextHUD.TriggerMode"
-        static let contextHUDHoldDelayPreset = "KeyPath.ContextHUD.HoldDelayPreset"
-        static let contextHUDHoldDelayCustomMs = "KeyPath.ContextHUD.HoldDelayCustomMs"
+        static let contextHUDTriggerMode = RecoverableRuleWrite.PreferenceRole.contextHUDTriggerMode.key
+        static let contextHUDHoldDelayPreset = RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayPreset.key
+        static let contextHUDHoldDelayCustomMs = RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayCustomMs.key
         static let kindaVimLeaderHUDMode = "KeyPath.KindaVim.LeaderHUDMode"
         static let neovimReferenceTopics = "KeyPath.Neovim.ReferenceTopics"
         static let neovimReferenceTopicsVersion = "KeyPath.Neovim.ReferenceTopicsVersion"
@@ -519,9 +488,9 @@ final class PreferencesService: Sendable {
         // Nothing pops up on a layer hold unless the user picks it: holding Space to
         // type must not flash a window for people who never asked for one.
         static let contextHUDDisplayMode = ContextHUDDisplayMode.none
-        static let contextHUDTriggerMode = ContextHUDTriggerMode.holdToShow
-        static let contextHUDHoldDelayPreset = ContextHUDHoldDelayPreset.long
-        static let contextHUDHoldDelayCustomMs = 200
+        static let contextHUDTriggerMode = ShortcutListGenerationInput.defaultTriggerMode
+        static let contextHUDHoldDelayPreset = ShortcutListGenerationInput.defaultHoldDelayPreset
+        static let contextHUDHoldDelayCustomMs = ShortcutListGenerationInput.defaultCustomHoldDelayMs
         static let kindaVimLeaderHUDMode = KindaVimLeaderHUDMode.off
         static let neovimReferenceTopics = NeovimTerminalCategory.defaultRawValues
         static let neovimReferenceTopicsVersion = 2

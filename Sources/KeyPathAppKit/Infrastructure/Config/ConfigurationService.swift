@@ -973,24 +973,14 @@ public final class ConfigurationService {
         preferenceDefaults: UserDefaults?
     ) async throws -> GlobalRuleGenerationInputs {
         let defaults = preferenceDefaults ?? PreferencesService.canonicalDefaults
-        let trigger = ContextHUDTriggerMode(
-            rawValue: defaults.string(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDTriggerMode.key) ?? ContextHUDTriggerMode.holdToShow.rawValue
-        ) ?? .holdToShow
-        let preset = ContextHUDHoldDelayPreset(
-            rawValue: defaults.string(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayPreset.key) ?? ContextHUDHoldDelayPreset.long.rawValue
-        ) ?? .long
-        let custom = defaults.object(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayCustomMs.key) as? Int ?? 200
+        let shortcut = ShortcutListGenerationInput(persistedIn: defaults)
         let selections = try await deviceSelectionStore.loadForMutation()
         let appKeymapStore = AppKeymapStore(
             fileURL: URL(fileURLWithPath: configDirectory).appendingPathComponent("AppKeymaps.json")
         )
         let appKeymaps = try await appKeymapStore.loadForMutation()
         return await GlobalRuleGenerationInputs(
-            shortcut: ShortcutListGenerationInput(
-                triggerMode: trigger,
-                holdDelayPreset: preset,
-                customHoldDelayMs: custom
-            ),
+            shortcut: shortcut,
             device: deviceSelectionStore.generationInput(for: selections),
             appSpecificKeys: Set(
                 appKeymaps

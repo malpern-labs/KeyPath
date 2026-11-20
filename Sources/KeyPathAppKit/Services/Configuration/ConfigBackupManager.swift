@@ -378,9 +378,12 @@ struct RuleBackupPreferences: Codable, Sendable {
     init(defaults: UserDefaults) {
         leader = defaults.data(forKey: PreferencesService.leaderKeyPreferenceKey)
             .flatMap { try? JSONDecoder().decode(LeaderKeyPreference.self, from: $0) } ?? .default
-        trigger = defaults.string(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDTriggerMode.key) ?? ContextHUDTriggerMode.holdToShow.rawValue
-        delayPreset = defaults.string(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayPreset.key) ?? ContextHUDHoldDelayPreset.long.rawValue
-        customDelay = defaults.object(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayCustomMs.key) as? Int ?? 200
+        trigger = defaults.string(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDTriggerMode.key)
+            ?? ShortcutListGenerationInput.defaultTriggerMode.rawValue
+        delayPreset = defaults.string(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayPreset.key)
+            ?? ShortcutListGenerationInput.defaultHoldDelayPreset.rawValue
+        customDelay = defaults.object(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayCustomMs.key) as? Int
+            ?? ShortcutListGenerationInput.defaultCustomHoldDelayMs
     }
 
     func shortcutInput() throws -> ShortcutListGenerationInput {
