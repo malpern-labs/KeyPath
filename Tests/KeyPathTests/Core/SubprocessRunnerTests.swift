@@ -19,6 +19,17 @@ final class SubprocessRunnerTests: XCTestCase {
 
     // MARK: - Success Scenarios
 
+    func testRealRunnerDrainsLargeStdoutAndStderrBeforeExit() async throws {
+        let result = try await SubprocessRunner.shared.run(
+            "/usr/bin/python3",
+            args: ["-c", "import os; os.write(1,b'x'*262144); os.write(2,b'y'*262144)"],
+            timeout: 5
+        )
+        XCTAssertEqual(result.exitCode, 0)
+        XCTAssertEqual(result.stdout, String(repeating: "x", count: 262_144))
+        XCTAssertEqual(result.stderr, String(repeating: "y", count: 262_144))
+    }
+
     func testRunSuccess() async throws {
         // Setup fake to return success
         await fakeRunner.configureRunResult { _, _ in
