@@ -8065,7 +8065,16 @@
         }
       }
     },
-    "Choose output" : {},
+    "Choose output" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "出力を選択"
+          }
+        }
+      }
+    },
     "Choose the app this shortcut should open." : {
       "comment" : "Message in the onboarding application file picker.",
       "localizations" : {
@@ -12035,7 +12044,16 @@
         }
       }
     },
-    "Down Arrow" : {},
+    "Down Arrow" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下矢印"
+          }
+        }
+      }
+    },
     "Download Update…" : {
       "localizations" : {
         "ja" : {
@@ -20455,7 +20473,16 @@
         }
       }
     },
-    "Left Arrow" : {},
+    "Left Arrow" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左矢印"
+          }
+        }
+      }
+    },
     "Left Command → Right Command" : {
       "localizations" : {
         "ja" : {
@@ -22919,7 +22946,16 @@
         }
       }
     },
-    "No matching actions" : {},
+    "No matching actions" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一致するアクションがありません"
+          }
+        }
+      }
+    },
     "No matching collection was found." : {
       "localizations" : {
         "ja" : {
@@ -24585,7 +24621,16 @@
         }
       }
     },
-    "Output type" : {},
+    "Output type" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "出力タイプ"
+          }
+        }
+      }
+    },
     "Overlay" : {
       "comment" : "Layer display option: show the keyboard overlay",
       "localizations" : {
@@ -28076,7 +28121,16 @@
         }
       }
     },
-    "Right Arrow" : {},
+    "Right Arrow" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右矢印"
+          }
+        }
+      }
+    },
     "Right Command → Left Command" : {
       "localizations" : {
         "ja" : {
@@ -29302,7 +29356,16 @@
         }
       }
     },
-    "Search actions" : {},
+    "Search actions" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アクションを検索"
+          }
+        }
+      }
+    },
     "Search and import layouts from the QMK keyboard database" : {
       "localizations" : {
         "ja" : {
@@ -36231,7 +36294,16 @@
         }
       }
     },
-    "Up Arrow" : {},
+    "Up Arrow" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上矢印"
+          }
+        }
+      }
+    },
     "Update channel" : {
       "localizations" : {
         "ja" : {
