@@ -78,7 +78,11 @@ package enum PhysicalLayoutLoader {
         named: "KeyPath_KeyPathRulesCore.bundle",
         mainBundle: .main,
         codeBundle: Bundle(for: KeyboardLayoutBundleSentinel.self)
-    )
+    ) { bundle in
+        // An incremental build can leave a catalog-only copy beside the test
+        // executable. The keyboard assets determine which bundle can serve layouts.
+        bundle.url(forResource: "macbook-us", withExtension: "json", subdirectory: "Keyboards") != nil
+    }
 
     static func bundledJSON(named filename: String) -> URL? {
         resourceBundle.url(forResource: filename, withExtension: "json", subdirectory: "Keyboards")
