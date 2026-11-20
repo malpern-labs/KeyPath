@@ -741,3 +741,7 @@ current `PreferencesService.Defaults.contextHUDDisplayMode` is `.none`. Visual
 comparison confirmed that the selected card was the difference. Refresh that
 reference to Nothing, retaining its 0.98 comparison tolerances; do not change
 the product default or loosen precision to make the test pass.
+
+Final combined validation after merging current master passed all 5,524 tests
+with `KEYPATH_SWIFT_BUILD_JOBS=4 ./Scripts/test-full.sh`, including snapshots.
+The two real-Keychain integration tests remain explicitly opt-in.
