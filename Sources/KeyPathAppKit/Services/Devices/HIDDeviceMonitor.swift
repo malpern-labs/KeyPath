@@ -18,11 +18,10 @@ import Observation
 ///
 /// - `monitorThread`, `trackedDeviceIDs`, `connectedKeyboards`, `lastConnectedKeyboard`
 ///   are MainActor-isolated and only accessed from MainActor code.
-/// - `_monitorRunLoop` is shared between MainActor (`stopMonitoring`) and the IOKit
-///   thread (`setupHIDManager`). Access is serialized by `runLoopLock`.
-///   `CFRunLoopStop` is documented as cross-thread safe.
-/// - `setupHIDManager` runs entirely on the IOKit thread. Its local `manager` stays
-///   alive while `CFRunLoopRun()` blocks.
+/// - Each start owns a locked HIDMonitorSession. Cancellation before setup is
+///   remembered, and a queued run-loop stop covers cancellation before run.
+/// - `setupHIDManager` runs entirely on the IOKit thread. Its callback context
+///   stays alive until registry notifications and their run-loop source are removed.
 /// - `handleDeviceConnected`/`handleDeviceRemoved` run on the IOKit thread, extract
 ///   Sendable data, then hop to MainActor via `Task { @MainActor }`.
 @Observable
@@ -53,13 +52,17 @@ final class HIDDeviceMonitor {
     /// Only accessed from MainActor (startMonitoring/stopMonitoring).
     private var monitorThread: Thread?
 
-    /// Protects `_monitorRunLoop` across the MainActor ↔ IOKit thread boundary.
-    /// CFRunLoop is not Sendable so we can't use Mutex/OSAllocatedUnfairLock.
-    private let runLoopLock = NSLock()
-    /// The IOKit thread's CFRunLoop. Written by the IOKit thread in setupHIDManager,
-    /// read by MainActor in stopMonitoring. All access is under `runLoopLock`.
-    @ObservationIgnored
-    private nonisolated(unsafe) var _monitorRunLoop: CFRunLoop?
+    private var monitorSession: HIDMonitorSession?
+
+    private final class CallbackContext: Sendable {
+        let monitor: HIDDeviceMonitor
+        let session: HIDMonitorSession
+
+        init(monitor: HIDDeviceMonitor, session: HIDMonitorSession) {
+            self.monitor = monitor
+            self.session = session
+        }
+    }
 
     private var trackedDeviceIDs: [UInt64: HIDKeyboardEvent] = [:]
 
@@ -79,8 +82,10 @@ final class HIDDeviceMonitor {
     func startMonitoring() {
         guard monitorThread == nil else { return }
 
+        let session = HIDMonitorSession()
+        monitorSession = session
         let thread = Thread { [weak self] in
-            self?.setupHIDManager()
+            self?.setupHIDManager(session: session)
         }
         thread.name = "com.keypath.hid-monitor"
         thread.qualityOfService = .utility
@@ -91,14 +96,9 @@ final class HIDDeviceMonitor {
     }
 
     func stopMonitoring() {
-        guard monitorThread != nil else { return }
-
-        runLoopLock.lock()
-        let runLoop = _monitorRunLoop
-        runLoopLock.unlock()
-        if let runLoop {
-            CFRunLoopStop(runLoop)
-        }
+        guard let session = monitorSession else { return }
+        session.cancel()
+        monitorSession = nil
         monitorThread = nil
 
         AppLogger.shared.log("🔌 [HIDDeviceMonitor] Stopped monitoring keyboard connections")
@@ -109,9 +109,20 @@ final class HIDDeviceMonitor {
     /// Watches the I/O Registry for keyboards arriving and leaving. Reading a
     /// registry entry needs no privacy permission, unlike opening the device
     /// through IOHIDManager, which requires Input Monitoring.
-    private nonisolated func setupHIDManager() {
-        guard let port = IONotificationPortCreate(kIOMainPortDefault) else { return }
-        let context = Unmanaged.passUnretained(self).toOpaque()
+    private nonisolated func setupHIDManager(session: HIDMonitorSession) {
+        defer {
+            session.finish()
+            Task { @MainActor [weak self] in
+                guard let self, monitorSession === session else { return }
+                monitorSession = nil
+                monitorThread = nil
+            }
+        }
+        guard !session.isCancelled,
+              let port = IONotificationPortCreate(kIOMainPortDefault) else { return }
+        let callbackContext = CallbackContext(monitor: self, session: session)
+        defer { withExtendedLifetime(callbackContext) {} }
+        let context = Unmanaged.passUnretained(callbackContext).toOpaque()
         var addedIterator: io_iterator_t = 0
         var removedIterator: io_iterator_t = 0
 
@@ -119,52 +130,46 @@ final class HIDDeviceMonitor {
             port, kIOFirstMatchNotification, RegistryKeyboards.hidDeviceMatching(),
             { context, iterator in
                 guard let context else { return }
-                Unmanaged<HIDDeviceMonitor>.fromOpaque(context).takeUnretainedValue()
-                    .handleDevicesConnected(RegistryKeyboards.drain(iterator))
+                let owner = Unmanaged<CallbackContext>.fromOpaque(context).takeUnretainedValue()
+                owner.monitor.handleDevicesConnected(RegistryKeyboards.drain(iterator), session: owner.session)
             }, context, &addedIterator
         )
         let removedResult = IOServiceAddMatchingNotification(
             port, kIOTerminatedNotification, RegistryKeyboards.hidDeviceMatching(),
             { context, iterator in
                 guard let context else { return }
-                Unmanaged<HIDDeviceMonitor>.fromOpaque(context).takeUnretainedValue()
-                    .handleDevicesRemoved(RegistryKeyboards.drainIDs(iterator))
+                let owner = Unmanaged<CallbackContext>.fromOpaque(context).takeUnretainedValue()
+                owner.monitor.handleDevicesRemoved(RegistryKeyboards.drainIDs(iterator), session: owner.session)
             }, context, &removedIterator
         )
-        guard addedResult == KERN_SUCCESS, removedResult == KERN_SUCCESS else {
-            AppLogger.shared.error("❌ [HIDDeviceMonitor] Registry notifications failed (added=\(addedResult), removed=\(removedResult))")
+        defer {
             if addedIterator != 0 { IOObjectRelease(addedIterator) }
             if removedIterator != 0 { IOObjectRelease(removedIterator) }
             IONotificationPortDestroy(port)
+        }
+        guard addedResult == KERN_SUCCESS, removedResult == KERN_SUCCESS else {
+            AppLogger.shared.error("❌ [HIDDeviceMonitor] Registry notifications failed (added=\(addedResult), removed=\(removedResult))")
             return
         }
         // Arm both notifications and report the keyboards already present.
-        handleDevicesConnected(RegistryKeyboards.drain(addedIterator))
+        handleDevicesConnected(RegistryKeyboards.drain(addedIterator), session: session)
         _ = RegistryKeyboards.drainIDs(removedIterator)
 
         let runLoop = CFRunLoopGetCurrent()!
-        runLoopLock.lock()
-        _monitorRunLoop = runLoop
-        runLoopLock.unlock()
+        guard session.attach(runLoop) else { return }
 
         let source = IONotificationPortGetRunLoopSource(port).takeUnretainedValue()
         CFRunLoopAddSource(runLoop, source, .defaultMode)
 
-        // Blocks until CFRunLoopStop is called from stopMonitoring.
+        // Blocks until this session's queued stop runs.
         CFRunLoopRun()
 
         CFRunLoopRemoveSource(runLoop, source, .defaultMode)
-        IOObjectRelease(addedIterator)
-        IOObjectRelease(removedIterator)
-        IONotificationPortDestroy(port)
-        runLoopLock.lock()
-        _monitorRunLoop = nil
-        runLoopLock.unlock()
     }
 
     // MARK: - Device Callbacks (called on IOKit thread, hop to MainActor)
 
-    private nonisolated func handleDevicesConnected(_ entries: [RegistryKeyboards.Entry]) {
+    private nonisolated func handleDevicesConnected(_ entries: [RegistryKeyboards.Entry], session: HIDMonitorSession) {
         let events = entries.compactMap { entry in
             Self.event(from: entry, isConnected: true).map { (entry.registryID, $0) }
         }
@@ -173,6 +178,7 @@ final class HIDDeviceMonitor {
         Task { @MainActor [weak self] in
             guard let self else { return }
             for (deviceID, event) in events {
+                guard monitorSession === session, !session.isCancelled else { return }
                 trackedDeviceIDs[deviceID] = event
                 if !connectedKeyboards.contains(where: { $0.id == event.id }) {
                     connectedKeyboards.append(event)
@@ -184,11 +190,12 @@ final class HIDDeviceMonitor {
         }
     }
 
-    private nonisolated func handleDevicesRemoved(_ deviceIDs: [UInt64]) {
+    private nonisolated func handleDevicesRemoved(_ deviceIDs: [UInt64], session: HIDMonitorSession) {
         guard !deviceIDs.isEmpty else { return }
         Task { @MainActor [weak self] in
             guard let self else { return }
             for deviceID in deviceIDs {
+                guard monitorSession === session, !session.isCancelled else { return }
                 guard let event = trackedDeviceIDs.removeValue(forKey: deviceID) else { continue }
                 // A keyboard can expose several HID interfaces with the same identity.
                 guard !trackedDeviceIDs.values.contains(where: { $0.id == event.id }) else { continue }
