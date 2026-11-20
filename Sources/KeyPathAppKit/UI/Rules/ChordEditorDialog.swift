@@ -8,6 +8,8 @@ struct ChordEditorDialog: View {
     let onSave: (ChordDefinition) -> Void
     let onCancel: () -> Void
 
+    @Environment(\.services) private var services
+
     @State private var keys: [String]
     @State private var selectedAction: KeyAction
     @State private var description: String
@@ -15,6 +17,8 @@ struct ChordEditorDialog: View {
     @State private var outputMode: OutputMode
     @State private var customOutput: String = ""
     @State private var keyIDs: [UUID]
+    @State private var showingOutputPicker = false
+    @State private var knownApps: [AppLaunchInfo] = []
 
     enum OutputMode: String, CaseIterable {
         case keystroke = "Keystroke"
@@ -130,16 +134,36 @@ struct ChordEditorDialog: View {
                         .frame(width: 56, alignment: .trailing)
                         .padding(.top, 4)
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Picker("", selection: $outputMode) {
-                            ForEach(OutputMode.allCases, id: \.self) { mode in
-                                Text(mode.displayName).tag(mode)
+                    Button {
+                        showingOutputPicker = true
+                    } label: {
+                        Label("Choose output", systemImage: "chevron.down")
+                    }
+                    .accessibilityIdentifier("chord-editor-output-picker")
+                    .popover(isPresented: $showingOutputPicker) {
+                        OutputActionSearch(
+                            apps: knownApps,
+                            onSelect: selectOutput,
+                            onDismiss: { showingOutputPicker = false }
+                        ) {
+                            Picker("Output type", selection: $outputMode) {
+                                ForEach(OutputMode.allCases, id: \.self) { mode in
+                                    Text(mode.displayName).tag(mode)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            .accessibilityIdentifier("chord-editor-output-type")
+
+                            ScrollView {
+                                outputContent
                             }
                         }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-
-                        outputContent
+                        .padding(12)
+                        .frame(width: 330, height: 245)
+                        .task {
+                            knownApps = await AppLaunchInfo.knownApps(in: services.appKeymapStore)
+                        }
                     }
                 }
 
@@ -184,6 +208,12 @@ struct ChordEditorDialog: View {
         .frame(width: 440, height: 460)
     }
 
+    private func selectOutput(_ action: KeyAction) {
+        selectedAction = action
+        outputMode = Self.modeFor(action)
+        showingOutputPicker = false
+    }
+
     // MARK: - Output Content (switches on mode)
 
     @ViewBuilder
@@ -192,7 +222,7 @@ struct ChordEditorDialog: View {
         case .keystroke:
             KeystrokePresetGridView(
                 selectedKey: { if case let .keystroke(k) = selectedAction { return k }; return nil }(),
-                onSelect: { selectedAction = .keystroke(key: $0) }
+                onSelect: { selectOutput(.keystroke(key: $0)) }
             )
 
         case .systemAction:
@@ -200,7 +230,7 @@ struct ChordEditorDialog: View {
                 groups: OutputActionGrouping.compact,
                 selectedActionID: { if case let .systemAction(id) = selectedAction { return id }; return nil }(),
                 style: .labelPill(),
-                onSelect: { selectedAction = .systemAction(id: $0.id) }
+                onSelect: { selectOutput(.systemAction(id: $0.id)) }
             )
 
         case .appLaunch:

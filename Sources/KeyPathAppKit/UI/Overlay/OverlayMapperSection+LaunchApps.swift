@@ -105,22 +105,7 @@ extension OverlayMapperSection {
             .lowercased()
             .replacingOccurrences(of: " ", with: "-")
         return Button {
-            viewModel.selectedApp = app
-            viewModel.selectedSystemAction = nil
-            viewModel.selectedURL = nil
-            viewModel.selectedFolder = nil
-            viewModel.selectedScript = nil
-            viewModel.clearShiftedOutput()
-            viewModel.selectedLayerOutput = nil
-            viewModel.outputLabel = app.name
-            isSystemActionPickerOpen = false
-
-            // Auto-save if input is set
-            if let manager = kanataViewModel?.underlyingManager, viewModel.inputKeyCode != nil {
-                Task {
-                    await viewModel.save(kanataManager: manager)
-                }
-            }
+            selectKnownOutputApp(app)
         } label: {
             HStack(spacing: 10) {
                 Image(nsImage: app.icon)
@@ -146,64 +131,14 @@ extension OverlayMapperSection {
         .accessibilityIdentifier("overlay-known-app-\(appIdentifier)")
     }
 
-    /// Load known apps from existing mappings
+    func selectKnownOutputApp(_ app: AppLaunchInfo) {
+        viewModel.selectOutputApp(app)
+        isSystemActionPickerOpen = false
+    }
+
     func loadKnownApps() {
         Task {
-            // Get apps from app-specific keymaps
-            let keymaps = await services.appKeymapStore.loadKeymaps()
-            var apps: [AppLaunchInfo] = []
-            var seenAppKeys: Set<String> = []
-
-            for keymap in keymaps {
-                let bundleId = keymap.mapping.bundleIdentifier
-                let name = keymap.mapping.displayName
-
-                // Get icon
-                let icon: NSImage
-                if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
-                    icon = NSWorkspace.shared.icon(forFile: url.path)
-                    icon.size = NSSize(width: 32, height: 32)
-                } else {
-                    icon = NSImage(systemSymbolName: "app.fill", accessibilityDescription: name) ?? NSImage()
-                }
-
-                let appKey = bundleId.isEmpty ? name : bundleId
-                if seenAppKeys.insert(appKey).inserted {
-                    apps.append(AppLaunchInfo(name: name, bundleIdentifier: bundleId, icon: icon))
-                }
-            }
-
-            // Add running apps
-            let runningApps = NSWorkspace.shared.runningApplications
-                .filter { $0.activationPolicy == .regular || $0.activationPolicy == .accessory }
-            for app in runningApps {
-                guard let url = app.bundleURL else { continue }
-                guard isUserFacingAppURL(url) else { continue }
-                let appInfo = appLaunchInfo(for: url)
-                let appKey = appInfo.bundleIdentifier ?? url.path
-                if seenAppKeys.insert(appKey).inserted {
-                    apps.append(appInfo)
-                }
-            }
-
-            await MainActor.run {
-                knownApps = apps.sorted { $0.name < $1.name }
-            }
+            knownApps = await AppLaunchInfo.knownApps(in: services.appKeymapStore)
         }
-    }
-
-    private func appLaunchInfo(for url: URL) -> AppLaunchInfo {
-        let displayName = url.deletingPathExtension().lastPathComponent
-        let icon = NSWorkspace.shared.icon(forFile: url.path)
-        icon.size = NSSize(width: 32, height: 32)
-        let bundleId = Bundle(url: url)?.bundleIdentifier
-        return AppLaunchInfo(name: displayName, bundleIdentifier: bundleId, icon: icon)
-    }
-
-    private func isUserFacingAppURL(_ url: URL) -> Bool {
-        let path = url.standardizedFileURL.path
-        return path.hasPrefix("/Applications/") ||
-            path.hasPrefix("/System/Applications/") ||
-            path.hasPrefix(Foundation.FileManager().homeDirectoryForCurrentUser.appendingPathComponent("Applications").path)
     }
 }

@@ -1,4 +1,5 @@
 import AppKit
+import KeyPathRulesCore
 import SwiftUI
 
 extension OverlayMapperSection {
@@ -23,8 +24,16 @@ extension OverlayMapperSection {
         ZStack(alignment: .top) {
             switch viewModel.outputPickerPage {
             case .root:
-                outputPickerRootPage
-                    .transition(.move(edge: .leading))
+                OutputActionSearch(
+                    apps: knownApps,
+                    onSelect: chooseOutputAction,
+                    onDismiss: { isSystemActionPickerOpen = false }
+                ) {
+                    outputPickerRootPage
+                }
+                .padding(.horizontal, 8)
+                .padding(.top, 8)
+                .transition(.move(edge: .leading))
             case .systemActions:
                 outputPickerSubPage(title: String(localized: "System Action")) {
                     SystemActionGridView(
@@ -32,8 +41,7 @@ extension OverlayMapperSection {
                         selectedActionID: viewModel.selectedSystemAction?.id,
                         style: .iconTile,
                         onSelect: { action in
-                            viewModel.selectSystemAction(action)
-                            isSystemActionPickerOpen = false
+                            chooseOutputAction(.systemAction(id: action.id))
                         }
                     )
                 }
@@ -58,10 +66,31 @@ extension OverlayMapperSection {
             // the user with a deep page on reopen.
             viewModel.outputPickerPage = .root
             viewModel.launchAppSearchText = ""
+            loadKnownApps()
         }
         .sheet(isPresented: $showingNewLayerDialog) {
             newLayerDialogContent
         }
+    }
+
+    private func chooseOutputAction(_ action: KeyAction) {
+        switch action {
+        case let .keystroke(key):
+            viewModel.selectOutputKeystroke(key)
+        case let .systemAction(id):
+            guard let action = SystemActionInfo.allActions.first(where: { $0.id == id }),
+                  action.isSupportedInDriverlessSession
+            else { return }
+            viewModel.stopRecording(replacingOutput: true)
+            viewModel.selectedLayerOutput = nil
+            viewModel.selectSystemAction(action)
+        case let .launchApp(name, bundleId):
+            guard let app = knownApps.first(where: { $0.name == name && $0.bundleIdentifier == bundleId }) else { return }
+            selectKnownOutputApp(app)
+        default:
+            return
+        }
+        isSystemActionPickerOpen = false
     }
 
     // MARK: - Root Page
@@ -76,6 +105,13 @@ extension OverlayMapperSection {
 
         return ScrollView {
             VStack(spacing: 0) {
+                KeystrokePresetGridView(selectedKey: viewModel.outputSequence?.keys.first?.baseKey) { key in
+                    chooseOutputAction(.keystroke(key: key))
+                }
+                .padding(6)
+
+                PopoverListDivider()
+
                 outputTypeLeafRow(
                     title: String(localized: "Keystroke"),
                     icon: "keyboard",
@@ -109,7 +145,6 @@ extension OverlayMapperSection {
                     detail: viewModel.selectedApp?.name,
                     accessibilityID: "overlay-mapper-output-launch-app"
                 ) {
-                    loadKnownApps()
                     viewModel.outputPickerPage = .launchApps
                 }
 

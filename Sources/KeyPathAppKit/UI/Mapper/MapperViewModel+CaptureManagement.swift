@@ -438,6 +438,22 @@ extension MapperViewModel {
         outputLabel = sequence.displayString
     }
 
+    /// Choose a common output without entering keyboard recording.
+    func selectOutputKeystroke(_ key: String) {
+        stopRecording(replacingOutput: true)
+        selectedApp = nil
+        selectedSystemAction = nil
+        selectedURL = nil
+        selectedFolder = nil
+        selectedScript = nil
+        selectedLayerOutput = nil
+        applyCapturedOutput(KeySequence(
+            keys: [KeyPress(baseKey: key, modifiers: [], keyCode: 0)],
+            captureMode: .single
+        ))
+        autosaveCapturedMapping()
+    }
+
     func finalizeCapture() {
         finalizeTimer?.invalidate()
         finalizeTimer = nil
@@ -491,7 +507,7 @@ extension MapperViewModel {
         }
     }
 
-    func stopRecording() {
+    func stopRecording(replacingOutput: Bool = false) {
         finalizeTimer?.invalidate()
         finalizeTimer = nil
         keyboardCapture?.stopCapture()
@@ -508,8 +524,8 @@ extension MapperViewModel {
         isRecordingShiftedOutput = false
         isRecordingMacro = false
 
-        // If we stopped without capturing anything, restore previous state
-        if inputSequence == nil {
+        // Picking an output should leave an unset input alone.
+        if inputSequence == nil, !replacingOutput {
             inputLabel = "A"
             inputKeyCode = 0 // Default to A key
         }
@@ -549,7 +565,7 @@ extension MapperViewModel {
         }
 
         statusMessage = nil
-        if capturedOutput { autosaveCapturedMapping() }
+        if capturedOutput, !replacingOutput { autosaveCapturedMapping() }
     }
 
     func stopKeyCapture() {

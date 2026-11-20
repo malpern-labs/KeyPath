@@ -23,6 +23,64 @@ public struct AppLaunchInfo: Equatable {
     }
 }
 
+@MainActor
+extension AppLaunchInfo {
+    static func knownApps(in appKeymapStore: AppKeymapStore) async -> [AppLaunchInfo] {
+        // Get apps from app-specific keymaps
+        let keymaps = await appKeymapStore.loadKeymaps()
+        var apps: [AppLaunchInfo] = []
+        var seenAppKeys: Set<String> = []
+
+        for keymap in keymaps {
+            let bundleId = keymap.mapping.bundleIdentifier
+            let name = keymap.mapping.displayName
+
+            // Get icon
+            let icon: NSImage
+            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
+                icon = NSWorkspace.shared.icon(forFile: url.path)
+                icon.size = NSSize(width: 32, height: 32)
+            } else {
+                icon = NSImage(systemSymbolName: "app.fill", accessibilityDescription: name) ?? NSImage()
+            }
+
+            let appKey = bundleId.isEmpty ? name : bundleId
+            if seenAppKeys.insert(appKey).inserted {
+                apps.append(AppLaunchInfo(name: name, bundleIdentifier: bundleId.isEmpty ? nil : bundleId, icon: icon))
+            }
+        }
+
+        // Add running apps
+        let runningApps = NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular || $0.activationPolicy == .accessory }
+        for app in runningApps {
+            guard let url = app.bundleURL else { continue }
+            guard isUserFacingAppURL(url) else { continue }
+            let appInfo = appLaunchInfo(for: url)
+            let appKey = appInfo.bundleIdentifier ?? appInfo.name
+            if seenAppKeys.insert(appKey).inserted {
+                apps.append(appInfo)
+            }
+        }
+        return apps.sorted { $0.name < $1.name }
+    }
+
+    private static func appLaunchInfo(for url: URL) -> AppLaunchInfo {
+        let displayName = url.deletingPathExtension().lastPathComponent
+        let icon = NSWorkspace.shared.icon(forFile: url.path)
+        icon.size = NSSize(width: 32, height: 32)
+        let bundleId = Bundle(url: url)?.bundleIdentifier
+        return AppLaunchInfo(name: displayName, bundleIdentifier: bundleId, icon: icon)
+    }
+
+    private static func isUserFacingAppURL(_ url: URL) -> Bool {
+        let path = url.standardizedFileURL.path
+        return path.hasPrefix("/Applications/") ||
+            path.hasPrefix("/System/Applications/") ||
+            path.hasPrefix(Foundation.FileManager().homeDirectoryForCurrentUser.appendingPathComponent("Applications").path)
+    }
+}
+
 // MARK: - Device Condition Info
 
 /// Info about a selected keyboard device for precondition (rule only applies on this device)

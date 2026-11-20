@@ -6,9 +6,26 @@ import KeyPathRulesCore
 
 /// Extension to integrate MapperViewModel with the per-app keymap system
 extension MapperViewModel {
+    /// Finish a Mapper save without widening the selected app scope.
+    func saveScopedOutput(input: String, output: String, condition: AppConditionInfo, kanataManager: RuntimeCoordinator) async {
+        let success = await saveAppSpecificMapping(
+            inputKey: input,
+            outputAction: output,
+            appCondition: condition,
+            kanataManager: kanataManager
+        )
+        if success {
+            showTransientStatus(String(localized: "✓ Saved"))
+            SoundPlayer.shared.playSuccessSound()
+            AppLogger.shared.log("✅ [MapperViewModel] Saved app-specific mapping in \(condition.displayName)")
+        } else {
+            statusMessage = String(localized: "Failed to save app-specific rule")
+            statusIsError = true
+        }
+        isSaving = false
+    }
+
     /// Save a mapping that only applies when a specific app is active.
-    /// Uses AppKeymapStore and AppConfigGenerator for virtual key-based app detection.
-    ///
     /// - Returns: `true` if successful, `false` if failed. On failure, `statusMessage` is set with details.
     func saveAppSpecificMapping(
         inputKey: String,

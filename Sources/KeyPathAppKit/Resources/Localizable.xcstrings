@@ -8065,6 +8065,7 @@
         }
       }
     },
+    "Choose output" : {},
     "Choose the app this shortcut should open." : {
       "comment" : "Message in the onboarding application file picker.",
       "localizations" : {
@@ -12034,6 +12035,7 @@
         }
       }
     },
+    "Down Arrow" : {},
     "Download Update…" : {
       "localizations" : {
         "ja" : {
@@ -20453,6 +20455,7 @@
         }
       }
     },
+    "Left Arrow" : {},
     "Left Command → Right Command" : {
       "localizations" : {
         "ja" : {
@@ -22916,6 +22919,7 @@
         }
       }
     },
+    "No matching actions" : {},
     "No matching collection was found." : {
       "localizations" : {
         "ja" : {
@@ -24581,6 +24585,7 @@
         }
       }
     },
+    "Output type" : {},
     "Overlay" : {
       "comment" : "Layer display option: show the keyboard overlay",
       "localizations" : {
@@ -28071,6 +28076,7 @@
         }
       }
     },
+    "Right Arrow" : {},
     "Right Command → Left Command" : {
       "localizations" : {
         "ja" : {
@@ -29296,6 +29302,7 @@
         }
       }
     },
+    "Search actions" : {},
     "Search and import layouts from the QMK keyboard database" : {
       "localizations" : {
         "ja" : {
@@ -36224,6 +36231,7 @@
         }
       }
     },
+    "Up Arrow" : {},
     "Update channel" : {
       "localizations" : {
         "ja" : {

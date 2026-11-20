@@ -156,6 +156,8 @@ The keyboard overlay shows you what every key does right now. Remapped keys are 
 
 To see or change what a key does, right-click it and choose **Remap**. The settings drawer opens with that key selected, even if the drawer was closed. With the drawer already open, a plain click selects a key too. If you ever forget what you've changed, the overlay is your map.
 
+Open the output menu to browse common keys or search for actions such as **Left Arrow**, **Copy**, or a known app. Use the arrow keys and Return to pick a search result, or Escape to dismiss the menu. Click the output keycap to record a shortcut or sequence.
+
 ---
 
 ## Undoing a remap

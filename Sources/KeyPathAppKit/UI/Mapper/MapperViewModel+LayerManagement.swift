@@ -151,6 +151,16 @@ extension MapperViewModel {
         statusMessage = nil
 
         let inputKanata = convertSequenceToKanataFormat(inputSeq)
+        if let appCondition = selectedAppCondition {
+            await saveScopedOutput(
+                input: inputKanata,
+                output: app.kanataOutput,
+                condition: appCondition,
+                kanataManager: kanataManager
+            )
+            return
+        }
+
         let targetLayer = layerFromString(currentLayer)
         clearShiftedOutput()
 
@@ -235,6 +245,16 @@ extension MapperViewModel {
         statusMessage = nil
 
         let inputKanata = convertSequenceToKanataFormat(inputSeq)
+        if let appCondition = selectedAppCondition {
+            await saveScopedOutput(
+                input: inputKanata,
+                output: action.kanataOutput,
+                condition: appCondition,
+                kanataManager: kanataManager
+            )
+            return
+        }
+
         let targetLayer = layerFromString(currentLayer)
 
         AppLogger.shared.log("⚙️ [MapperViewModel] Creating rule: input='\(inputKanata)' output='\(action.kanataOutput)' layer=\(targetLayer)")
