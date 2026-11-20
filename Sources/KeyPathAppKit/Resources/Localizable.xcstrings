@@ -6239,6 +6239,17 @@
         }
       }
     },
+    "Beta" : {
+      "comment" : "Update channel for prerelease builds",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ベータ版"
+          }
+        }
+      }
+    },
     "Blank" : {
       "localizations" : {
         "ja" : {
@@ -31430,6 +31441,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Spotlight"
+          }
+        }
+      }
+    },
+    "Stable" : {
+      "comment" : "Update channel for regular releases",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安定版"
           }
         }
       }
