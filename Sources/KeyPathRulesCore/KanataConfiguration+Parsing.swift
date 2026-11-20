@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import KeyPathCore
 
@@ -94,5 +95,14 @@ extension KanataConfiguration {
             "🔍 [Parse] Found \(srcKeys.count) src keys, \(layerKeys.count) layer keys, deduplicated to \(mappings.count) unique mappings"
         )
         return mappings
+    }
+}
+
+package extension KanataConfiguration {
+    static func managedFingerprint(_ content: String) -> String {
+        let normalized = content.components(separatedBy: "\n")
+            .filter { !$0.hasPrefix(";; Generated: ") }
+            .joined(separator: "\n")
+        return SHA256.hash(data: Data(normalized.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 }

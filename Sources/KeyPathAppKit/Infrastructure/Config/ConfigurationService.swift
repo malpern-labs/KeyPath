@@ -884,7 +884,7 @@ public final class ConfigurationService {
     /// without the preamble is never treated as managed.
     private func isUnchangedSinceManagedWrite(_ existing: String) -> Bool {
         if let recorded = try? String(contentsOf: managedConfigFingerprintURL, encoding: .utf8) {
-            return recorded == Self.managedFingerprint(existing)
+            return recorded == KanataConfiguration.managedFingerprint(existing)
         }
         return Self.hasGeneratedPreamble(existing)
     }
@@ -899,16 +899,9 @@ public final class ConfigurationService {
             && lines[1].hasPrefix(";; Enabled: ")
     }
 
-    nonisolated static func managedFingerprint(_ content: String) -> String {
-        let normalized = content.components(separatedBy: "\n")
-            .filter { !$0.hasPrefix(";; Generated: ") }
-            .joined(separator: "\n")
-        return SHA256.hash(data: Data(normalized.utf8)).map { String(format: "%02x", $0) }.joined()
-    }
-
     private func recordManagedConfigFingerprint(_ content: String) {
         do {
-            try Data(Self.managedFingerprint(content).utf8).write(to: managedConfigFingerprintURL, options: .atomic)
+            try Data(KanataConfiguration.managedFingerprint(content).utf8).write(to: managedConfigFingerprintURL, options: .atomic)
         } catch {
             // Best effort: without it the next save falls back to regenerating and comparing.
             AppLogger.shared.log("⚠️ [ConfigService] Could not record config fingerprint: \(error.localizedDescription)")
@@ -1449,26 +1442,6 @@ extension ConfigurationService {
         }
     }
 
-    /// The config folder holds the user's mappings, including any scripts and
-    /// URLs they bind, so only the user can read it. An older KeyPath created it
-    /// 0755; tighten that once, without touching files inside.
-    nonisolated static func restrictToOwner(directory path: String) {
-        // A linked folder (dotfiles) may point at something shared, such as the
-        // whole dotfiles folder, so its owner decides its permissions.
-        let fileManager = Foundation.FileManager()
-        guard let attributes = try? fileManager.attributesOfItem(atPath: path),
-              attributes[.type] as? FileAttributeType == .typeDirectory,
-              let mode = attributes[.posixPermissions] as? Int,
-              mode & 0o077 != 0
-        else { return }
-        do {
-            try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: path)
-            AppLogger.shared.log("🔐 [ConfigService] Restricted \(path) to its owner")
-        } catch {
-            AppLogger.shared.log("⚠️ [ConfigService] Could not restrict \(path): \(error.localizedDescription)")
-        }
-    }
-
     func createDirectoryAsync(path: String) async throws {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             ioQueue.async {
@@ -1497,7 +1470,7 @@ extension ConfigurationService {
                         )
                     }
                     if isKeyPathFolder {
-                        Self.restrictToOwner(directory: path)
+                        DurableRuleFile.restrictToOwner(directory: path)
                     }
                     cont.resume()
                 } catch {
