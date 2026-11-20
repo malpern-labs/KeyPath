@@ -268,26 +268,19 @@ public enum WizardSystemPaths {
     /// Detect a running Kanata process and extract its config path from command line args
     /// Returns nil if no Kanata process is running
     /// Prioritizes external (non-KeyPath) processes over KeyPath-managed ones
-    public static func detectRunningKanataProcess() -> RunningKanataInfo? {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/ps")
-        task.arguments = ["-eo", "pid,args"]
-
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = FileHandle.nullDevice
-
-        do {
-            try task.run()
-        } catch {
-            return nil
+    public static func detectRunningKanataProcess(
+        runner: any SubprocessRunning = SubprocessRunner.shared
+    ) async throws -> RunningKanataInfo? {
+        let result = try await runner.run("/bin/ps", args: ["-eo", "pid,args"], timeout: 5)
+        try Task.checkCancellation()
+        guard result.exitCode == 0 else {
+            throw NSError(domain: "KanataProcessProbe", code: Int(result.exitCode))
         }
-        // Read before waiting: `ps -eo pid,args` often exceeds the 64 KB pipe
-        // buffer, and ps then blocks until it is read, so waiting first hung.
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        task.waitUntilExit()
-        guard let output = String(data: data, encoding: .utf8) else { return nil }
+        return runningKanataProcess(in: result.stdout)
+    }
 
+    /// Parses captured output independently of process execution for deterministic tests.
+    static func runningKanataProcess(in output: String) -> RunningKanataInfo? {
         // Known KeyPath-managed binary paths
         let keyPathManagedPaths = [
             bundledKanataPath,

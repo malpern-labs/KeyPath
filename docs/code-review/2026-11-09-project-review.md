@@ -12,9 +12,9 @@ need a running system to confirm, are marked *unconfirmed*. `External/kanata`
 was not checked out, so statements about the engine's TCP command set come from
 ADR-046 and the Swift client, not the fork's source.
 
-## Status (updated 2026-11-12)
+## Status (updated 2026-11-19)
 
-Verified against `master` through [#1453](https://github.com/malpern-labs/KeyPath/pull/1453). O5 is complete. The findings below this status section describe the original review.
+Verified against `master` through [#1478](https://github.com/malpern-labs/KeyPath/pull/1478). O5 is complete. The findings below this status section describe the original review.
 
 Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 tracked privately
 
@@ -49,7 +49,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **B1** Dead view and images | ✅ | #1398. |
 | **B2** Scripts | ✅ | #1395. |
 | **B3** Dead Swift | ✅ | Deletion pass merged (#1398, #1406). Function-level Periphery scan completed with 3.8.0; retired unregistered CLI commands and their formatter are removed in this follow-up. Candidate diagnostics are not automatically safe deletions. |
-| **B4** Tests for removed behaviour | ✅ | Dead tests removed and two stale references refreshed (#1420). A later General Settings snapshot mismatch reproduced on the base of #1434 and remains a separate follow-up. |
+| **B4** Tests for removed behaviour | ✅ | Dead tests removed and two stale references refreshed (#1420). The historical General Settings reference was refreshed to the existing Nothing default in #1478, retaining tolerances. The combined gate passed 5,524 tests. |
 | **B5** Binary assets | 🟡 | Unused assets removed (#1397). Help asset compression and deduplication are in open PR #1422. Metal snapshot sizing remains open. |
 | **B6** Root and package stragglers | 🟡 | Root cleanup merged (#1395). Process probes moved into Core and the unused wizard screenshot and resource bundle were removed (#1440). Removed the nine unused library products; executable products and internal target dependencies remain unchanged. |
 | **B7** Docs | 🟡 | Public docs republished, archive removed, and runtime architecture page rewritten and published (#1394, #1399, #1402, #1437). The macOS 27 Accessibility screenshot remains. |
@@ -62,7 +62,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **P7** Liquid Glass | ✅ | System glass in `AppGlassBackground` (#1408), checked on screen in light and dark. |
 | **P7** Other idioms | ⬜ | Color, activation, image drawing, wrappers, and window scenes remain opportunistic. |
 | **P8** Localization | 🟡 | English and Japanese, a CI-checked catalog, plurals, and localization of text passed to views as `String` merged (#1430–#1433). Accessibility IDs, remaining English values, layout fit, and native-speaker review remain. |
-| **P9** Test isolation | 🟡 | Config migration tests use isolated directories and passed concurrently (#1434). Subprocess test waits are bounded (#1438), and standalone smoke and Core lanes passed concurrently (#1446). Broader on-disk state isolation remains. |
+| **P9** Test isolation | 🟡 | Config migration tests use isolated directories and passed concurrently (#1434). Subprocess test waits are bounded (#1438); concurrent stdout/stderr draining fixes pipe-capacity deadlocks (#1476). Approval-storage and script-action tests use isolated stores (#1478), and standalone smoke and Core lanes passed concurrently (#1446). Broader on-disk state isolation remains. |
 
 ### Also done since the review (not in its list)
 

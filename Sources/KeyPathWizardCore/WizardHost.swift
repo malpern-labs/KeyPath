@@ -33,18 +33,27 @@ public struct WizardHost: Sendable {
 
 /// Finding and stopping a Kanata that KeyPath did not start.
 public struct ExternalKanataOperations: Sendable {
-    public var info: @Sendable () -> WizardSystemPaths.RunningKanataInfo?
+    public var info: @Sendable () async throws -> WizardSystemPaths.RunningKanataInfo?
     public var stop: @Sendable (WizardSystemPaths.RunningKanataInfo) async -> Result<Void, Error>
-    public var isRunning: @Sendable () -> Bool
+    public var isRunning: @Sendable () async -> Bool?
 
     public init(
-        info: @escaping @Sendable () -> WizardSystemPaths.RunningKanataInfo?,
+        info: @escaping @Sendable () async throws -> WizardSystemPaths.RunningKanataInfo?,
         stop: @escaping @Sendable (WizardSystemPaths.RunningKanataInfo) async -> Result<Void, Error>,
-        isRunning: @escaping @Sendable () -> Bool
+        isRunning: @escaping @Sendable () async -> Bool?
     ) {
         self.info = info
         self.stop = stop
         self.isRunning = isRunning
+    }
+
+    /// Verified absence satisfies the stop page; a failed read never does.
+    @MainActor
+    public func prepareStop(onNoProcess: () -> Void) async throws -> WizardSystemPaths.RunningKanataInfo? {
+        let process = try await info()
+        try Task.checkCancellation()
+        if process == nil { onNoProcess() }
+        return process
     }
 }
 

@@ -82,7 +82,7 @@ public extension WizardHost {
                 AnyView(WizardKarabinerImportPage(onImportComplete: onImportComplete, onSkip: onSkip))
             },
             externalKanata: ExternalKanataOperations(
-                info: { ExternalKanataService.getExternalKanataInfo() },
+                info: { try await ExternalKanataService.getExternalKanataInfo() },
                 stop: { info in
                     switch await ExternalKanataService.stopExternalKanata(info) {
                     case .success, .processNotFound:
@@ -93,7 +93,7 @@ public extension WizardHost {
                         .failure(NSError(domain: "ExternalKanata", code: 2, userInfo: [NSLocalizedDescriptionKey: reason]))
                     }
                 },
-                isRunning: { ExternalKanataService.hasExternalKanataRunning() }
+                isRunning: { await ExternalKanataService.hasExternalKanataRunning() }
             ),
             permissionRequests: PermissionRequestService.shared
         )
