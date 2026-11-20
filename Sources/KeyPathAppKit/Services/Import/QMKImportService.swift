@@ -5,9 +5,16 @@ import KeyPathCore
 actor QMKImportService {
     static let shared = QMKImportService()
     private let userDefaultsSuiteName: String?
+    private let fetchFreshKeymap: @Sendable (String) async -> [String]?
 
-    init(userDefaultsSuiteName: String? = nil) {
+    init(
+        userDefaultsSuiteName: String? = nil,
+        fetchFreshKeymap: @escaping @Sendable (String) async -> [String]? = { keyboardPath in
+            await QMKKeyboardDatabase.shared.refreshDefaultKeymap(keyboardPath: keyboardPath)
+        }
+    ) {
         self.userDefaultsSuiteName = userDefaultsSuiteName
+        self.fetchFreshKeymap = fetchFreshKeymap
     }
 
     private var userDefaults: UserDefaults {
@@ -239,11 +246,7 @@ actor QMKImportService {
             return .failure(String(localized: "No keyboard path available for re-fetch"))
         }
 
-        // Invalidate the cached keymap to force a fresh fetch
-        await QMKKeyboardDatabase.shared.invalidateKeymapCache(keyboardPath: kbPath)
-
-        // Attempt to fetch the keymap
-        guard let keymapTokens = await QMKKeyboardDatabase.shared.fetchDefaultKeymap(keyboardPath: kbPath) else {
+        guard let keymapTokens = await fetchFreshKeymap(kbPath) else {
             return .failure(String(localized: "Could not fetch keymap — GitHub may be rate-limited or the keymap is unavailable for this keyboard"))
         }
 
