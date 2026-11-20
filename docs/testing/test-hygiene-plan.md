@@ -746,6 +746,25 @@ Final combined validation after merging current master passed all 5,524 tests
 with `KEYPATH_SWIFT_BUILD_JOBS=4 ./Scripts/test-full.sh`, including snapshots.
 The two real-Keychain integration tests remain explicitly opt-in.
 
+### Preference-domain isolation
+
+PreferencesService keeps its existing canonical leader-preference default and
+standard general-preference default, but accepts an explicit general defaults
+dependency. ConfigurationManager accepts the same preference owner for launch
+arguments; GlobalHotkeyService accepts a defaults dependency with its existing
+standard default. Preference persistence and hotkey recovery tests use unique
+per-test suites and delete only those suites. They no longer change the shared
+preference owner to verify launch logging or hotkey consent recovery.
+
+### November 19: preference isolation validation
+
+The injected-defaults change passed the full safe gate: 5,525 tests, zero Swift
+warnings, with build and snapshot/test execution serialized on the Air.
+PreferencesServicePersistenceTests and GlobalHotkeyPermissionRecoveryTests use
+private per-test suites; ConfigurationManager reads the injected preference owner.
+This does not establish that all other defaults or notification-based tests are
+parallel-safe. Full log: `/private/tmp/keypath-preference-isolation-full-tests.log`.
+
 ### CLI rule and collection store isolation
 
 CLIRuleCRUDTests, CLIRuleAddIntegrationTests, CLILayerCRUDTests and

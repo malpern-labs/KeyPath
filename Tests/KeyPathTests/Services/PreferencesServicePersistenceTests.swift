@@ -4,6 +4,26 @@ import KeyPathRulesCore
 
 @MainActor
 final class PreferencesServicePersistenceTests: XCTestCase {
+    private var defaults: UserDefaults!
+    private var defaultsSuite: String!
+
+    override func setUp() async throws {
+        try await super.setUp()
+        defaultsSuite = "keypath-preference-test-\(UUID().uuidString)"
+        defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsSuite))
+    }
+
+    override func tearDown() async throws {
+        if let defaultsSuite { defaults?.removePersistentDomain(forName: defaultsSuite) }
+        defaults = nil
+        defaultsSuite = nil
+        try await super.tearDown()
+    }
+
+    private func makePreferences() -> PreferencesService {
+        PreferencesService(leaderDefaults: defaults, defaults: defaults)
+    }
+
     private static let preferenceKeys = [
         "KeyPath.Communication.Protocol",
         "KeyPath.TCP.ServerPort",
@@ -33,13 +53,13 @@ final class PreferencesServicePersistenceTests: XCTestCase {
         keys: [String] = PreferencesServicePersistenceTests.preferenceKeys,
         _ body: () throws -> T
     ) rethrows -> T {
-        let savedValues = Dictionary(uniqueKeysWithValues: keys.map { ($0, UserDefaults.standard.object(forKey: $0)) })
+        let savedValues = Dictionary(uniqueKeysWithValues: keys.map { ($0, defaults.object(forKey: $0)) })
         defer {
             for key in keys {
                 if let value = savedValues[key] {
-                    UserDefaults.standard.set(value, forKey: key)
+                    defaults.set(value, forKey: key)
                 } else {
-                    UserDefaults.standard.removeObject(forKey: key)
+                    defaults.removeObject(forKey: key)
                 }
             }
         }
@@ -51,7 +71,7 @@ final class PreferencesServicePersistenceTests: XCTestCase {
     func testCriticalSettings_RoundTripThroughUserDefaults() {
         withPreservedDefaults {
             for key in Self.preferenceKeys {
-                UserDefaults.standard.removeObject(forKey: key)
+                defaults.removeObject(forKey: key)
             }
 
             let leader = LeaderKeyPreference(
@@ -59,8 +79,8 @@ final class PreferencesServicePersistenceTests: XCTestCase {
                 targetLayer: .custom("window"),
                 enabled: false
             )
-            let writer = PreferencesService()
-            UserDefaults.standard.set(45678, forKey: "KeyPath.TCP.ServerPort")
+            let writer = makePreferences()
+            defaults.set(45678, forKey: "KeyPath.TCP.ServerPort")
             writer.notificationsEnabled = false
             writer.applyMappingsDuringRecording = false
             writer.isSequenceMode = false
@@ -81,9 +101,9 @@ final class PreferencesServicePersistenceTests: XCTestCase {
                 NeovimTerminalCategory.search.rawValue,
             ])
 
-            let loaded = PreferencesService()
+            let loaded = makePreferences()
 
-            XCTAssertEqual(UserDefaults.standard.integer(forKey: "KeyPath.TCP.ServerPort"), 45678)
+            XCTAssertEqual(defaults.integer(forKey: "KeyPath.TCP.ServerPort"), 45678)
             XCTAssertFalse(loaded.notificationsEnabled)
             XCTAssertFalse(loaded.applyMappingsDuringRecording)
             XCTAssertFalse(loaded.isSequenceMode)
@@ -112,31 +132,31 @@ final class PreferencesServicePersistenceTests: XCTestCase {
 
     func testLoadClampsInvalidPersistedRuntimeAndHUDValues() {
         withPreservedDefaults {
-            UserDefaults.standard.set(80, forKey: "KeyPath.TCP.ServerPort")
-            UserDefaults.standard.set(-25, forKey: "KeyPath.ContextHUD.HoldDelayCustomMs")
+            defaults.set(80, forKey: "KeyPath.TCP.ServerPort")
+            defaults.set(-25, forKey: "KeyPath.ContextHUD.HoldDelayCustomMs")
 
-            let prefs = PreferencesService()
+            let prefs = makePreferences()
 
-            XCTAssertEqual(UserDefaults.standard.integer(forKey: "KeyPath.TCP.ServerPort"), 80)
+            XCTAssertEqual(defaults.integer(forKey: "KeyPath.TCP.ServerPort"), 80)
             XCTAssertEqual(prefs.contextHUDHoldDelayCustomMs, 100)
-            XCTAssertEqual(UserDefaults.standard.integer(forKey: "KeyPath.ContextHUD.HoldDelayCustomMs"), 100)
+            XCTAssertEqual(defaults.integer(forKey: "KeyPath.ContextHUD.HoldDelayCustomMs"), 100)
         }
     }
 
     func testLoadFallsBackForInvalidStoredEnumsAndLeaderPreference() {
         withPreservedDefaults {
-            UserDefaults.standard.set("udp", forKey: "KeyPath.Communication.Protocol")
-            UserDefaults.standard.set("emoji", forKey: "KeyPath.Display.KeyLabelStyle")
-            UserDefaults.standard.set("invisible", forKey: "KeyPath.Overlay.UnmappedLayerKeyStyle")
-            UserDefaults.standard.set("drawer", forKey: "KeyPath.ContextHUD.DisplayMode")
-            UserDefaults.standard.set("doubleTap", forKey: "KeyPath.ContextHUD.TriggerMode")
-            UserDefaults.standard.set("instant", forKey: "KeyPath.ContextHUD.HoldDelayPreset")
-            UserDefaults.standard.set("coach", forKey: "KeyPath.KindaVim.LeaderHUDMode")
-            UserDefaults.standard.set(Data("not-json".utf8), forKey: "KeyPath.LeaderKey.Preference")
-            UserDefaults.standard.set(["search", "bogus-topic"], forKey: "KeyPath.Neovim.ReferenceTopics")
-            UserDefaults.standard.set(2, forKey: "KeyPath.Neovim.ReferenceTopicsVersion")
+            defaults.set("udp", forKey: "KeyPath.Communication.Protocol")
+            defaults.set("emoji", forKey: "KeyPath.Display.KeyLabelStyle")
+            defaults.set("invisible", forKey: "KeyPath.Overlay.UnmappedLayerKeyStyle")
+            defaults.set("drawer", forKey: "KeyPath.ContextHUD.DisplayMode")
+            defaults.set("doubleTap", forKey: "KeyPath.ContextHUD.TriggerMode")
+            defaults.set("instant", forKey: "KeyPath.ContextHUD.HoldDelayPreset")
+            defaults.set("coach", forKey: "KeyPath.KindaVim.LeaderHUDMode")
+            defaults.set(Data("not-json".utf8), forKey: "KeyPath.LeaderKey.Preference")
+            defaults.set(["search", "bogus-topic"], forKey: "KeyPath.Neovim.ReferenceTopics")
+            defaults.set(2, forKey: "KeyPath.Neovim.ReferenceTopicsVersion")
 
-            let prefs = PreferencesService()
+            let prefs = makePreferences()
 
             XCTAssertEqual(prefs.communicationProtocol, .tcp)
             XCTAssertEqual(prefs.keyLabelStyle, .symbols)
@@ -152,7 +172,7 @@ final class PreferencesServicePersistenceTests: XCTestCase {
 
     func testShortcutListPreferenceChangesPersistWithoutLegacyNotification() {
         withPreservedDefaults {
-            let prefs = PreferencesService()
+            let prefs = makePreferences()
             let recorder = NotificationRecorder()
             let center = NotificationCenter.default
             let observedNames: [Notification.Name] = [
@@ -196,15 +216,14 @@ final class PreferencesServicePersistenceTests: XCTestCase {
             defer { try? FileManager.default.removeItem(at: tempDir) }
 
             let configService = ConfigurationService(configDirectory: tempDir.path)
-            let manager = ConfigurationManager(configurationService: configService)
-
-            let prefs = PreferencesService.shared
+            let prefs = makePreferences()
+            let manager = ConfigurationManager(configurationService: configService, preferences: prefs)
             let originalVerboseLogging = prefs.verboseKanataLogging
             defer {
                 prefs.verboseKanataLogging = originalVerboseLogging
             }
 
-            UserDefaults.standard.set(45678, forKey: "KeyPath.TCP.ServerPort")
+            defaults.set(45678, forKey: "KeyPath.TCP.ServerPort")
             prefs.verboseKanataLogging = true
 
             let verboseArgs = manager.buildKanataArguments(checkOnly: false)
@@ -224,13 +243,13 @@ final class PreferencesServicePersistenceTests: XCTestCase {
 
     func testOverlayOpacityAndIdleFadePersistAndClamp() {
         withPreservedDefaults {
-            let writer = PreferencesService()
+            let writer = makePreferences()
             XCTAssertEqual(writer.overlayOpacity, 1.0)
             XCTAssertTrue(writer.overlayFadesWhenIdle)
 
             writer.overlayOpacity = 0.6
             writer.overlayFadesWhenIdle = false
-            let loaded = PreferencesService()
+            let loaded = makePreferences()
             XCTAssertEqual(loaded.overlayOpacity, 0.6, accuracy: 0.001)
             XCTAssertFalse(loaded.overlayFadesWhenIdle)
 
@@ -239,40 +258,40 @@ final class PreferencesServicePersistenceTests: XCTestCase {
             XCTAssertEqual(loaded.overlayOpacity, 0.3, accuracy: 0.001)
             loaded.overlayOpacity = 3
             XCTAssertEqual(loaded.overlayOpacity, 1.0, accuracy: 0.001)
-            UserDefaults.standard.set(Double.nan, forKey: "KeyPath.Overlay.Opacity")
-            XCTAssertEqual(PreferencesService().overlayOpacity, 1.0, accuracy: 0.001)
+            defaults.set(Double.nan, forKey: "KeyPath.Overlay.Opacity")
+            XCTAssertEqual(makePreferences().overlayOpacity, 1.0, accuracy: 0.001)
         }
     }
 
     func testShowOnlyWhileLayerHeldIsOffByDefaultAndPersists() {
         withPreservedDefaults {
-            let writer = PreferencesService()
+            let writer = makePreferences()
             XCTAssertFalse(writer.overlayShowsOnlyWhileLayerHeld)
             writer.overlayShowsOnlyWhileLayerHeld = true
-            XCTAssertTrue(PreferencesService().overlayShowsOnlyWhileLayerHeld)
+            XCTAssertTrue(makePreferences().overlayShowsOnlyWhileLayerHeld)
         }
     }
 
     func testContextHUDHoldDelayCustomMs_ClampedToMinimum() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         prefs.contextHUDHoldDelayCustomMs = 50
         XCTAssertEqual(prefs.contextHUDHoldDelayCustomMs, 100, "Custom delay clamped to min 100ms")
     }
 
     func testContextHUDHoldDelayCustomMs_ClampedToMaximum() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         prefs.contextHUDHoldDelayCustomMs = 3000
         XCTAssertEqual(prefs.contextHUDHoldDelayCustomMs, 2000, "Custom delay clamped to max 2000ms")
     }
 
     func testContextHUDHoldDelayCustomMs_AcceptsValidValue() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         prefs.contextHUDHoldDelayCustomMs = 500
         XCTAssertEqual(prefs.contextHUDHoldDelayCustomMs, 500)
     }
 
     func testContextHUDHoldDelayCustomMs_AcceptsBoundaries() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         prefs.contextHUDHoldDelayCustomMs = 100
         XCTAssertEqual(prefs.contextHUDHoldDelayCustomMs, 100)
         prefs.contextHUDHoldDelayCustomMs = 2000
@@ -280,13 +299,13 @@ final class PreferencesServicePersistenceTests: XCTestCase {
     }
 
     func testContextHUDHoldDelayCustomMs_ZeroClampedToMin() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         prefs.contextHUDHoldDelayCustomMs = 0
         XCTAssertEqual(prefs.contextHUDHoldDelayCustomMs, 100)
     }
 
     func testContextHUDHoldDelayCustomMs_NegativeClampedToMin() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         prefs.contextHUDHoldDelayCustomMs = -100
         XCTAssertEqual(prefs.contextHUDHoldDelayCustomMs, 100)
     }
@@ -298,9 +317,9 @@ final class PreferencesServicePersistenceTests: XCTestCase {
     func testStoredPortValuesCannotRedirectEngineClients() {
         withPreservedDefaults(keys: ["KeyPath.TCP.ServerPort"]) {
             for storedPort in [80, 37001, 45678, 54141] {
-                UserDefaults.standard.set(storedPort, forKey: "KeyPath.TCP.ServerPort")
-                _ = PreferencesService()
-                XCTAssertEqual(UserDefaults.standard.integer(forKey: "KeyPath.TCP.ServerPort"), storedPort)
+                defaults.set(storedPort, forKey: "KeyPath.TCP.ServerPort")
+                _ = makePreferences()
+                XCTAssertEqual(defaults.integer(forKey: "KeyPath.TCP.ServerPort"), storedPort)
             }
         }
         XCTAssertEqual(KanataTCPClient().endpoint, .session)
@@ -310,18 +329,18 @@ final class PreferencesServicePersistenceTests: XCTestCase {
 
     func testRetiredCommandActionsPreferenceIsRemovedOnLoad() {
         let key = "KeyPath.Security.ConfigCommandActionsEnabled"
-        let saved = UserDefaults.standard.object(forKey: key)
+        let saved = defaults.object(forKey: key)
         defer {
-            if let saved { UserDefaults.standard.set(saved, forKey: key) } else {
-                UserDefaults.standard.removeObject(forKey: key)
+            if let saved { defaults.set(saved, forKey: key) } else {
+                defaults.removeObject(forKey: key)
             }
         }
 
-        UserDefaults.standard.set(true, forKey: key)
+        defaults.set(true, forKey: key)
 
-        _ = PreferencesService()
+        _ = makePreferences()
 
-        XCTAssertNil(UserDefaults.standard.object(forKey: key))
+        XCTAssertNil(defaults.object(forKey: key))
     }
 
     // MARK: - LeaderKeyPreference Codable Tests
@@ -394,13 +413,13 @@ final class PreferencesServicePersistenceTests: XCTestCase {
     // MARK: - Overlay Suppressed Bundle IDs
 
     func testOverlaySuppressedBundleIDs_DefaultContainsFigma() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         XCTAssertTrue(prefs.overlaySuppressedBundleIDs.contains("com.figma.Desktop"))
         XCTAssertTrue(prefs.overlaySuppressedBundleIDs.contains("com.figma.agent"))
     }
 
     func testOverlaySuppressedBundleIDs_SetOperations() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         let originalIDs = prefs.overlaySuppressedBundleIDs
 
         prefs.overlaySuppressedBundleIDs.insert("com.test.app")
@@ -413,7 +432,7 @@ final class PreferencesServicePersistenceTests: XCTestCase {
     }
 
     func testOverlaySuppressedBundleIDs_DeduplicatesOnStorage() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         let originalIDs = prefs.overlaySuppressedBundleIDs
 
         prefs.overlaySuppressedBundleIDs = Set(["com.a.app", "com.a.app", "com.b.app"])
@@ -427,12 +446,12 @@ final class PreferencesServicePersistenceTests: XCTestCase {
     // MARK: - Neovim Reference Topics
 
     func testNeovimReferenceTopics_DefaultsNotEmpty() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         XCTAssertFalse(prefs.neovimReferenceTopics.isEmpty)
     }
 
     func testNeovimReferenceTopics_ContainsValidCategories() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         let validCategories = Set(NeovimTerminalCategory.allCases.map(\.rawValue))
         for topic in prefs.neovimReferenceTopics {
             XCTAssertTrue(validCategories.contains(topic), "\(topic) is not a valid category")
@@ -506,7 +525,7 @@ final class PreferencesServicePersistenceTests: XCTestCase {
     // MARK: - Hold Delay Computed Property
 
     func testContextHUDHoldDelayMs_CustomUsesStoredValue() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         let original = prefs.contextHUDHoldDelayPreset
         let originalMs = prefs.contextHUDHoldDelayCustomMs
 
@@ -519,7 +538,7 @@ final class PreferencesServicePersistenceTests: XCTestCase {
     }
 
     func testContextHUDHoldDelayMs_PresetOverridesCustom() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         let original = prefs.contextHUDHoldDelayPreset
 
         prefs.contextHUDHoldDelayCustomMs = 999
@@ -532,14 +551,14 @@ final class PreferencesServicePersistenceTests: XCTestCase {
     // MARK: - Default Values
 
     func testDefaultValues_AreReasonable() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         XCTAssertEqual(prefs.communicationProtocol, .tcp)
         XCTAssertTrue(prefs.notificationsEnabled)
         XCTAssertTrue(prefs.isSequenceMode)
     }
 
     func testDefaultContextHUDHoldDelay_InRange() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         XCTAssertGreaterThanOrEqual(prefs.contextHUDHoldDelayCustomMs, 100)
         XCTAssertLessThanOrEqual(prefs.contextHUDHoldDelayCustomMs, 2000)
     }
@@ -570,7 +589,7 @@ final class PreferencesServicePersistenceTests: XCTestCase {
     // MARK: - Reset Behavior
 
     func testResetCommunicationSettings_RestoresProtocol() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         prefs.resetCommunicationSettings()
         XCTAssertEqual(prefs.communicationProtocol, .tcp)
     }
@@ -578,7 +597,7 @@ final class PreferencesServicePersistenceTests: XCTestCase {
     // MARK: - Config Description
 
     func testCommunicationConfigDescription_Format() {
-        let prefs = PreferencesService()
+        let prefs = makePreferences()
         let desc = prefs.communicationConfigDescription
         XCTAssertTrue(desc.contains("Unix-domain socket"), "Should name the transport")
     }
