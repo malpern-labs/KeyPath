@@ -591,9 +591,10 @@ before adopting more in-process parallel testing.
 ## Not verified
 
 - The engine's TCP command set (submodule not checked out).
-- `images/help/screenshot-accessibility-settings.png` shows the pre-27
-  Accessibility pane; the install guide's caption now names the macOS 27
-  pane. Recapture it on macOS 27.
+- Permission artwork was recaptured on November 20 from a fresh macOS 27 lab
+  guest, with KeyPath enabled under Device Control and Data Access. The guide
+  identifies the unrelated lab tools visible in the screenshot. Publication to
+  gh-pages remains a separate step after this change merges.
 - The usage-string behaviour in P2, and parts of the privately tracked
   findings. Each needs a clean lab VM.
 - Deprecation status of specific APIs in the macOS 27 SDK.
