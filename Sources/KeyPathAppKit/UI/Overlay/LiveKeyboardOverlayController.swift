@@ -12,7 +12,16 @@ import SwiftUI
 
 @MainActor
 final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
-    var window: NSWindow?
+    var window: NSWindow? {
+        didSet {
+            if oldValue !== window {
+                windowSizingObserver?.cancel()
+                windowSizingObserver = nil
+            }
+        }
+    }
+
+    var windowSizingObserver: Task<Void, Never>?
     let viewModel = KeyboardVisualizationViewModel()
     let uiState = LiveKeyboardOverlayUIState()
     private(set) var hasAutoHiddenForCurrentSettingsSession = false
@@ -838,9 +847,7 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
         }
 
         self.window = window
-        observeDesiredContentHeight()
-        observeDesiredContentWidth()
-        observeKeyboardAspectRatio()
+        observeWindowSizing(for: window)
     }
 
     private func buildRootView() -> LiveKeyboardOverlayView {

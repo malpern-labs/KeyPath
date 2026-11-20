@@ -32,6 +32,32 @@ final class OverlayDismissalTests: XCTestCase {
         XCTAssertFalse(controller.uiState.isInspectorAnimating)
     }
 
+    func testDismissCancelsHintDuringHealthWaitAndPresentationDelay() async throws {
+        for (state, delay) in [(HealthIndicatorState.checking, Duration.milliseconds(50)), (.healthy, .milliseconds(500))] {
+            let preferences = try IsolatedPreferenceDefaults()
+            let controller = LiveKeyboardOverlayController(defaults: preferences.defaults)
+            let window = VisibleOverlayWindow(contentRect: .zero, styleMask: [.borderless], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            controller.window = window
+            defer { window.close() }
+            controller.uiState.healthIndicatorState = state
+            var waits: [Duration] = []
+
+            controller.showHintBubbleAfterHealthIndicator { duration in
+                waits.append(duration)
+                controller.dismissHintBubble()
+                controller.uiState.healthIndicatorState = .healthy
+            }
+            let operation = try XCTUnwrap(controller.hintBubbleObserver)
+            await operation.value
+
+            XCTAssertEqual(waits, [delay])
+            XCTAssertTrue(operation.isCancelled)
+            XCTAssertNil(controller.hintBubbleObserver)
+            XCTAssertNil(controller.hintWindowController)
+        }
+    }
+
     func testExplicitClosePreventsAutomaticShowOnlyInItsOwnDomain() throws {
         let preferences = try IsolatedPreferenceDefaults()
         let otherPreferences = try IsolatedPreferenceDefaults()
@@ -45,5 +71,12 @@ final class OverlayDismissalTests: XCTestCase {
         XCTAssertTrue(preferences.defaults.bool(forKey: "LiveKeyboardOverlay.userExplicitlyHidden"))
         XCTAssertFalse(controller.canAutoShow)
         XCTAssertTrue(otherController.canAutoShow)
+    }
+}
+
+@MainActor
+private final class VisibleOverlayWindow: NSWindow {
+    override var isVisible: Bool {
+        true
     }
 }
