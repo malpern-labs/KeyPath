@@ -166,7 +166,7 @@ public actor SubprocessRunner: SubprocessRunning {
 /// Drain both streams while the child runs: waiting for termination first can
 /// deadlock a child whose output exceeds the pipe buffer. Blocking reads use
 /// dispatch workers rather than the Swift cooperative executor or MainActor.
-private final class ProcessOutputCapture: @unchecked Sendable {
+final class ProcessOutputCapture: @unchecked Sendable {
     private let stdout: Pipe
     private let stderr: Pipe
     private let readers = DispatchGroup()
