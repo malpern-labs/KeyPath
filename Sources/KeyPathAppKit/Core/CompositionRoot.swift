@@ -90,7 +90,7 @@ enum CompositionRoot {
         }
 
         // Prime the synchronous cache before any startup config regeneration can run.
-        DeviceSelectionStore.primeSharedCacheFromDisk()
+        DeviceSelectionStore.primeCacheFromDisk()
 
         // Let `keypath status|start|stop|restart` reach this runtime (one-shot
         // probes and session workers never serve it).
