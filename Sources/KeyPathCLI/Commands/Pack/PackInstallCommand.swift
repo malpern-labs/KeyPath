@@ -26,6 +26,7 @@ struct PackInstall: AsyncParsableCommand, Sendable {
         }
     }
 
+    @MainActor
     private func run(operation: CLIConfigurationOperation) async throws {
         let ctx = globals.outputContext
 
@@ -45,6 +46,7 @@ struct PackInstall: AsyncParsableCommand, Sendable {
 
         let facade = operation.packs
         let spinner = CLISpinner(context: ctx)
+        defer { spinner.stop() }
 
         do {
             if !globals.dryRun {

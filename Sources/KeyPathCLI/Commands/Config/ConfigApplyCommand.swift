@@ -10,10 +10,12 @@ struct ConfigApply: AsyncParsableCommand {
 
     @OptionGroup var globals: GlobalOptions
 
+    @MainActor
     mutating func run() async throws {
         let ctx = globals.outputContext
         let dryRun = globals.dryRun
         let spinner = CLISpinner(context: ctx)
+        defer { spinner.stop() }
         spinner.start(dryRun ? "Previewing configuration..." : "Applying configuration...")
 
         let facade = ConfigFacade()
