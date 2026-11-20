@@ -77,7 +77,7 @@ public struct SystemProcessMatch: Equatable, Sendable {
     }
 }
 
-private struct ProbeProcessResult: Sendable {
+struct ProbeProcessResult: Sendable {
     let exitCode: Int32
     let stdout: String
     let stderr: String
@@ -110,7 +110,7 @@ private func runProcess(_ executable: String, args: [String], timeout: TimeInter
     }.value
 }
 
-private func runProcessSynchronously(_ executable: String, args: [String], timeout: TimeInterval) -> ProbeProcessResult {
+func runProcessSynchronously(_ executable: String, args: [String], timeout: TimeInterval) -> ProbeProcessResult {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: executable)
     process.arguments = args
@@ -119,13 +119,16 @@ private func runProcessSynchronously(_ executable: String, args: [String], timeo
     let stderrPipe = Pipe()
     process.standardOutput = stdoutPipe
     process.standardError = stderrPipe
+    let output = ProcessOutputCapture(stdout: stdoutPipe, stderr: stderrPipe)
 
     do {
         try process.run()
     } catch {
+        output.abandon()
         return ProbeProcessResult(exitCode: 127, stdout: "", stderr: String(describing: error))
     }
 
+    output.start()
     let deadline = Date().addingTimeInterval(timeout)
     while process.isRunning, Date() < deadline {
         usleep(50000)
@@ -140,7 +143,8 @@ private func runProcessSynchronously(_ executable: String, args: [String], timeo
     }
 
     process.waitUntilExit()
-    let stdout = String(data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-    let stderr = String(data: stderrPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+    let (stdoutData, stderrData) = output.read()
+    let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
+    let stderr = String(data: stderrData, encoding: .utf8) ?? ""
     return ProbeProcessResult(exitCode: process.terminationStatus, stdout: stdout, stderr: stderr)
 }
