@@ -13,9 +13,9 @@ import Network
 /// This service handles all configuration-related operations:
 /// - Loading and saving configuration files
 /// - Session admission and CLI validation
-/// - File watching and change detection
 /// - Key mapping generation and conversion
-public final class ConfigurationService: FileConfigurationProviding {
+@MainActor
+public final class ConfigurationService {
     public typealias Config = KanataConfiguration
 
     // MARK: - Properties
@@ -30,7 +30,6 @@ public final class ConfigurationService: FileConfigurationProviding {
     }
 
     private var currentConfiguration: CachedConfiguration?
-    private var fileWatcher: FileWatcher?
     private var observers: [UUID: @Sendable (Config) async -> Void] = [:]
     @MainActor var onWillStageConfigurationWrite: ((String) -> Void)?
 
@@ -59,7 +58,7 @@ public final class ConfigurationService: FileConfigurationProviding {
         #if DEBUG
             // The safe test runner supplies the parser explicitly. An invalid
             // path still fails admission, and release builds use the bundled host.
-            if TestEnvironment.isTestHostProcess,
+            if TestEnvironment.isRunningTests,
                let bridgePath = ProcessInfo.processInfo.environment["KEYPATH_SESSION_TEST_BRIDGE_PATH"]
             {
                 let current = KanataRuntimeHost.current()
@@ -108,7 +107,7 @@ public final class ConfigurationService: FileConfigurationProviding {
         operationGate = ConfigurationOperationGate(configurationDirectory: URL(fileURLWithPath: self.configDirectory, isDirectory: true))
     }
 
-    // MARK: - ConfigurationProviding Protocol
+    // MARK: - Configuration Loading
 
     public func current() async -> KanataConfiguration {
         await current(mutationPermit: nil)
@@ -215,7 +214,7 @@ public final class ConfigurationService: FileConfigurationProviding {
         }
     }
 
-    // MARK: - FileConfigurationProviding Protocol
+    // MARK: - Configuration Parsing
 
     public func validate(content: String) throws -> KanataConfiguration {
         // Basic validation - ensure content is not empty
@@ -253,23 +252,6 @@ public final class ConfigurationService: FileConfigurationProviding {
             chordGroups: chordGroups,
             sequences: sequences
         )
-    }
-
-    public func startFileMonitoring() -> ConfigurationObservationToken {
-        guard fileWatcher == nil else {
-            // Already monitoring
-            return ConfigurationObservationToken { /* no-op */ }
-        }
-
-        fileWatcher = FileWatcher(path: configurationPath) { [weak self] in
-            Task { @MainActor in
-                await self?.handleFileChange()
-            }
-        }
-
-        return ConfigurationObservationToken { [weak self] in
-            self?.stopFileMonitoring()
-        }
     }
 
     // MARK: - Configuration Management
@@ -1384,23 +1366,6 @@ public final class ConfigurationService: FileConfigurationProviding {
             AppLogger.shared.log("✅ [Config] AI-repaired config saved")
         }
     }
-
-    // MARK: - Private Methods
-
-    private func handleFileChange() async {
-        AppLogger.shared.log("📁 [ConfigService] Configuration file changed - reloading")
-        do {
-            _ = try await reload()
-            AppLogger.shared.log("✅ [ConfigService] Configuration reloaded successfully")
-        } catch {
-            AppLogger.shared.log("❌ [ConfigService] Failed to reload configuration: \(error)")
-        }
-    }
-
-    private func stopFileMonitoring() {
-        fileWatcher = nil
-        AppLogger.shared.log("🛑 [ConfigService] File monitoring stopped")
-    }
 }
 
 // MARK: - Private helpers (I/O and state)
@@ -1622,53 +1587,5 @@ extension ConfigurationService {
                 )
             }
         }
-    }
-}
-
-// MARK: - File Watcher (Simplified)
-
-/// Simple file watcher for configuration changes
-private class FileWatcher {
-    private let path: String
-    private let callback: () -> Void
-    private var source: DispatchSourceFileSystemObject?
-
-    init(path: String, callback: @escaping () -> Void) {
-        self.path = path
-        self.callback = callback
-        startWatching()
-    }
-
-    deinit {
-        stopWatching()
-    }
-
-    private func startWatching() {
-        let fileDescriptor = open(path, O_RDONLY)
-        guard fileDescriptor >= 0 else {
-            AppLogger.shared.log("❌ [FileWatcher] Could not open file for watching: \(path)")
-            return
-        }
-
-        source = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: fileDescriptor,
-            eventMask: [.write, .delete, .rename],
-            queue: DispatchQueue.global(qos: .utility)
-        )
-
-        source?.setEventHandler { [weak self] in
-            self?.callback()
-        }
-
-        source?.setCancelHandler {
-            close(fileDescriptor)
-        }
-
-        source?.resume()
-    }
-
-    private func stopWatching() {
-        source?.cancel()
-        source = nil
     }
 }

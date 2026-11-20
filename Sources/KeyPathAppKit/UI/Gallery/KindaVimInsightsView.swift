@@ -15,7 +15,6 @@ import SwiftUI
 @MainActor
 struct KindaVimInsightsView: View {
     @State private var snapshot = KindaVimTelemetrySnapshot()
-    @State private var refreshTimer: Timer?
     @State private var showAllCommands = false
 
     var body: some View {
@@ -26,26 +25,23 @@ struct KindaVimInsightsView: View {
             secondaryStats
         }
         .transition(.opacity.combined(with: .move(edge: .top)))
-        .onAppear { refresh(force: true) }
-        .onDisappear {
-            refreshTimer?.invalidate()
-            refreshTimer = nil
+        .task {
+            while !Task.isCancelled {
+                refresh()
+                do {
+                    try await Task.sleep(for: .seconds(5))
+                } catch {
+                    return
+                }
+            }
         }
     }
 
-    private func refresh(force: Bool = false) {
+    private func refresh() {
         // Force any debounced writes to disk so the snapshot we read is
         // current. Cheap when there's nothing pending.
         KindaVimTelemetryStore.shared.flushNow()
         snapshot = KindaVimTelemetryStore.shared.loadSnapshot()
-        if force, refreshTimer == nil {
-            refreshTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
-                Task { @MainActor in
-                    KindaVimTelemetryStore.shared.flushNow()
-                    snapshot = KindaVimTelemetryStore.shared.loadSnapshot()
-                }
-            }
-        }
     }
 
     // MARK: - Headline chart
