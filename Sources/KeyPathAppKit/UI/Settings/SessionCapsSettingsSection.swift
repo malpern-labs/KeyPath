@@ -38,6 +38,7 @@ struct SessionCapsSettingsSection: View {
     @State private var saved: SessionCapsSelection?
     /// Another app's Caps mapping on the chosen keyboard, if any.
     @State private var conflict: SessionCapsConflict?
+    @State private var raycastIsRunning = false
     @State private var fleetUncovered: [String] = []
     @State private var excludedIDs = SessionCapsRuntimeSupport.excludedKeyboardIDs()
     @State private var automaticDisabled = UserDefaults.standard.bool(forKey: SessionCapsRuntimeSupport.automaticSetupDisabledKey)
@@ -96,7 +97,7 @@ struct SessionCapsSettingsSection: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if !automaticDisabled, let conflict {
-                Text(conflict.message).font(.caption).foregroundStyle(.orange)
+                Text(Self.conflictMessage(conflict, raycastIsRunning: raycastIsRunning)).font(.caption).foregroundStyle(.orange)
                     .padding(.leading, 20 + SettingsDesign.rowGap)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("settings-caps-conflict")
@@ -404,6 +405,8 @@ struct SessionCapsSettingsSection: View {
         defer { busy = false }
         do {
             let needsCaps = rulesUseCaps
+            let raycastRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.raycast.macos").isEmpty
+            raycastIsRunning = raycastRunning
             let storedData = UserDefaults.standard.data(forKey: SessionCapsRuntimeSupport.selectionKey)
             let displaced = SessionCapsSelectionStore.displaced?.data
             let found = try await Task.detached {
@@ -427,7 +430,7 @@ struct SessionCapsSettingsSection: View {
                         && !active.contains(keyboard.id)
                     {
                         let conflict = try? SessionCapsRuntimeSupport.capsConflict(on: keyboard.device)
-                        let explanation = conflict?.message ?? String(localized: "Caps Lock setup is not active on this keyboard yet.")
+                        let explanation = conflict.map { Self.conflictMessage($0, raycastIsRunning: raycastRunning) } ?? String(localized: "Caps Lock setup is not active on this keyboard yet.")
                         uncovered.append("\(keyboard.name): \(explanation)")
                     }
                 }
@@ -464,6 +467,16 @@ struct SessionCapsSettingsSection: View {
     {
         if let saved, (try? SessionCapsMappingPolicy.requireUnique(saved, among: connected)) != nil { return saved }
         return connected.count == 1 && withheld == 0 ? connected.first : nil
+    }
+
+    nonisolated static func conflictMessage(_ conflict: SessionCapsConflict, raycastIsRunning: Bool) -> String {
+        // F20 has been observed with Raycast Hyper Key. It is a troubleshooting clue.
+        guard raycastIsRunning, conflict.destination == SessionCapsMappingPolicy.packed(111) else {
+            return conflict.message
+        }
+        return String(
+            localized: "Caps Lock is already mapped to F20 on this keyboard. If you use Raycast’s Hyper Key, open Raycast → Settings → Keyboard → Hyper Key, set it to None, then click Check Again."
+        )
     }
 
     /// A Caps row KeyPath did not write. KeyPath's own row (Caps to its

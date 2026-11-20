@@ -112,36 +112,39 @@ final class SessionCapsIntermediateTests: XCTestCase {
         XCTAssertEqual(SessionCapsIntermediate.occupied(mappingUsages: [], shortcutKeyCodes: [79]), [109])
     }
 
-    func testRaycastHyperKeyIsNamedOnlyWhenItsSettingAgrees() {
-        let row = [Policy.Mapping(source: caps, destination: f20)]
-        let on = SessionCapsConflict.RaycastHyperKey(enabled: true, keyCode: 57)
-        XCTAssertEqual(SessionCapsConflict.identify(row, raycast: on), .raycastHyperKey)
-        XCTAssertTrue(SessionCapsConflict.raycastHyperKey.message.contains("Raycast"))
-        // Same row, but Raycast says Hyper Key is off or on another key: not named.
-        for raycast in [nil, .init(enabled: false, keyCode: 57), .init(enabled: true, keyCode: 63)] as [SessionCapsConflict.RaycastHyperKey?] {
-            XCTAssertEqual(SessionCapsConflict.identify(row, raycast: raycast), .unknown(destination: f20))
-        }
-        // Raycast on, but this keyboard's Caps goes somewhere else.
-        XCTAssertEqual(SessionCapsConflict.identify([.init(source: caps, destination: 0x7_0000_00E0)], raycast: on),
-                       .unknown(destination: 0x7_0000_00E0))
-        XCTAssertNil(SessionCapsConflict.identify([.init(source: 0x7_0000_0004, destination: f20)], raycast: on))
-        XCTAssertNil(SessionCapsConflict.identify([], raycast: on))
+    func testConflictRequiresACapsLockSource() {
+        XCTAssertEqual(SessionCapsConflict.identify([.init(source: caps, destination: f20)]),
+                       SessionCapsConflict(destination: f20))
+        XCTAssertNil(SessionCapsConflict.identify([.init(source: 0x7_0000_0004, destination: f20)]))
+        XCTAssertNil(SessionCapsConflict.identify([]))
+    }
+
+    func testSettingsSuggestsRaycastOnlyForF20WhileItIsRunning() {
+        let conflict = SessionCapsConflict(destination: f20)
+        let hint = SessionCapsSettingsSection.conflictMessage(conflict, raycastIsRunning: true)
+        XCTAssertTrue(hint.contains("F20"))
+        XCTAssertTrue(hint.contains("If you use Raycast"))
+        XCTAssertTrue(hint.contains("Check Again"))
+        XCTAssertEqual(SessionCapsSettingsSection.conflictMessage(conflict, raycastIsRunning: false), conflict.message)
+
+        let other = SessionCapsConflict(destination: Policy.f18)
+        XCTAssertEqual(SessionCapsSettingsSection.conflictMessage(other, raycastIsRunning: true), other.message)
     }
 
     func testUnknownOwnerMessagesSayWhatCanBeKnown() {
-        XCTAssertTrue(SessionCapsConflict.unknown(destination: f20).message.contains("(to F20)"))
-        let modifier = SessionCapsConflict.unknown(destination: 0x7_0000_00E0).message
+        XCTAssertTrue(SessionCapsConflict(destination: f20).message.contains("(to F20)"))
+        let modifier = SessionCapsConflict(destination: 0x7_0000_00E0).message
         XCTAssertTrue(modifier.contains("Modifier Keys"))
         XCTAssertFalse(modifier.contains("Raycast"))
     }
 
     @MainActor
     func testSettingsDoesNotReportKeyPathsOwnRowAsAConflict() {
-        let own = SessionCapsConflict.unknown(destination: Policy.packed(110))
+        let own = SessionCapsConflict(destination: Policy.packed(110))
         XCTAssertTrue(SessionCapsSettingsSection.ownRow(own, intermediate: 110))
         XCTAssertFalse(SessionCapsSettingsSection.ownRow(own, intermediate: 109))
-        XCTAssertFalse(SessionCapsSettingsSection.ownRow(.raycastHyperKey, intermediate: 109))
-        XCTAssertTrue(SessionCapsSettingsSection.ownRow(.raycastHyperKey, intermediate: 111))
+        XCTAssertFalse(SessionCapsSettingsSection.ownRow(SessionCapsConflict(destination: f20), intermediate: 109))
+        XCTAssertTrue(SessionCapsSettingsSection.ownRow(SessionCapsConflict(destination: f20), intermediate: 111))
         XCTAssertFalse(SessionCapsSettingsSection.ownRow(own, intermediate: nil))
     }
 
@@ -155,9 +158,8 @@ final class SessionCapsIntermediateTests: XCTestCase {
             asked.append(arguments)
             return arguments.first == "list" ? row : block
         })
-        let conflict = try SessionCapsRuntimeSupport.capsConflict(on: device, backend: backend,
-                                                                  raycast: .init(enabled: true, keyCode: 57))
-        XCTAssertEqual(conflict, .raycastHyperKey)
+        let conflict = try SessionCapsRuntimeSupport.capsConflict(on: device, backend: backend)
+        XCTAssertEqual(conflict, SessionCapsConflict(destination: f20))
         // Only the chosen keyboard's own services are listed and read.
         let list = try SessionCapsHIDUtilTransport.listArguments(device)
         XCTAssertTrue(asked.allSatisfy { $0 == list || ($0.first == "property" && $0[3] == "--get") }, "\(asked)")
@@ -218,18 +220,5 @@ final class SessionCapsIntermediateTests: XCTestCase {
         XCTAssertFalse(SessionRuntimeWorker.profileFitsLease(Admission(result: .valid, managedCaps: true, intermediateUsage: 110), record: f18Lease))
         // The Caps rule was removed: an ordinary profile also needs a restart.
         XCTAssertFalse(SessionRuntimeWorker.profileFitsLease(Admission(result: .valid, managedCaps: false, intermediateUsage: 109), record: f18Lease))
-    }
-
-    @MainActor
-    func testStartupBannerUsesTheSameWordingAsSettings() {
-        let f20 = SessionCapsConflict.unknown(destination: 0x7_0000_006F)
-        XCTAssertEqual(ServiceLifecycleCoordinator.capsConflictMessage(conflict: f20, raycast: nil), f20.message)
-        XCTAssertTrue(ServiceLifecycleCoordinator.capsConflictMessage(conflict: f20, raycast: nil).contains("(to F20)"))
-        XCTAssertEqual(ServiceLifecycleCoordinator.capsConflictMessage(conflict: .raycastHyperKey, raycast: nil),
-                       SessionCapsConflict.raycastHyperKey.message)
-        // Row unreadable: Raycast's own setting still names it.
-        XCTAssertEqual(ServiceLifecycleCoordinator.capsConflictMessage(conflict: nil, raycast: .init(enabled: true, keyCode: 57)),
-                       SessionCapsConflict.raycastHyperKey.message)
-        XCTAssertTrue(ServiceLifecycleCoordinator.capsConflictMessage(conflict: nil, raycast: nil).contains("Modifier Keys"))
     }
 }

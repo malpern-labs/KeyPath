@@ -61,68 +61,27 @@ public enum SessionCapsIntermediate {
     }
 }
 
-/// Who else is mapping Caps Lock on a keyboard, when that can be told.
-/// Identification needs both the mapping row and the owner's own setting:
-/// a destination alone does not name an app.
-public enum SessionCapsConflict: Equatable, Sendable {
-    /// Raycast's Hyper Key. Witnessed 2026-10-19: `com.raycast.macos
-    /// raycast_hyperKey_state` {enabled=1, keyCode=57} maps Caps (0x700000039)
-    /// to F20 (0x70000006F) on every keyboard service.
-    case raycastHyperKey
-    /// Something else maps Caps Lock to this packed destination usage.
-    case unknown(destination: UInt64)
+/// The Caps Lock mapping observed on a keyboard service.
+public struct SessionCapsConflict: Equatable, Sendable {
+    public let destination: UInt64
 
-    /// Raycast's preference as read from its defaults domain.
-    public struct RaycastHyperKey: Equatable, Sendable {
-        public let enabled: Bool
-        public let keyCode: Int?
-        public init(enabled: Bool, keyCode: Int?) {
-            self.enabled = enabled
-            self.keyCode = keyCode
-        }
+    public init(destination: UInt64) {
+        self.destination = destination
     }
 
     /// nil when no row maps Caps Lock.
-    public static func identify(_ mappings: [SessionCapsMappingPolicy.Mapping],
-                                raycast: RaycastHyperKey?) -> SessionCapsConflict?
-    {
-        guard let row = mappings.first(where: { $0.source == SessionCapsMappingPolicy.caps }) else { return nil }
-        // Raycast's Hyper Key keyCode is the macOS virtual keycode of the
-        // trigger: 57 is Caps Lock. Its hidutil destination is F20.
-        if let raycast, raycast.enabled, raycast.keyCode == 57, row.destination == 0x7_0000_006F {
-            return .raycastHyperKey
-        }
-        return .unknown(destination: row.destination)
-    }
-
-    /// The packed usage Caps Lock is mapped to.
-    public var destination: UInt64 {
-        switch self {
-        case .raycastHyperKey: 0x7_0000_006F
-        case let .unknown(destination): destination
-        }
-    }
-
-    /// Who to name as the owner in a sentence ("Raycast already remaps Caps Lock").
-    public var ownerName: String {
-        switch self {
-        case .raycastHyperKey: "Raycast"
-        case .unknown: String(localized: "Another app")
-        }
+    public static func identify(_ mappings: [SessionCapsMappingPolicy.Mapping]) -> SessionCapsConflict? {
+        mappings.first { $0.source == SessionCapsMappingPolicy.caps }
+            .map { SessionCapsConflict(destination: $0.destination) }
     }
 
     public var message: String {
-        switch self {
-        case .raycastHyperKey:
-            String(localized: "Raycast\u{2019}s Hyper Key is using Caps Lock. Turn it off in Raycast, or use another trigger for Hyper Key.")
-        case let .unknown(destination):
-            if destination >> 32 == 7, SessionCapsIntermediate.isCandidate(UInt32(destination & 0xFFFF_FFFF)) {
-                String(
-                    localized: "Another app is already remapping Caps Lock on this keyboard (to \(SessionCapsIntermediate.label(UInt32(destination & 0xFFFF_FFFF)))). Turn that off to use Caps Lock rules in KeyPath."
-                )
-            } else {
-                String(localized: "Another app or the Modifier Keys setting in System Settings is already remapping Caps Lock on this keyboard. Turn that off to use Caps Lock rules in KeyPath.")
-            }
+        if destination >> 32 == 7, SessionCapsIntermediate.isCandidate(UInt32(destination & 0xFFFF_FFFF)) {
+            String(
+                localized: "Another app is already remapping Caps Lock on this keyboard (to \(SessionCapsIntermediate.label(UInt32(destination & 0xFFFF_FFFF)))). Turn that off to use Caps Lock rules in KeyPath."
+            )
+        } else {
+            String(localized: "Another app or the Modifier Keys setting in System Settings is already remapping Caps Lock on this keyboard. Turn that off to use Caps Lock rules in KeyPath.")
         }
     }
 }

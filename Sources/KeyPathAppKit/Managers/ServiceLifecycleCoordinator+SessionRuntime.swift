@@ -688,16 +688,6 @@ extension ServiceLifecycleCoordinator {
             && report.failure == "managed-caps-activation-refused: physicalKeysHeld"
     }
 
-    /// The conflict as Settings words it; when the row cannot be read, fall
-    /// back on Raycast's own setting, else the generic wording.
-    static func capsConflictMessage(conflict: SessionCapsConflict?,
-                                    raycast: SessionCapsConflict.RaycastHyperKey?) -> String
-    {
-        if let conflict { return conflict.message }
-        return (raycast?.enabled == true && raycast?.keyCode == 57
-            ? SessionCapsConflict.raycastHyperKey : .unknown(destination: 0)).message
-    }
-
     private func sessionWakeReadinessBlocker() -> String? {
         #if DEBUG
             if let ready = testSessionWakeReady { return ready() ? nil : "test-not-ready" }
@@ -719,14 +709,9 @@ extension ServiceLifecycleCoordinator {
         case "tap-disabled-by-user-input", "tap-disabled-observed", "modifying-tap-unavailable", "modifying-tap-not-enabled":
             return String(localized: "Check \(AccessibilityPermissionPresentation.current.name) for KeyPath in System Settings. If access is disabled, enable it, then quit and reopen KeyPath.")
         case "managed-caps-activation-refused: capsAlreadyMapped":
-            // The worker saw a Caps row it did not write. Read that row, as
-            // Settings does, so both name the same owner and key.
-            return capsConflictMessage(
-                conflict: (try? SessionCapsRuntimeSupport.selectedDevice())
-                    .flatMap { $0 }
-                    .flatMap { try? SessionCapsRuntimeSupport.capsConflict(on: $0) },
-                raycast: SessionCapsRuntimeSupport.raycastHyperKey()
-            )
+            let conflict = (try? SessionCapsRuntimeSupport.selectedDevice())
+                .flatMap { try? SessionCapsRuntimeSupport.capsConflict(on: $0) }
+            return (conflict ?? SessionCapsConflict(destination: 0)).message
         case "managed-caps-activation-refused: intermediateCollision":
             return String(localized: "Another app started using KeyPath\u{2019}s Caps Lock key. Quit and reopen KeyPath so it can choose another key.")
         case SessionCapsRuntimeSupport.keyboardDisconnectedReason:
@@ -939,7 +924,8 @@ extension ServiceLifecycleCoordinator {
         let occupied: Set<UInt32>
         // Who else maps Caps on this keyboard, read in the same pass; the
         // engine turns it into a verdict on every rule that needs Caps Lock.
-        let foreignOwner = await Task.detached { try? SessionCapsRuntimeSupport.capsConflict(on: device) }.value?.ownerName
+        let conflict = await Task.detached { try? SessionCapsRuntimeSupport.capsConflict(on: device) }.value
+        let foreignOwner = conflict.map { _ in String(localized: "Another app") }
         do {
             occupied = try await Task.detached { try SessionCapsRuntimeSupport.occupiedIntermediates(own: device) }.value
         } catch {

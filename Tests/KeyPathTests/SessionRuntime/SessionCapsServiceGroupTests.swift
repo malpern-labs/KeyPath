@@ -112,9 +112,8 @@ final class SessionCapsServiceGroupTests: XCTestCase {
         let hid = FakeHID()
         hid.state[FakeHID.nkro] = raycast
         hid.failGetOnPair = [12, 1] // the board's consumer interface is unreadable
-        let conflict = try SessionCapsRuntimeSupport.capsConflict(on: hid.cl80, backend: hid.backend,
-                                                                  raycast: .init(enabled: true, keyCode: 57))
-        XCTAssertEqual(conflict, .raycastHyperKey)
+        let conflict = try SessionCapsRuntimeSupport.capsConflict(on: hid.cl80, backend: hid.backend)
+        XCTAssertEqual(conflict, SessionCapsConflict(destination: raycast[0].destination))
     }
 
     func testATransientCompanionReadIsRetried() throws {
@@ -217,7 +216,7 @@ final class SessionCapsServiceGroupTests: XCTestCase {
         }
     }
 
-    func testCapsOnAnyInterfaceIsAlreadyMappedAndNamed() throws {
+    func testCapsOnAnyInterfaceIsAlreadyMappedAndReported() throws {
         try fixture(FakeHID()) { lease, hid, owner in
             hid.state[FakeHID.nkro] = raycast
             XCTAssertThrowsError(try lease.acquire(owner: owner, configSHA256: digest, device: hid.cl80)) { error in
@@ -226,9 +225,8 @@ final class SessionCapsServiceGroupTests: XCTestCase {
             XCTAssertEqual(hid.state[FakeHID.nkro], raycast)
             XCTAssertEqual(hid.state[FakeHID.boot], [])
             XCTAssertNil(try lease.pendingRecord())
-            let conflict = try SessionCapsRuntimeSupport.capsConflict(on: hid.cl80, backend: hid.backend,
-                                                                      raycast: .init(enabled: true, keyCode: 57))
-            XCTAssertEqual(conflict, .raycastHyperKey)
+            let conflict = try SessionCapsRuntimeSupport.capsConflict(on: hid.cl80, backend: hid.backend)
+            XCTAssertEqual(conflict, SessionCapsConflict(destination: raycast[0].destination))
         }
         try fixture(FakeHID()) { lease, hid, owner in
             _ = try lease.acquire(owner: owner, configSHA256: digest, device: hid.cl80)
