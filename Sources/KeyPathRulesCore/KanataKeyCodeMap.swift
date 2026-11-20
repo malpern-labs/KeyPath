@@ -1,6 +1,6 @@
 import Foundation
 
-enum KanataKeyCodeMap {
+package enum KanataKeyCodeMap {
     private static let nameToKeyCode: [String: UInt16] = [
         // Row 3: Home row (ASDF...)
         "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5,
@@ -56,12 +56,12 @@ enum KanataKeyCodeMap {
         "hangeul": 104, "hanja": 104
     ]
 
-    nonisolated static func keyCode(for name: String) -> UInt16? {
+    package nonisolated static func keyCode(for name: String) -> UInt16? {
         nameToKeyCode[name.lowercased()]
     }
 
     /// Maps CGEvent key codes to OsCode display names used by Kanata TCP events.
-    nonisolated static func overlayName(for keyCode: UInt16) -> String {
+    package nonisolated static func overlayName(for keyCode: UInt16) -> String {
         switch keyCode {
         // Row 3: Home row (ASDF...)
         case 0: "a"

@@ -635,7 +635,7 @@ extension KanataConfiguration {
         let keys = layout.keys.compactMap { key -> String? in
             // Skip invalid keycodes (e.g., Touch ID, layer keys)
             guard key.keyCode != PhysicalKey.unmappedKeyCode else { return nil }
-            let name = OverlayKeyboardView.keyCodeToKanataName(key.keyCode).lowercased()
+            let name = KanataKeyCodeMap.overlayName(for: key.keyCode).lowercased()
             // Skip unknown keycodes
             guard !name.hasPrefix("unknown-") else { return nil }
             // Early skip via the raw kanata name (covers defaults like "leftmeta").

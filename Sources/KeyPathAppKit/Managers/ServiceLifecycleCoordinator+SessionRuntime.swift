@@ -2,6 +2,7 @@ import AppKit
 import Carbon
 import KeyPathCore
 import KeyPathPermissions
+import KeyPathRulesCore
 
 extension ServiceLifecycleCoordinator {
     func currentSessionReport() -> SessionRuntimeReport? {
