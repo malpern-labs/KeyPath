@@ -72,12 +72,12 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 ### Open follow-ups
 
-- B7: the live homepage and setup page now send 1.0.1 users to the tag-pinned guide (#1520). GitHub Pages published commit `0b5a2052`, and both pages returned HTTP 200 with the new copy and links. Put macOS 27+ and Apple Silicon alongside the session-runtime download when its release artifact is live. Link one versioned cleanup guide from setup and uninstall. Draft #1507 still needs a representative rehearsal with the legacy helper active. Keep cleanup manual under [ADR-047](../adr/adr-047-pre-release-cleanup.md). Revisit automatic migration if tester evidence shows the manual path is a recurring barrier.
+- B7: The live homepage and setup page send 1.0.1 users to the tag-pinned guide (#1520). Both published pages returned HTTP 200 after the update. The original notarized 1.0.1 installer passed Gatekeeper on a disposable macOS 26.5.2 guest and reached its background-item approval prompt. The active-helper cleanup portion of draft #1507 still needs a rehearsal after approval. When the session-runtime release is live, put macOS 27+ and Apple Silicon alongside its download and link the manual cleanup guide from setup and uninstall. Revisit automatic migration if tester evidence shows the manual path is a recurring barrier. See [ADR-047](../adr/adr-047-pre-release-cleanup.md).
 
-- O7b: Packs and their existing features stay. After config path moved to Core (#1517), rule list, show, and completion matched the previous executable on six checks in #1532. The runtime command group builds independently in #1537 and matched the previous executable on 16 help and isolated no-app checks. Both PRs are in CI. The full executable still links the app library for other commands. See the [CLI compile-boundary evaluation](#cli-compile-boundary-evaluation).
-- O8c: The installer pack decisions and validator snapshots now use scoped test inputs (#1523, #1525). The unused forced test mode was removed (#1528). Its full safe suite passed 5,529 tests. Keep the safeguards that prevent real system actions during tests and audit the remaining implicit fixture behavior.
-- P6: The mapper cancels delayed resets when the selection changes (#1519). A stale layer-indicator fade can no longer hide a replacement (#1526). Earlier changes covered BuildInfo, device and permission caches, diagnostic callbacks, preferences, the CLI spinner, and date formatter ownership. The tooltip and favicon follow-ups are in CI (#1534, #1538). Timer and framework boundaries still need verification.
-- P8: The Japanese virtual-key confirmation fit on the macOS 27.2.1 test guest. Settings option cards and Status actions now use language-independent IDs (#1535). Xcode compiled the catalog with eight additional Japanese translations in #1536, and the active-key audit found no missing Japanese entries on that branch. Live layout of other screens and independent native-language review remain.
+- O7b: Keep the pack gallery, installation, and dependency features. Rules Core owns the read-only rule, collection, and pack catalog paths and the simulator (#1532, #1543, #1546, #1548). The simulator passed 35 focused tests, including four that run the bundled simulator. Seven comparisons against the preceding CLI matched stdout, stderr and exit status. The full CLI still links KeyPathAppKit for its remaining commands. See the [CLI compile-boundary evaluation](#cli-compile-boundary-evaluation).
+- O8c: The installer pack decisions and validator snapshots use scoped test inputs (#1523, #1525). The unused forced test mode was removed (#1528), and its full safe suite passed 5,529 tests. Removing the unused file-validation route and shared validation-host override preserved the real parser path in 165 focused tests (#1547). Audit the remaining implicit fixture behavior and retain the safeguards against real system actions during tests.
+- P6: The mapper cancels delayed resets when the selection changes (#1519, #1540). Stale layer-indicator and tooltip callbacks respect their current window (#1526, #1534). Favicon completion and engine timeout cleanup follow their owning operation (#1538, #1549). In 85 focused tests, the timeout change preserved a replacement connection and its buffer. The audit of the remaining timer and framework boundaries is open. The Layout Tracer compiler trial is recorded below.
+- P8: The Japanese virtual-key confirmation and General Settings stable-update label fit in signed macOS 27.2.1 builds. Settings option cards and Status actions use language-independent IDs (#1535). Xcode compiled eight additional Japanese translations (#1536) and localized the Stable and Beta channel labels (#1542). Live layout of other screens and independent native-language review remain.
 - P9: Pack and collection tests, Caps Lock selection, leader recovery, the overlay window and onboarding fixtures use isolated test state (#1514, #1521, #1523, #1527, #1531). A safe-runner qualification on master `c2550766` passed 4,734 XCTest invocations with two worker processes plus 844 Swift Testing checks. A focused media-key test reproduced a comment-parsing error on the baseline and candidate. The fix passed all five media tests locally (#1533). Shared mutable state within a test process still needs a separate audit.
 
 P2's normal usage prompt passed on a fresh macOS 27 guest. B7's current permission
@@ -593,9 +593,13 @@ Remaining work:
 - Reconcile delayed UI callbacks and timers with their owning view/window
   lifetimes. Convert only callbacks that require cancellation, and test closing
   or replacing the owner while a callback is pending.
-- Default main-actor isolation remains an optional compile-boundary experiment,
-  not a demonstrated correctness requirement. Check the current toolchain and
-  a leaf target before adopting it across UI targets.
+- On November 20, Apple Swift 6.4.2 compiled the Layout Tracer module with
+  both isolation settings, targeting macOS 27.0. Four existing downstream
+  Swift Testing files type-checked with the current setting. Default
+  main-actor isolation made synchronous document import and result access
+  actor-isolated, and those callers failed to type-check. Keep explicit
+  isolation at UI boundaries until the pure layout and file APIs can stay
+  nonisolated.
 
 ### P7. SwiftUI and AppKit idioms
 
