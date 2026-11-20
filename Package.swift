@@ -89,10 +89,11 @@ let package = Package(
                 .swiftLanguageMode(.v6)
             ]
         ),
-        // Foundation-only CLI argument and presentation contracts.
+        // CLI presentation and session-client commands independent of the app library.
         .target(
             name: "KeyPathCLICommon",
             dependencies: [
+                "KeyPathCore",
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ],
             path: "Sources/KeyPathCLICommon",
@@ -260,6 +261,7 @@ let package = Package(
             dependencies: [
                 "KeyPathAppKit",
                 "KeyPathCLI",
+                "KeyPathCLICommon",
                 "KeyPathCore",
                 "KeyPathInsights",
                 "KeyPathPermissions",

@@ -1,5 +1,6 @@
 import ArgumentParser
 @testable import KeyPathCLI
+import KeyPathCLICommon
 import KeyPathCore
 import XCTest
 
