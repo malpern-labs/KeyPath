@@ -227,7 +227,7 @@ public final class PackInstaller {
             }
 
             // Resolve effective quick-setting values (user-provided ∪ defaults).
-            let resolvedSettings = resolveQuickSettings(pack: pack, overrides: quickSettingValues)
+            let resolvedSettings = pack.resolvedQuickSettings(overrides: quickSettingValues)
 
             // Visual-only packs (e.g. KindaVim Mode Display) don't touch the
             // kanata config at all — install just persists the tracker record
@@ -295,7 +295,7 @@ public final class PackInstaller {
             // Prepare the entire custom-rule pack before writing. The metadata and
             // all rules remain one recoverable revision through runtime application.
             let ruleStateSnapshot = manager.snapshotRuleState()
-            let rules = renderBindings(for: pack, quickSettings: resolvedSettings)
+            let rules = pack.renderBindings(quickSettings: resolvedSettings)
             for (index, rule) in rules.enumerated() {
                 guard await manager.updateCustomRuleInMemory(rule, mutationPermit: permit) else {
                     manager.ruleCollections = ruleStateSnapshot.collections
@@ -524,7 +524,7 @@ public final class PackInstaller {
             }
 
             // Clamp to valid ranges
-            let resolved = resolveQuickSettings(pack: pack, overrides: mergedSettings)
+            let resolved = pack.resolvedQuickSettings(overrides: mergedSettings)
 
             let snapshot = manager.snapshotRuleState()
             var hasRuleChanges = false
@@ -542,7 +542,7 @@ public final class PackInstaller {
                 }
             } else if !pack.bindings.isEmpty {
                 manager.customRules.removeAll { $0.packSource == packID }
-                for rule in renderBindings(for: pack, quickSettings: resolved) {
+                for rule in pack.renderBindings(quickSettings: resolved) {
                     guard await manager.updateCustomRuleInMemory(rule, mutationPermit: permit) else {
                         restorePreparedRuleState(snapshot, manager: manager)
                         throw InstallError.saveFailed("updated pack rules could not be prepared")
@@ -602,56 +602,6 @@ public final class PackInstaller {
         manager.ruleCollections = snapshot.collections
         manager.customRules = snapshot.customRules
         manager.refreshLayerIndicatorState()
-    }
-
-    // MARK: - Rendering
-
-    /// Convert a pack's binding templates into concrete CustomRules tagged
-    /// with the pack's id.
-    func renderBindings(
-        for pack: Pack,
-        quickSettings: [String: Int]
-    ) -> [CustomRule] {
-        // Hold timeout from quick settings, falling back to home-row-mod
-        // friendly default. Only used by templates that have a hold output.
-        let holdMs = quickSettings["holdTimeout"] ?? 200
-
-        return pack.bindings.map { template in
-            let title = template.title
-                ?? "\(pack.name) · \(template.input.uppercased())"
-
-            // If the template has a hold output, attach a dual-role behavior
-            // (tap-hold with `activateHoldOnOtherKey`, matching the
-            // Kanata tap-hold-press variant used by the Home-Row Mods
-            // convenience factory). Otherwise this is a simple remap.
-            let behavior: MappingBehavior? = template.holdOutput.map { holdOutput in
-                .dualRole(
-                    DualRoleBehavior(
-                        tapAction: KanataBehaviorRenderer.parseActionString(template.output),
-                        holdAction: KanataBehaviorRenderer.parseActionString(holdOutput),
-                        tapTimeout: holdMs,
-                        holdTimeout: holdMs,
-                        activateHoldOnOtherKey: true,
-                        quickTap: false
-                    )
-                )
-            }
-
-            return CustomRule(
-                id: UUID(),
-                title: title,
-                input: template.input,
-                action: .keystroke(key: template.output),
-                shiftedOutput: nil,
-                isEnabled: true,
-                notes: template.notes,
-                createdAt: Date(),
-                behavior: behavior,
-                targetLayer: .base,
-                deviceOverrides: nil,
-                packSource: pack.id
-            )
-        }
     }
 
     // MARK: - Pre-install gates
@@ -721,7 +671,7 @@ public final class PackInstaller {
         }
         var ownRuleIDs = Set<UUID>()
         if !pack.visualOnly, pack.associatedCollectionID == nil, !pack.isSystemPack {
-            let rendered = renderBindings(for: pack, quickSettings: resolveQuickSettings(pack: pack, overrides: [:]))
+            let rendered = pack.renderBindings(quickSettings: pack.resolvedQuickSettings(overrides: [:]))
             ownRuleIDs = Set(rendered.map(\.id))
             rules += rendered
         }
@@ -783,31 +733,6 @@ public final class PackInstaller {
                 "❌ [PackInstaller] Could not persist tracker rollback for '\(packID)': \(error)"
             )
             return false
-        }
-    }
-
-    private func resolveQuickSettings(
-        pack: Pack,
-        overrides: [String: Int]
-    ) -> [String: Int] {
-        var resolved: [String: Int] = [:]
-        for setting in pack.quickSettings {
-            if let override = overrides[setting.id] {
-                // Clamp to the pack-defined slider bounds so a malformed
-                // override (negative, out-of-range, serialized garbage) can't
-                // produce a kanata config with nonsense timing values.
-                resolved[setting.id] = clamp(override, to: setting.kind)
-            } else if let defaultVal = setting.defaultSliderValue {
-                resolved[setting.id] = defaultVal
-            }
-        }
-        return resolved
-    }
-
-    private func clamp(_ value: Int, to kind: PackQuickSetting.Kind) -> Int {
-        switch kind {
-        case let .slider(_, minValue, maxValue, _, _):
-            min(max(value, minValue), maxValue)
         }
     }
 
