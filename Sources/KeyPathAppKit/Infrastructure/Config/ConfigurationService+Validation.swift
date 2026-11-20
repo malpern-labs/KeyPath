@@ -25,59 +25,6 @@ extension ConfigurationService {
         throw KeyPathError.configuration(.validationFailed(errors: errors))
     }
 
-    /// Validate configuration via file-based check
-    public func validateConfigViaFile() async -> (isValid: Bool, errors: [String]) {
-        if TestEnvironment.isRunningTests {
-            AppLogger.shared.log("🧪 [ConfigService] Test mode: Skipping file validation")
-            return (true, [])
-        }
-
-        let binaryPath = WizardSystemPaths.kanataActiveBinary
-        guard Foundation.FileManager().isExecutableFile(atPath: binaryPath) else {
-            let message = String(localized: "Kanata binary missing at \(binaryPath)")
-            AppLogger.shared.log("❌ [ConfigService] File validation skipped: \(message)")
-            return (false, [message])
-        }
-
-        var errors: [String] = []
-
-        do {
-            let result = try await SubprocessRunner.shared.run(
-                binaryPath,
-                args: buildKanataArguments(checkOnly: true),
-                timeout: 30
-            )
-            let output = result.stdout + result.stderr
-
-            if result.exitCode == 0 {
-                AppLogger.shared.log("✅ [ConfigService] File validation passed")
-                return (true, [])
-            } else {
-                // Parse errors from output
-                let lines = output.components(separatedBy: .newlines)
-                for line in lines where !line.isEmpty && (line.contains("error") || line.contains("Error")) {
-                    errors.append(line.trimmingCharacters(in: .whitespaces))
-                }
-
-                if errors.isEmpty {
-                    errors.append(String(localized: "Configuration validation failed (exit code: \(String(result.exitCode)))"))
-                }
-
-                AppLogger.shared.log("❌ [ConfigService] File validation failed: \(errors)")
-                notifyValidationFailure(errors, context: "file")
-                return (false, errors)
-            }
-
-        } catch {
-            AppLogger.shared.log("❌ [ConfigService] File validation error: \(error)")
-            notifyValidationFailure(
-                [String(localized: "Failed to validate configuration file: \(error.localizedDescription)")],
-                context: "file"
-            )
-            return (false, [String(localized: "Failed to validate configuration file: \(error.localizedDescription)")])
-        }
-    }
-
     /// Validate configuration content using CLI (kanata --check)
     ///
     /// Note: TCP validation was removed because our Kanata fork doesn't support
@@ -179,11 +126,6 @@ extension ConfigurationService {
             guard Foundation.FileManager().isExecutableFile(atPath: kanataBinary) else {
                 let message = String(localized: "Kanata binary missing at \(kanataBinary)")
                 AppLogger.shared.log("❌ [Validation-CLI] \(message)")
-                if TestEnvironment.isRunningTests {
-                    AppLogger.shared.log("🧪 [Validation-CLI] Skipping CLI validation in tests")
-                    try? Foundation.FileManager().removeItem(at: tempConfigURL)
-                    return (true, [])
-                }
                 try? Foundation.FileManager().removeItem(at: tempConfigURL)
                 return (false, [message])
             }
@@ -283,14 +225,5 @@ extension ConfigurationService {
                 "context": context
             ]
         )
-    }
-
-    private func buildKanataArguments(checkOnly: Bool = false) -> [String] {
-        var args = ["--cfg", configurationPath]
-        if checkOnly {
-            args.append("--check")
-        }
-
-        return args
     }
 }

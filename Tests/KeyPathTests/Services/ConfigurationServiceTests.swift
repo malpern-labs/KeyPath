@@ -506,12 +506,6 @@ class ConfigurationServiceTests: KeyPathTestCase {
         XCTAssertEqual(result.errors.first, "Configuration content is empty")
     }
 
-    func testValidateConfigViaFileSkipsBinaryInTestMode() async {
-        let (isValid, errors) = await configService.validateConfigViaFile()
-        XCTAssertTrue(isValid)
-        XCTAssertTrue(errors.isEmpty)
-    }
-
     func testCreateInitialConfigWritesDefaultFile() async throws {
         try SessionBridgeTestFixture.requireAvailable()
         let configPath = tempDirectory.appendingPathComponent("keypath.kbd")

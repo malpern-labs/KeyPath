@@ -40,16 +40,6 @@ final class ConfigurationManager {
         return arguments
     }
 
-    func validateConfigFile() async -> (isValid: Bool, errors: [String]) {
-        guard Foundation.FileManager().fileExists(atPath: configPath) else {
-            return (false, [String(localized: "Config file does not exist at: \(configPath)")])
-        }
-
-        // Use CLI validation (TCP-only mode)
-        AppLogger.shared.log("📄 [ConfigManager] Using file-based validation")
-        return await configurationService.validateConfigViaFile()
-    }
-
     func backupFailedConfigAndApplySafe(failedConfig: String, mappings: [KeyMapping]) async throws -> String {
         // Delegate to ConfigurationService for backup and safe config application
         try await configurationService.backupFailedConfigAndApplySafe(
