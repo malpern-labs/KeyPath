@@ -429,7 +429,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
         } else {
             // #922: bootstrap() performs real disk I/O (config load/save), TCP reload
             // attempts, and posts notifications/sounds — unstubbed side effects that raced
-            // with fixture assertions in unit tests (e.g. RecordingCoordinatorTests), causing
+            // with fixture assertions in unit tests, causing
             // flaky failures on the self-hosted CI runner. Skip it in test-host processes;
             // explicit tests of bootstrap() call it directly on their own
             // RuleCollectionsManager instance. isTestHostProcess (not isRunningTests) so a

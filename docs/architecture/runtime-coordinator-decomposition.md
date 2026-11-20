@@ -45,7 +45,6 @@ MainAppStateController               → ServiceLifecycleCoordinator (direct)
 | KanataViewModel | UI state, start/stop, config, rules, diagnostics | RuntimeCoordinator (legitimate — it's the ViewModel's backing model) |
 | MainAppStateController | `isInTransientRuntimeStartupWindow()`, `clearDiagnostics()`, `currentRuntimeStatusInternal()` | ServiceLifecycleCoordinator + DiagnosticsManager |
 | MapperViewModel | Rule collection methods | RuleCollectionsCoordinator |
-| RecordingCoordinator | Rule collection save | RuleCollectionsCoordinator |
 | KanataConfigGenerator | Rule collections, config service | RuleCollectionsCoordinator + ConfigurationService |
 | SystemValidator | `inspectSystemContext()` (for wizard compat) | InstallerEngine |
 | SimpleModsService | Rule collections | RuleCollectionsCoordinator |
@@ -68,7 +67,7 @@ Sub-coordinators were already `internal` (no access modifier). No changes needed
 Narrowed from `RuntimeCoordinator` to `ServiceLifecycleCoordinator` + `onSystemHealthy` closure.
 
 ### 2b-2e: Remaining consumers — DEFERRED
-MapperViewModel, RecordingCoordinator, SimpleModsService, and KanataConfigGenerator use multiple RuntimeCoordinator domains (rules + lifecycle + config). Narrowing them would trade one dependency for 3-4 smaller ones — not simpler. These consumers legitimately need broad access.
+MapperViewModel, SimpleModsService, and KanataConfigGenerator use multiple RuntimeCoordinator domains (rules + lifecycle + config). Narrowing them would trade one dependency for 3-4 smaller ones — not simpler. These consumers legitimately need broad access.
 
 ---
 
