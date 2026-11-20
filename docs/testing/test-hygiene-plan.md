@@ -734,3 +734,10 @@ in-memory approval/link-grant stores, and a unique defaults domain per test.
 They do not enable scripts in the developer's shared security preferences or
 read the real script-approval Keychain item. The temporary defaults domain is
 removed when the per-test fixture is released.
+
+The November 19 full gate passed 5,523 tests and exposed one historical General
+Settings reference mismatch: its selected layer mode was Overlay, while the
+current `PreferencesService.Defaults.contextHUDDisplayMode` is `.none`. Visual
+comparison confirmed that the selected card was the difference. Refresh that
+reference to Nothing, retaining its 0.98 comparison tolerances; do not change
+the product default or loosen precision to make the test pass.
