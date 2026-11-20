@@ -19,11 +19,12 @@ final class DuplicateInvestigationSupportTests: XCTestCase {
             action: .press,
             kanataTimestamp: 42,
             sessionID: 7,
-            observedAt: Date(timeIntervalSince1970: 0)
+            observedAt: Date(timeIntervalSince1970: 0.9996)
         )
 
         let log = DuplicateInvestigationSupport.makeObservedKeyInputLog(event)
         XCTAssertTrue(log.contains("session=7"))
+        XCTAssertTrue(log.contains("observed_at=1970-01-01T00:00:01.000Z"))
         XCTAssertTrue(log.contains("key=a"))
         XCTAssertTrue(log.contains("action=press"))
         XCTAssertTrue(log.contains("kanata_t=42"))
