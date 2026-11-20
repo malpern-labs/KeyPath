@@ -51,6 +51,44 @@ final class TCPEventParsingTests: XCTestCase {
         vm.simulateTcpKeyInput(key: "a", action: "unknown_action")
     }
 
+    @MainActor
+    func testCancelledRemapExpiryLeavesSuppressionForItsReplacement() async throws {
+        let viewModel = KeyboardVisualizationViewModel()
+        let source: UInt16 = 0
+        viewModel.remapOutputMap[source] = 1
+        viewModel.handleTcpKeyInput(key: "a", action: "release")
+        let expiry = try XCTUnwrap(viewModel.remapSourceClearTasks[source])
+
+        viewModel.handleTcpKeyInput(key: "a", action: "release")
+        let replacement = try XCTUnwrap(viewModel.remapSourceClearTasks[source])
+        // Cancel without waiting for the real clock to expire.
+        replacement.cancel()
+        await expiry.value
+        await replacement.value
+
+        XCTAssertTrue(expiry.isCancelled)
+        XCTAssertTrue(viewModel.recentRemapSourceKeyCodes.contains(source))
+        XCTAssertNotNil(viewModel.remapSourceClearTasks[source])
+    }
+
+    @MainActor
+    func testCancelledTapOutputExpiryLeavesSuppressionForItsReplacement() async throws {
+        let viewModel = KeyboardVisualizationViewModel()
+        let escape: UInt16 = 53
+        viewModel.handleTapActivated(key: "caps", action: "esc")
+        let expiry = try XCTUnwrap(viewModel.tapOutputClearTasks[escape])
+
+        viewModel.handleTapActivated(key: "caps", action: "esc")
+        let replacement = try XCTUnwrap(viewModel.tapOutputClearTasks[escape])
+        replacement.cancel()
+        await expiry.value
+        await replacement.value
+
+        XCTAssertTrue(expiry.isCancelled)
+        XCTAssertTrue(viewModel.recentTapOutputs.contains(escape))
+        XCTAssertNotNil(viewModel.tapOutputClearTasks[escape])
+    }
+
     // MARK: - Hold Activated Events
 
     @MainActor

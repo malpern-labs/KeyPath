@@ -26,6 +26,12 @@ struct TextRunView: View {
                     : Color.clear)
         )
         .animation(.easeInOut(duration: 0.15), value: activePopoverCharId)
+        .onDisappear {
+            hoverTimer?.invalidate()
+            hoverTimer = nil
+            hoveredCharId = nil
+            activePopoverCharId = nil
+        }
     }
 
     private func characterView(_ char: TextRunCharacter) -> some View {
@@ -44,16 +50,16 @@ struct TextRunView: View {
                     hoveredCharId = char.id
                     hoverTimer?.invalidate()
                     hoverTimer = Timer.scheduledTimer(withTimeInterval: hoverDelay, repeats: false) { _ in
-                        Task { @MainActor in
+                        // The main run loop owns both hover changes and the timer.
+                        MainActor.assumeIsolated {
+                            hoverTimer = nil
                             if hoveredCharId == char.id {
                                 activePopoverCharId = char.id
                             }
                         }
                     }
-                } else {
-                    if hoveredCharId == char.id {
-                        hoveredCharId = nil
-                    }
+                } else if hoveredCharId == char.id {
+                    hoveredCharId = nil
                     hoverTimer?.invalidate()
                     hoverTimer = nil
                 }
