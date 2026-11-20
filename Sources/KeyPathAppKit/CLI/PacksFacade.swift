@@ -336,13 +336,3 @@ public struct CLIPackSettingValueError: Error, CustomStringConvertible {
         "Invalid value \(value) for setting '\(settingKey)' on pack '\(packName)': \(reason)"
     }
 }
-
-public struct PackManagedCollectionError: Error, CustomStringConvertible {
-    public let collectionName: String
-    public let packName: String
-    public let packID: String
-    public var description: String {
-        let slug = packName.lowercased().replacingOccurrences(of: " ", with: "-")
-        return "'\(collectionName)' is managed by pack '\(packName)'. Run 'keypath pack uninstall \(slug)' to release it."
-    }
-}

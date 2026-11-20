@@ -1,36 +1,39 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
 public struct CollectionsFacade: Sendable {
     private let store: RuleCollectionStore
-    private let operation: CLIConfigurationOperation?
+    private let admission: (gate: ConfigurationOperationGate, permit: ConfigurationOperationGate.Permit)?
     private let installedPackTracker: InstalledPackTracker
 
     public init() {
         store = .shared
         installedPackTracker = .shared
-        operation = nil
+        admission = nil
     }
 
-    init(operation: CLIConfigurationOperation) {
-        store = RuleCollectionStore(fileURL: URL(fileURLWithPath: operation.directory)
-            .appendingPathComponent("RuleCollections.json"))
-        self.operation = operation
-        installedPackTracker = operation.installedPackTracker
+    package init(
+        configDirectory: URL,
+        gate: ConfigurationOperationGate,
+        permit: ConfigurationOperationGate.Permit,
+        installedPackTracker: InstalledPackTracker
+    ) {
+        store = RuleCollectionStore(fileURL: configDirectory.appendingPathComponent("RuleCollections.json"))
+        admission = (gate, permit)
+        self.installedPackTracker = installedPackTracker
     }
 
-    init(store: RuleCollectionStore, installedPackTracker: InstalledPackTracker = .shared) {
+    package init(store: RuleCollectionStore, installedPackTracker: InstalledPackTracker = .shared) {
         self.store = store
         self.installedPackTracker = installedPackTracker
-        operation = nil
+        admission = nil
     }
 
     private func withMutation<Result: Sendable>(
         _ body: @Sendable () async throws -> Result
     ) async throws -> Result {
-        if let operation {
-            return try await operation.service.operationGate.withOperation(using: operation.permit) { _ in
+        if let admission {
+            return try await admission.gate.withOperation(using: admission.permit) { _ in
                 try await body()
             }
         }
@@ -366,12 +369,28 @@ public struct CollectionsFacade: Sendable {
         try RuleCollectionLookup.index(nameOrId: nameOrId, in: collections)
     }
 
-    static func parseLayer(_ name: String) -> RuleCollectionLayer {
+    package static func parseLayer(_ name: String) -> RuleCollectionLayer {
         switch name.lowercased() {
         case "base": .base
         case "nav", "navigation": .navigation
         default: .custom(name)
         }
+    }
+}
+
+public struct PackManagedCollectionError: Error, CustomStringConvertible {
+    public let collectionName: String
+    public let packName: String
+    public let packID: String
+    package init(collectionName: String, packName: String, packID: String) {
+        self.collectionName = collectionName
+        self.packName = packName
+        self.packID = packID
+    }
+
+    public var description: String {
+        let slug = packName.lowercased().replacingOccurrences(of: " ", with: "-")
+        return "'\(collectionName)' is managed by pack '\(packName)'. Run 'keypath pack uninstall \(slug)' to release it."
     }
 }
 
