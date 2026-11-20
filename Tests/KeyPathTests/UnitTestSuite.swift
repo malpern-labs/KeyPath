@@ -94,8 +94,9 @@ final class UnitTestSuite: XCTestCase {
     // MARK: - Preference Service Tests
 
     @MainActor
-    func testPreferenceDefaults() {
-        let service = PreferencesService()
+    func testPreferenceDefaults() throws {
+        let fixture = try IsolatedPreferenceDefaults()
+        let service = PreferencesService(leaderDefaults: fixture.defaults, defaults: fixture.defaults)
 
         // Test that service initializes with defaults (TCP only)
         XCTAssertEqual(service.communicationProtocol, .tcp)
