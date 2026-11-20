@@ -20,10 +20,10 @@ final class GlobalHotkeyService {
     /// Whether the global hotkey is enabled (user preference)
     var isEnabled: Bool {
         get {
-            Foundation.UserDefaults.standard.object(forKey: DefaultsKey.globalHotkeyEnabled) as? Bool ?? true
+            defaults.object(forKey: DefaultsKey.globalHotkeyEnabled) as? Bool ?? true
         }
         set {
-            Foundation.UserDefaults.standard.set(newValue, forKey: DefaultsKey.globalHotkeyEnabled)
+            defaults.set(newValue, forKey: DefaultsKey.globalHotkeyEnabled)
             if newValue {
                 startMonitoring()
             } else {
@@ -42,6 +42,7 @@ final class GlobalHotkeyService {
 
     // MARK: - Initialization
 
+    private let defaults: UserDefaults
     private let notificationCenter: NotificationCenter
     private let permissionsReady: () -> Bool
     private let addGlobalMonitor: (@escaping (NSEvent) -> Void) -> Any?
@@ -49,6 +50,7 @@ final class GlobalHotkeyService {
     private let removeMonitor: (Any) -> Void
 
     init(
+        defaults: UserDefaults = .standard,
         notificationCenter: NotificationCenter = .default,
         // A global keyDown monitor is a listen-only tap, so it runs only when macOS
         // already allows one; KeyPath never prompts for that separate access.
@@ -64,6 +66,7 @@ final class GlobalHotkeyService {
         },
         removeMonitor: @escaping (Any) -> Void = { NSEvent.removeMonitor($0) }
     ) {
+        self.defaults = defaults
         self.notificationCenter = notificationCenter
         self.permissionsReady = permissionsReady
         self.addGlobalMonitor = addGlobalMonitor

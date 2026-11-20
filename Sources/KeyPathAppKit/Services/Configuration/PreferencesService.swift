@@ -191,6 +191,7 @@ final class PreferencesService: @unchecked Sendable {
     }
 
     static let leaderKeyPreferenceKey = "KeyPath.LeaderKey.Preference"
+    private let defaults: UserDefaults
     private let leaderDefaults: UserDefaults
     var persistenceDefaults: UserDefaults {
         leaderDefaults
@@ -204,7 +205,7 @@ final class PreferencesService: @unchecked Sendable {
     /// Communication protocol preference (always TCP)
     var communicationProtocol: CommunicationProtocol {
         didSet {
-            UserDefaults.standard.set(communicationProtocol.rawValue, forKey: Keys.communicationProtocol)
+            defaults.set(communicationProtocol.rawValue, forKey: Keys.communicationProtocol)
             AppLogger.shared.log(
                 "🔧 [PreferencesService] Communication protocol: \(communicationProtocol.rawValue)"
             )
@@ -214,7 +215,7 @@ final class PreferencesService: @unchecked Sendable {
     /// Whether user notifications are enabled
     var notificationsEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(notificationsEnabled, forKey: Keys.notificationsEnabled)
+            defaults.set(notificationsEnabled, forKey: Keys.notificationsEnabled)
             AppLogger.shared.log("🔔 [PreferencesService] Notifications enabled: \(notificationsEnabled)")
         }
     }
@@ -223,7 +224,7 @@ final class PreferencesService: @unchecked Sendable {
     /// When false, temporarily suspend mappings so the recorder captures raw keys.
     var applyMappingsDuringRecording: Bool {
         didSet {
-            UserDefaults.standard.set(
+            defaults.set(
                 applyMappingsDuringRecording, forKey: Keys.applyMappingsDuringRecording
             )
             AppLogger.shared.log(
@@ -236,7 +237,7 @@ final class PreferencesService: @unchecked Sendable {
     /// When false, capture keys as combination (all pressed together).
     var isSequenceMode: Bool {
         didSet {
-            UserDefaults.standard.set(isSequenceMode, forKey: Keys.isSequenceMode)
+            defaults.set(isSequenceMode, forKey: Keys.isSequenceMode)
             AppLogger.shared.log("🎛️ [Preferences] isSequenceMode = \(isSequenceMode)")
         }
     }
@@ -245,7 +246,7 @@ final class PreferencesService: @unchecked Sendable {
     /// Logs every key event with timing information for debugging performance issues
     var verboseKanataLogging: Bool {
         didSet {
-            UserDefaults.standard.set(verboseKanataLogging, forKey: Keys.verboseKanataLogging)
+            defaults.set(verboseKanataLogging, forKey: Keys.verboseKanataLogging)
             AppLogger.shared.log("📊 [Preferences] verboseKanataLogging = \(verboseKanataLogging)")
             // Post notification so RuntimeCoordinator can restart with new flags
             NotificationCenter.default.post(name: .verboseLoggingChanged, object: nil)
@@ -258,7 +259,7 @@ final class PreferencesService: @unchecked Sendable {
     /// Toggling posts a notification so the overlay controller can recreate its window with the new style.
     var accessibilityTestMode: Bool {
         didSet {
-            UserDefaults.standard.set(accessibilityTestMode, forKey: Keys.accessibilityTestMode)
+            defaults.set(accessibilityTestMode, forKey: Keys.accessibilityTestMode)
             AppLogger.shared.log("🧪 [Preferences] accessibilityTestMode = \(accessibilityTestMode)")
             NotificationCenter.default.post(name: .accessibilityTestModeChanged, object: nil)
         }
@@ -269,7 +270,7 @@ final class PreferencesService: @unchecked Sendable {
     /// Whether modifier/action keys show symbols (⌫ ⇥ ⇪ ⇧ ↩) or text (delete tab caps shift return)
     var keyLabelStyle: KeyLabelStyle {
         didSet {
-            UserDefaults.standard.set(keyLabelStyle.rawValue, forKey: Keys.keyLabelStyle)
+            defaults.set(keyLabelStyle.rawValue, forKey: Keys.keyLabelStyle)
             AppLogger.shared.log("🎨 [Preferences] keyLabelStyle = \(keyLabelStyle.rawValue)")
         }
     }
@@ -277,7 +278,7 @@ final class PreferencesService: @unchecked Sendable {
     /// How unmapped keys render on non-base layers (base-layer style vs dimmed).
     var unmappedLayerKeyStyle: UnmappedLayerKeyStyle {
         didSet {
-            UserDefaults.standard.set(unmappedLayerKeyStyle.rawValue, forKey: Keys.unmappedLayerKeyStyle)
+            defaults.set(unmappedLayerKeyStyle.rawValue, forKey: Keys.unmappedLayerKeyStyle)
             AppLogger.shared.log("🎨 [Preferences] unmappedLayerKeyStyle = \(unmappedLayerKeyStyle.rawValue)")
         }
     }
@@ -289,7 +290,7 @@ final class PreferencesService: @unchecked Sendable {
             if clamped != overlayOpacity {
                 overlayOpacity = clamped
             } else {
-                UserDefaults.standard.set(overlayOpacity, forKey: Keys.overlayOpacity)
+                defaults.set(overlayOpacity, forKey: Keys.overlayOpacity)
             }
         }
     }
@@ -297,7 +298,7 @@ final class PreferencesService: @unchecked Sendable {
     /// Whether the overlay fades out after a while without typing.
     var overlayFadesWhenIdle: Bool {
         didSet {
-            UserDefaults.standard.set(overlayFadesWhenIdle, forKey: Keys.overlayFadesWhenIdle)
+            defaults.set(overlayFadesWhenIdle, forKey: Keys.overlayFadesWhenIdle)
             AppLogger.shared.log("🎨 [Preferences] overlayFadesWhenIdle = \(overlayFadesWhenIdle)")
         }
     }
@@ -306,7 +307,7 @@ final class PreferencesService: @unchecked Sendable {
     /// (see OverlayLayerRevealPolicy); launch and app activation no longer open it.
     var overlayShowsOnlyWhileLayerHeld: Bool {
         didSet {
-            UserDefaults.standard.set(overlayShowsOnlyWhileLayerHeld, forKey: Keys.overlayShowsOnlyWhileLayerHeld)
+            defaults.set(overlayShowsOnlyWhileLayerHeld, forKey: Keys.overlayShowsOnlyWhileLayerHeld)
             AppLogger.shared.log("🎨 [Preferences] overlayShowsOnlyWhileLayerHeld = \(overlayShowsOnlyWhileLayerHeld)")
         }
     }
@@ -349,7 +350,7 @@ final class PreferencesService: @unchecked Sendable {
     /// How many times the "Overlay Hidden" education message has been shown
     var overlayHiddenHintShowCount: Int {
         didSet {
-            UserDefaults.standard.set(overlayHiddenHintShowCount, forKey: Keys.overlayHiddenHintShowCount)
+            defaults.set(overlayHiddenHintShowCount, forKey: Keys.overlayHiddenHintShowCount)
         }
     }
 
@@ -363,7 +364,7 @@ final class PreferencesService: @unchecked Sendable {
     /// conflict with the overlay's hold-Space activation.
     var overlaySuppressedBundleIDs: Set<String> {
         didSet {
-            UserDefaults.standard.set(
+            defaults.set(
                 Array(overlaySuppressedBundleIDs).sorted(),
                 forKey: Keys.overlaySuppressedBundleIDs
             )
@@ -379,7 +380,7 @@ final class PreferencesService: @unchecked Sendable {
     /// Display mode for the Context HUD (overlay only, HUD only, or both)
     var contextHUDDisplayMode: ContextHUDDisplayMode {
         didSet {
-            UserDefaults.standard.set(contextHUDDisplayMode.rawValue, forKey: Keys.contextHUDDisplayMode)
+            defaults.set(contextHUDDisplayMode.rawValue, forKey: Keys.contextHUDDisplayMode)
             AppLogger.shared.log("🎯 [Preferences] contextHUDDisplayMode = \(contextHUDDisplayMode.rawValue)")
         }
     }
@@ -455,7 +456,7 @@ final class PreferencesService: @unchecked Sendable {
     /// Presentation mode for KindaVim in leader-hold HUD/key list.
     var kindaVimLeaderHUDMode: KindaVimLeaderHUDMode {
         didSet {
-            UserDefaults.standard.set(kindaVimLeaderHUDMode.rawValue, forKey: Keys.kindaVimLeaderHUDMode)
+            defaults.set(kindaVimLeaderHUDMode.rawValue, forKey: Keys.kindaVimLeaderHUDMode)
             AppLogger.shared.log("🎯 [Preferences] kindaVimLeaderHUDMode = \(kindaVimLeaderHUDMode.rawValue)")
         }
     }
@@ -469,7 +470,7 @@ final class PreferencesService: @unchecked Sendable {
                 neovimReferenceTopics = effective
                 return
             }
-            UserDefaults.standard.set(Array(effective).sorted(), forKey: Keys.neovimReferenceTopics)
+            defaults.set(Array(effective).sorted(), forKey: Keys.neovimReferenceTopics)
             AppLogger.shared.log(
                 "🎯 [Preferences] neovimReferenceTopics = \(Array(effective).sorted().joined(separator: ","))"
             )
@@ -540,56 +541,60 @@ final class PreferencesService: @unchecked Sendable {
 
     // MARK: - Initialization
 
-    init(leaderDefaults: UserDefaults = PreferencesService.canonicalDefaults) {
+    init(
+        leaderDefaults: UserDefaults = PreferencesService.canonicalDefaults,
+        defaults: UserDefaults = .standard
+    ) {
+        self.defaults = defaults
         self.leaderDefaults = leaderDefaults
         // The command-action feature was removed in #879. Clear its retired
         // preference so older installs do not retain a misleading security flag.
-        UserDefaults.standard.removeObject(forKey: "KeyPath.Security.ConfigCommandActionsEnabled")
+        defaults.removeObject(forKey: "KeyPath.Security.ConfigCommandActionsEnabled")
 
         // Load stored preferences or use defaults
         let protocolString =
-            UserDefaults.standard.string(forKey: Keys.communicationProtocol)
+            defaults.string(forKey: Keys.communicationProtocol)
                 ?? Defaults.communicationProtocol.rawValue
         communicationProtocol =
             CommunicationProtocol(rawValue: protocolString) ?? Defaults.communicationProtocol
 
         notificationsEnabled =
-            UserDefaults.standard.object(forKey: Keys.notificationsEnabled) as? Bool
+            defaults.object(forKey: Keys.notificationsEnabled) as? Bool
                 ?? Defaults.notificationsEnabled
 
         // Recording preferences
         applyMappingsDuringRecording =
-            UserDefaults.standard.object(forKey: Keys.applyMappingsDuringRecording) as? Bool
+            defaults.object(forKey: Keys.applyMappingsDuringRecording) as? Bool
                 ?? Defaults.applyMappingsDuringRecording
 
         isSequenceMode =
-            UserDefaults.standard.object(forKey: Keys.isSequenceMode) as? Bool
+            defaults.object(forKey: Keys.isSequenceMode) as? Bool
                 ?? Defaults.isSequenceMode
 
         verboseKanataLogging =
-            UserDefaults.standard.object(forKey: Keys.verboseKanataLogging) as? Bool
+            defaults.object(forKey: Keys.verboseKanataLogging) as? Bool
                 ?? Defaults.verboseKanataLogging
 
         // Key label style
-        let keyLabelStyleString = UserDefaults.standard.string(forKey: Keys.keyLabelStyle)
+        let keyLabelStyleString = defaults.string(forKey: Keys.keyLabelStyle)
             ?? Defaults.keyLabelStyle.rawValue
         keyLabelStyle = KeyLabelStyle(rawValue: keyLabelStyleString) ?? Defaults.keyLabelStyle
 
         // Unmapped-key rendering on non-base layers
-        let unmappedLayerKeyStyleString = UserDefaults.standard.string(forKey: Keys.unmappedLayerKeyStyle)
+        let unmappedLayerKeyStyleString = defaults.string(forKey: Keys.unmappedLayerKeyStyle)
             ?? Defaults.unmappedLayerKeyStyle.rawValue
         unmappedLayerKeyStyle = UnmappedLayerKeyStyle(rawValue: unmappedLayerKeyStyleString) ?? Defaults.unmappedLayerKeyStyle
         overlayOpacity = Self.clampedOverlayOpacity(
-            UserDefaults.standard.object(forKey: Keys.overlayOpacity) as? Double ?? Defaults.overlayOpacity
+            defaults.object(forKey: Keys.overlayOpacity) as? Double ?? Defaults.overlayOpacity
         )
-        overlayFadesWhenIdle = UserDefaults.standard.object(forKey: Keys.overlayFadesWhenIdle) as? Bool
+        overlayFadesWhenIdle = defaults.object(forKey: Keys.overlayFadesWhenIdle) as? Bool
             ?? Defaults.overlayFadesWhenIdle
-        overlayShowsOnlyWhileLayerHeld = UserDefaults.standard.object(forKey: Keys.overlayShowsOnlyWhileLayerHeld) as? Bool
+        overlayShowsOnlyWhileLayerHeld = defaults.object(forKey: Keys.overlayShowsOnlyWhileLayerHeld) as? Bool
             ?? Defaults.overlayShowsOnlyWhileLayerHeld
 
         // Testing preferences
         accessibilityTestMode =
-            UserDefaults.standard.object(forKey: Keys.accessibilityTestMode) as? Bool
+            defaults.object(forKey: Keys.accessibilityTestMode) as? Bool
                 ?? Defaults.accessibilityTestMode
 
         // Leader key preference
@@ -603,18 +608,18 @@ final class PreferencesService: @unchecked Sendable {
 
         // Education hints
         overlayHiddenHintShowCount =
-            UserDefaults.standard.object(forKey: Keys.overlayHiddenHintShowCount) as? Int ?? 0
+            defaults.object(forKey: Keys.overlayHiddenHintShowCount) as? Int ?? 0
 
         // App-scoped overlay suppression list. UserDefaults stores an Array;
         // decode to Set, fall back to the Figma-seeded default if unset.
-        if let stored = UserDefaults.standard.stringArray(forKey: Keys.overlaySuppressedBundleIDs) {
+        if let stored = defaults.stringArray(forKey: Keys.overlaySuppressedBundleIDs) {
             overlaySuppressedBundleIDs = Set(stored)
         } else {
             overlaySuppressedBundleIDs = Defaults.overlaySuppressedBundleIDs
         }
 
         // Context HUD preferences
-        let hudModeString = UserDefaults.standard.string(forKey: Keys.contextHUDDisplayMode)
+        let hudModeString = defaults.string(forKey: Keys.contextHUDDisplayMode)
             ?? Defaults.contextHUDDisplayMode.rawValue
         contextHUDDisplayMode = ContextHUDDisplayMode(rawValue: hudModeString)
             ?? Defaults.contextHUDDisplayMode
@@ -637,15 +642,15 @@ final class PreferencesService: @unchecked Sendable {
             leaderDefaults.set(sanitizedCustomDelay, forKey: Keys.contextHUDHoldDelayCustomMs)
         }
 
-        let kindaVimHUDModeString = UserDefaults.standard.string(forKey: Keys.kindaVimLeaderHUDMode)
+        let kindaVimHUDModeString = defaults.string(forKey: Keys.kindaVimLeaderHUDMode)
             ?? Defaults.kindaVimLeaderHUDMode.rawValue
         kindaVimLeaderHUDMode = KindaVimLeaderHUDMode(rawValue: kindaVimHUDModeString)
             ?? Defaults.kindaVimLeaderHUDMode
 
-        let storedNeovimTopics = Set(UserDefaults.standard.stringArray(forKey: Keys.neovimReferenceTopics) ?? [])
+        let storedNeovimTopics = Set(defaults.stringArray(forKey: Keys.neovimReferenceTopics) ?? [])
         let validNeovimTopics = Set(NeovimTerminalCategory.allCases.map(\.rawValue))
         let sanitizedNeovimTopics = storedNeovimTopics.intersection(validNeovimTopics)
-        let topicsVersion = UserDefaults.standard.object(forKey: Keys.neovimReferenceTopicsVersion) as? Int ?? 0
+        let topicsVersion = defaults.object(forKey: Keys.neovimReferenceTopicsVersion) as? Int ?? 0
         let legacyDefault = Set([NeovimTerminalCategory.basicMotions.rawValue])
         let migratedNeovimTopics: Set<String> = if topicsVersion < Defaults.neovimReferenceTopicsVersion, sanitizedNeovimTopics == legacyDefault {
             Defaults.neovimReferenceTopics
@@ -655,7 +660,7 @@ final class PreferencesService: @unchecked Sendable {
         neovimReferenceTopics = migratedNeovimTopics.isEmpty
             ? Defaults.neovimReferenceTopics
             : migratedNeovimTopics
-        UserDefaults.standard.set(Defaults.neovimReferenceTopicsVersion, forKey: Keys.neovimReferenceTopicsVersion)
+        defaults.set(Defaults.neovimReferenceTopicsVersion, forKey: Keys.neovimReferenceTopicsVersion)
 
         AppLogger.shared.log(
             "🔧 [PreferencesService] Initialized - Protocol: \(communicationProtocol.rawValue), Verbose logging: \(verboseKanataLogging)"
