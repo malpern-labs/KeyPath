@@ -155,10 +155,12 @@ enum SessionCapsRuntimeSupport {
     static func validate(configPath: String, runtimeHost: KanataRuntimeHost,
                          environment: [String: String] = ProcessInfo.processInfo.environment,
                          selectionData: Data? = UserDefaults.standard.data(forKey: selectionKey),
-                         requireSelection: Bool = true) -> (result: KanataHostBridgeValidationResult, managedCaps: Bool)
+                         requireSelection: Bool = true,
+                         automaticSetupDisabled: Bool = UserDefaults.standard.bool(forKey: automaticSetupDisabledKey)) -> (result: KanataHostBridgeValidationResult, managedCaps: Bool)
     {
         let admission = admit(configPath: configPath, runtimeHost: runtimeHost, environment: environment,
-                              selectionData: selectionData, requireSelection: requireSelection)
+                              selectionData: selectionData, requireSelection: requireSelection,
+                              automaticSetupDisabled: automaticSetupDisabled)
         return (admission.result, admission.managedCaps)
     }
 
@@ -181,7 +183,8 @@ enum SessionCapsRuntimeSupport {
     static func admit(configPath: String, runtimeHost: KanataRuntimeHost,
                       environment: [String: String] = ProcessInfo.processInfo.environment,
                       selectionData: Data? = UserDefaults.standard.data(forKey: selectionKey),
-                      requireSelection: Bool = true, occupied: Set<UInt32> = [], rechoose: Bool = true) -> Admission
+                      requireSelection: Bool = true, occupied: Set<UInt32> = [], rechoose: Bool = true,
+                      automaticSetupDisabled: Bool = UserDefaults.standard.bool(forKey: automaticSetupDisabledKey)) -> Admission
     {
         let usages = SessionKeyMap.sessionOutputUsages
         let preferred = preferredIntermediate(environment: environment, selectionData: selectionData)
@@ -219,9 +222,8 @@ enum SessionCapsRuntimeSupport {
                 )
             }
         }
-        let canManage = (allKeyboardIntermediate(environment: environment) != nil
-            && !UserDefaults.standard.bool(forKey: automaticSetupDisabledKey))
-            || (!requireSelection && !UserDefaults.standard.bool(forKey: automaticSetupDisabledKey))
+        let canManage = (!automaticSetupDisabled
+            && (!requireSelection || allKeyboardIntermediate(environment: environment) != nil))
             || (try? selected(environment: environment, selectionData: selectionData)) != nil
         if canManage {
             guard case .valid = managed(chosen) else { return Admission(result: legacy, managedCaps: false, intermediateUsage: preferred) }

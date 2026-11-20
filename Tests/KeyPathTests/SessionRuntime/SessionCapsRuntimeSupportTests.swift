@@ -33,18 +33,30 @@ final class SessionCapsRuntimeSupportTests: XCTestCase {
         try "(defsrc caps)(deflayer base esc)".write(to: file, atomically: true, encoding: .utf8)
         // Without consent Caps is never managed (nothing is mapped). The
         // profile still runs, with Caps Lock passing through: paused.
-        let disabled = SessionCapsRuntimeSupport.admit(configPath: file.path, runtimeHost: SessionBridgeTestFixture.runtimeHost, environment: [:])
+        let disabled = SessionCapsRuntimeSupport.admit(configPath: file.path, runtimeHost: SessionBridgeTestFixture.runtimeHost, environment: [:], selectionData: nil, automaticSetupDisabled: false)
         guard case .valid = disabled.result else { return XCTFail("A Caps profile without consent runs paused") }
         XCTAssertFalse(disabled.managedCaps)
         XCTAssertTrue(disabled.capsPaused)
         let validatedDigest = try SessionCapsRuntimeSupport.configSHA256(file.path)
-        let enabled = SessionCapsRuntimeSupport.validate(configPath: file.path, runtimeHost: SessionBridgeTestFixture.runtimeHost, environment: environment)
+        let enabled = SessionCapsRuntimeSupport.validate(
+            configPath: file.path,
+            runtimeHost: SessionBridgeTestFixture.runtimeHost,
+            environment: environment,
+            selectionData: nil,
+            automaticSetupDisabled: false
+        )
         guard case .valid = enabled.result else { return XCTFail("Owned Caps profile should validate") }
         XCTAssertTrue(enabled.managedCaps)
         XCTAssertEqual(try SessionCapsRuntimeSupport.validatedConfigDigest(file.path, beforeValidation: validatedDigest), validatedDigest)
         try "(defsrc f18)(deflayer base a)".write(to: file, atomically: true, encoding: .utf8)
         XCTAssertThrowsError(try SessionCapsRuntimeSupport.validatedConfigDigest(file.path, beforeValidation: validatedDigest))
-        let ordinary = SessionCapsRuntimeSupport.validate(configPath: file.path, runtimeHost: SessionBridgeTestFixture.runtimeHost, environment: environment)
+        let ordinary = SessionCapsRuntimeSupport.validate(
+            configPath: file.path,
+            runtimeHost: SessionBridgeTestFixture.runtimeHost,
+            environment: environment,
+            selectionData: nil,
+            automaticSetupDisabled: false
+        )
         guard case .valid = ordinary.result else { return XCTFail("Ordinary native F18 profile should stay eligible") }
         XCTAssertFalse(ordinary.managedCaps)
         let stale = SessionCapsSelection(device: device, bootSessionUUID: UUID().uuidString)
@@ -72,21 +84,13 @@ final class SessionCapsRuntimeSupportTests: XCTestCase {
 
     func testFirstTourRuleCanReachAutomaticSetupWithoutAnExistingSelection() throws {
         try SessionBridgeTestFixture.requireAvailable()
-        let defaults = UserDefaults.standard
-        let key = SessionCapsRuntimeSupport.automaticSetupDisabledKey
-        let original = defaults.object(forKey: key)
-        defer {
-            if let original { defaults.set(original, forKey: key) }
-            else { defaults.removeObject(forKey: key) }
-        }
-        defaults.removeObject(forKey: key)
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: file) }
         try "(defsrc caps)(deflayer base (tap-hold-press 200 200 esc caps))"
             .write(to: file, atomically: true, encoding: .utf8)
         let eligible = SessionCapsRuntimeSupport.validate(
             configPath: file.path, runtimeHost: SessionBridgeTestFixture.runtimeHost,
-            environment: [:], selectionData: nil, requireSelection: false
+            environment: [:], selectionData: nil, requireSelection: false, automaticSetupDisabled: false
         )
         guard case .valid = eligible.result else { return XCTFail("First tour rule must reach automatic keyboard setup") }
         XCTAssertTrue(eligible.managedCaps)
@@ -99,10 +103,9 @@ final class SessionCapsRuntimeSupportTests: XCTestCase {
         guard case .valid = worker.result else { return XCTFail("Worker runs the profile with Caps paused") }
         XCTAssertFalse(worker.managedCaps, "Worker must still require a selection to manage Caps")
         XCTAssertTrue(worker.capsPaused)
-        defaults.set(true, forKey: key)
         let disabled = SessionCapsRuntimeSupport.admit(
             configPath: file.path, runtimeHost: SessionBridgeTestFixture.runtimeHost,
-            environment: [:], selectionData: nil, requireSelection: false
+            environment: [:], selectionData: nil, requireSelection: false, automaticSetupDisabled: true
         )
         XCTAssertFalse(disabled.managedCaps, "Explicit opt-out must remain respected")
         XCTAssertTrue(disabled.capsPaused, "Opt-out pauses Caps rules; the other rules still run")
@@ -112,14 +115,6 @@ final class SessionCapsRuntimeSupportTests: XCTestCase {
     /// moves the reservation; the worker never moves it on its own.
     func testAdmissionMovesTheIntermediateAwayFromRulesAndOccupiedKeys() throws {
         try SessionBridgeTestFixture.requireAvailable()
-        let defaults = UserDefaults.standard
-        let key = SessionCapsRuntimeSupport.automaticSetupDisabledKey
-        let original = defaults.object(forKey: key)
-        defer {
-            if let original { defaults.set(original, forKey: key) }
-            else { defaults.removeObject(forKey: key) }
-        }
-        defaults.removeObject(forKey: key)
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: file) }
         let device = SessionCapsMappingPolicy.DeviceIdentity(registryEntryID: 42, vendorID: 51966, productID: 16400,
@@ -131,7 +126,7 @@ final class SessionCapsRuntimeSupportTests: XCTestCase {
         func admit(_ data: Data?, occupied: Set<UInt32> = [], rechoose: Bool = true) -> SessionCapsRuntimeSupport.Admission {
             SessionCapsRuntimeSupport.admit(configPath: file.path, runtimeHost: SessionBridgeTestFixture.runtimeHost,
                                             environment: [:], selectionData: data, requireSelection: false,
-                                            occupied: occupied, rechoose: rechoose)
+                                            occupied: occupied, rechoose: rechoose, automaticSetupDisabled: false)
         }
 
         try "(defsrc caps f18)(deflayer base esc a)".write(to: file, atomically: true, encoding: .utf8)
