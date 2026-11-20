@@ -1,10 +1,11 @@
 @testable import KeyPathAppKit
 import KeyPathCore
+import KeyPathRulesCore
 import XCTest
 
 final class CatalogUpdateFeedbackTests: XCTestCase {
     func testRestoredRuleStateReportsPendingRuntimeRecovery() {
-        let reload = ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .pending)
+        let reload = ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .pending)
         let result = KeyPathAppKit.SaveResult.failure(
             KeyPathError.configuration(.validationFailed(errors: ["Rejected"])),
             recoveryResult: KeyPathAppKit.SaveRecoveryResult.restoredPreviousRuleState(reloadResult: reload)

@@ -51,20 +51,6 @@ public enum UnmappedLayerKeyStyle: String, CaseIterable, Sendable {
     }
 }
 
-/// Communication protocol for Kanata integration
-/// TCP is the only supported protocol (Kanata v1.9.0 - see ADR-013)
-enum CommunicationProtocol: String, CaseIterable {
-    case tcp
-
-    var displayName: String {
-        String(localized: "TCP (Reliable)")
-    }
-
-    var description: String {
-        String(localized: "Reliable TCP protocol for config reloading (no authentication required - see ADR-013)")
-    }
-}
-
 /// What appears while a layer is active: the keyboard overlay, the shortcut list, both, or nothing.
 enum ContextHUDDisplayMode: String, CaseIterable {
     case overlayOnly
@@ -154,18 +140,6 @@ final class PreferencesService: Sendable {
 
     private var suppressLeaderPersistence = false
     private var suppressShortcutListPersistence = false
-
-    // MARK: - Communication Protocol Configuration
-
-    /// Communication protocol preference (always TCP)
-    var communicationProtocol: CommunicationProtocol {
-        didSet {
-            defaults.set(communicationProtocol.rawValue, forKey: Keys.communicationProtocol)
-            AppLogger.shared.log(
-                "🔧 [PreferencesService] Communication protocol: \(communicationProtocol.rawValue)"
-            )
-        }
-    }
 
     /// Whether user notifications are enabled
     var notificationsEnabled: Bool {
@@ -432,7 +406,6 @@ final class PreferencesService: Sendable {
     // MARK: - Keys
 
     private enum Keys {
-        static let communicationProtocol = "KeyPath.Communication.Protocol"
         static let notificationsEnabled = "KeyPath.Notifications.Enabled"
         static let applyMappingsDuringRecording = "KeyPath.Recording.ApplyMappingsDuringRecording"
         static let isSequenceMode = "KeyPath.Recording.IsSequenceMode"
@@ -458,7 +431,6 @@ final class PreferencesService: Sendable {
     // MARK: - Defaults
 
     private enum Defaults {
-        static let communicationProtocol = CommunicationProtocol.tcp // TCP is only protocol
         static let notificationsEnabled = true
         static let applyMappingsDuringRecording = true
         static let isSequenceMode = true
@@ -504,11 +476,6 @@ final class PreferencesService: Sendable {
         defaults.removeObject(forKey: "KeyPath.Security.ConfigCommandActionsEnabled")
 
         // Load stored preferences or use defaults
-        let protocolString =
-            defaults.string(forKey: Keys.communicationProtocol)
-                ?? Defaults.communicationProtocol.rawValue
-        communicationProtocol =
-            CommunicationProtocol(rawValue: protocolString) ?? Defaults.communicationProtocol
 
         notificationsEnabled =
             defaults.object(forKey: Keys.notificationsEnabled) as? Bool
@@ -611,35 +578,13 @@ final class PreferencesService: Sendable {
         defaults.set(Defaults.neovimReferenceTopicsVersion, forKey: Keys.neovimReferenceTopicsVersion)
 
         AppLogger.shared.log(
-            "🔧 [PreferencesService] Initialized - Protocol: \(communicationProtocol.rawValue), Verbose logging: \(verboseKanataLogging)"
+            "🔧 [PreferencesService] Initialized - Verbose logging: \(verboseKanataLogging)"
         )
-    }
-
-    // MARK: - Public Interface
-
-    /// Reset all communication settings to defaults
-    func resetCommunicationSettings() {
-        communicationProtocol = Defaults.communicationProtocol
-        AppLogger.shared.log("🔧 [PreferencesService] All communication settings reset to defaults")
-    }
-
-    /// Get current communication configuration as string for logging
-    var communicationConfigDescription: String {
-        String(localized: "Engine control over the worker's Unix-domain socket, owner-checked (ADR-046)")
     }
 }
 
 private extension PreferencesService {
     nonisolated static func clampedContextHUDHoldDelayCustomMs(_ delay: Int) -> Int {
         min(max(delay, 100), 2000)
-    }
-}
-
-// MARK: - Convenience Extensions
-
-extension PreferencesService {
-    /// Get the currently preferred communication protocol (always TCP)
-    var preferredProtocol: CommunicationProtocol {
-        communicationProtocol
     }
 }

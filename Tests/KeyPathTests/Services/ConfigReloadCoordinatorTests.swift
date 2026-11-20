@@ -1,6 +1,7 @@
 import Foundation
 @testable import KeyPathAppKit
 import KeyPathCore
+import KeyPathRulesCore
 import Testing
 @preconcurrency import XCTest
 
@@ -750,8 +751,7 @@ struct ConfigReloadCoordinatorTests {
         let success = ReloadResult(
             success: true,
             response: "config reloaded",
-            errorMessage: nil,
-            protocol: .tcp
+            errorMessage: nil
         )
         #expect(success.isSuccess == true)
         #expect(success.response == "config reloaded")
@@ -760,22 +760,20 @@ struct ConfigReloadCoordinatorTests {
         let failure = ReloadResult(
             success: false,
             response: "error details",
-            errorMessage: "validation failed",
-            protocol: .tcp
+            errorMessage: "validation failed"
         )
         #expect(failure.isSuccess == false)
         #expect(failure.response == "error details")
         #expect(failure.errorMessage == "validation failed")
 
-        let noProtocol = ReloadResult(
+        let permissionFailure = ReloadResult(
             success: false,
             response: nil,
-            errorMessage: "Permission required",
-            protocol: nil
+            errorMessage: "Permission required"
         )
-        #expect(noProtocol.isSuccess == false)
-        #expect(noProtocol.response == nil)
-        #expect(noProtocol.errorMessage == "Permission required")
+        #expect(permissionFailure.isSuccess == false)
+        #expect(permissionFailure.response == nil)
+        #expect(permissionFailure.errorMessage == "Permission required")
     }
 
     // MARK: - triggerReload: completes without crashing

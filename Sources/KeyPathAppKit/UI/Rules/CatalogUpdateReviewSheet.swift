@@ -1,3 +1,4 @@
+import KeyPathRulesCore
 import SwiftUI
 
 /// Explicit review for catalog changes. Nothing is selected initially: keeping
