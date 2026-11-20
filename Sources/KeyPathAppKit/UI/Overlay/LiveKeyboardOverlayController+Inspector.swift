@@ -256,44 +256,37 @@ extension LiveKeyboardOverlayController {
         }
     }
 
-    /// Show the hide hint bubble after health indicator dismisses
-    /// Waits for health indicator to disappear, then 0.5s delay, then shows bubble
-    func showHintBubbleAfterHealthIndicator() {
-        // Cancel any existing observer
+    /// Give the health indicator priority, then show the hint above the same overlay.
+    func showHintBubbleAfterHealthIndicator(
+        wait: @escaping @MainActor (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+    ) {
         hintBubbleObserver?.cancel()
-
-        // If health indicator is already dismissed, show after short delay
-        if uiState.healthIndicatorState == .dismissed || uiState.healthIndicatorState == .healthy {
-            showHintBubbleWithDelay(seconds: 0.5)
+        guard let window else {
+            hintBubbleObserver = nil
             return
         }
 
-        // Otherwise, observe and wait for dismissal
-        hintBubbleObserver?.cancel()
-        let observeTask = Task { @MainActor [weak self] in
-            while let self {
-                let state = uiState.healthIndicatorState
-                if state == .dismissed || state == .healthy {
-                    showHintBubbleWithDelay(seconds: 0.5)
-                    return
+        hintBubbleObserver = Task { @MainActor [weak self, weak window] in
+            do {
+                while !Task.isCancelled, let state = self?.uiState.healthIndicatorState,
+                      let window, self?.window === window, window.isVisible
+                {
+                    if state == .dismissed || state == .healthy {
+                        try await wait(.milliseconds(500))
+                        guard !Task.isCancelled, let self, self.window === window, window.isVisible else { return }
+                        hintBubbleObserver = nil
+                        if hintWindowController == nil {
+                            hintWindowController = HideHintWindowController()
+                        }
+                        hintWindowController?.show(above: window)
+                        return
+                    }
+                    try await wait(.milliseconds(50))
                 }
-                try? await Task.sleep(for: .milliseconds(50))
+            } catch {
+                // A dismissal cancels both the health wait and the presentation delay.
+                return
             }
-        }
-        hintBubbleObserver = observeTask
-    }
-
-    func showHintBubbleWithDelay(seconds: Double) {
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(seconds))
-            guard let window = self.window, window.isVisible else { return }
-
-            // Create controller if needed
-            if hintWindowController == nil {
-                hintWindowController = HideHintWindowController()
-            }
-
-            hintWindowController?.show(above: window)
         }
     }
 
