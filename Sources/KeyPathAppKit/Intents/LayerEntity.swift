@@ -24,8 +24,7 @@ struct LayerEntityQuery: EntityQuery {
     }
 
     private func fetchLayers() async throws -> [LayerEntity] {
-        let facade = ConfigFacade()
-        let names = try await facade.tcpGetLayers()
+        let names = try await KanataTCPClient().requestLayerNames()
         return names.map { LayerEntity(id: $0, name: $0) }
     }
 }

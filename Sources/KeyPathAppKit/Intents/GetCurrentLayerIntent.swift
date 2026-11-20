@@ -6,8 +6,7 @@ struct GetCurrentLayerIntent: AppIntent {
     static let description = IntentDescription("Returns the currently active keyboard layer.")
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        let facade = ConfigFacade()
-        let layer = try await facade.tcpGetCurrentLayer()
+        let layer = try await KanataTCPClient().requestCurrentLayerName()
         return .result(value: layer)
     }
 

@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathCLISupport
 import KeyPathRulesCore
 
 struct CollectionEnable: AsyncParsableCommand, Sendable {

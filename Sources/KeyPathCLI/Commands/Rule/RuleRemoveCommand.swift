@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathCLISupport
 
 struct RuleRemove: AsyncParsableCommand, Sendable {
     static let configuration = CommandConfiguration(

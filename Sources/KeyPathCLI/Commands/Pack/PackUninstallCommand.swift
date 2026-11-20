@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import KeyPathAppKit
+import KeyPathCLISupport
 import KeyPathRulesCore
 
 struct PackUninstall: AsyncParsableCommand, Sendable {

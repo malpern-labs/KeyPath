@@ -1,5 +1,6 @@
 import Darwin
 @testable import KeyPathAppKit
+@testable import KeyPathCLISupport
 import KeyPathRulesCore
 import XCTest
 

@@ -1,4 +1,5 @@
 import Foundation
+import KeyPathCLISupport
 import KeyPathCore
 import KeyPathRulesCore
 
@@ -334,5 +335,11 @@ public struct CLIPackSettingValueError: Error, CustomStringConvertible {
 
     public var description: String {
         "Invalid value \(value) for setting '\(settingKey)' on pack '\(packName)': \(reason)"
+    }
+}
+
+public extension CLIConfigurationOperation {
+    var packs: PacksFacade {
+        PacksFacade(operation: self)
     }
 }
