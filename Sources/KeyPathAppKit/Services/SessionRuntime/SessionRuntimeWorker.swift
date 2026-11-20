@@ -451,7 +451,7 @@ public final class SessionRuntimeWorker {
     /// keeps the admitted digest, so the next tick looks again.
     nonisolated static func profileCheck(configPath: String?, admittedDigest: String?, record: SessionCapsMappingPolicy.Record,
                                          digestOf: (String) throws -> String,
-                                         admit: (String) -> SessionCapsRuntimeSupport.Admission) -> (digest: String?, fits: Bool)
+                                         admit: (String) -> SessionConfigurationAdmission) -> (digest: String?, fits: Bool)
     {
         guard let configPath, let current = try? digestOf(configPath), current != admittedDigest else {
             return (admittedDigest, true)
@@ -459,7 +459,7 @@ public final class SessionRuntimeWorker {
         return (current, profileFitsLease(admit(configPath), record: record))
     }
 
-    nonisolated static func profileFitsLease(_ admission: SessionCapsRuntimeSupport.Admission,
+    nonisolated static func profileFitsLease(_ admission: SessionConfigurationAdmission,
                                              record: SessionCapsMappingPolicy.Record) -> Bool
     {
         guard case .valid = admission.result, admission.managedCaps else { return false }

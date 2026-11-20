@@ -123,7 +123,7 @@ final class SessionCapsRuntimeSupportTests: XCTestCase {
         func saved(_ usage: UInt32) throws -> Data {
             try JSONEncoder().encode(SessionCapsSelection(device: device, bootSessionUUID: boot, intermediateUsage: usage))
         }
-        func admit(_ data: Data?, occupied: Set<UInt32> = [], rechoose: Bool = true) -> SessionCapsRuntimeSupport.Admission {
+        func admit(_ data: Data?, occupied: Set<UInt32> = [], rechoose: Bool = true) -> SessionConfigurationAdmission {
             SessionCapsRuntimeSupport.admit(configPath: file.path, runtimeHost: SessionBridgeTestFixture.runtimeHost,
                                             environment: [:], selectionData: data, requireSelection: false,
                                             occupied: occupied, rechoose: rechoose, automaticSetupDisabled: false)

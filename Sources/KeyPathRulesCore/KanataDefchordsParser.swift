@@ -1,8 +1,7 @@
 import Foundation
-import KeyPathRulesCore
 
-enum KanataDefchordsParser {
-    static func parseGroups(from content: String) -> [ChordGroupConfig] {
+package enum KanataDefchordsParser {
+    package static func parseGroups(from content: String) -> [ChordGroupConfig] {
         let lines = content.components(separatedBy: .newlines)
         var groups: [ChordGroupConfig] = []
         var currentGroup: ChordGroupConfig?
@@ -58,7 +57,7 @@ enum KanataDefchordsParser {
         return groups
     }
 
-    static func referencedChordGroups(in mappings: [KeyMapping]) -> Set<String> {
+    package static func referencedChordGroups(in mappings: [KeyMapping]) -> Set<String> {
         var names: Set<String> = []
         for mapping in mappings {
             guard let name = parseChordGroupName(from: mapping.action.kanataOutput) else { continue }
