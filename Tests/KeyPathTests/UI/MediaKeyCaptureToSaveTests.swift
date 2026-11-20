@@ -112,8 +112,12 @@ final class MediaKeyCaptureToSaveTests: KeyPathTestCase {
         await vm.save(kanataManager: coordinator)
         XCTAssertFalse(vm.statusIsError, vm.statusMessage ?? "")
         let config = try String(contentsOfFile: service.configurationPath, encoding: .utf8)
-        let defsrc = try XCTUnwrap(config.components(separatedBy: "(defsrc").last?.components(separatedBy: ")").first)
-        XCTAssertTrue(defsrc.contains("mute"), defsrc)
+        let sourceKeys = config.components(separatedBy: .newlines)
+            .map { KanataConfigTokenizer.stripInlineComment($0).trimmingCharacters(in: .whitespaces) }
+            .drop(while: { $0 != "(defsrc" }).dropFirst()
+            .prefix(while: { $0 != ")" })
+            .flatMap(KanataConfigTokenizer.tokenize)
+        XCTAssertTrue(sourceKeys.contains("mute"), "Missing mute in defsrc: \(sourceKeys)")
         let admission = SessionCapsRuntimeSupport.validate(configPath: service.configurationPath,
                                                            runtimeHost: SessionBridgeTestFixture.runtimeHost, requireSelection: false)
         guard case .valid = admission.result else { return XCTFail("media input refused: \(admission.result)") }
