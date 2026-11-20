@@ -46,6 +46,23 @@ struct SimulatorKeycapView: View {
             .onTapGesture {
                 onTap()
             }
+            .task(id: isHolding) {
+                guard isHolding else { return }
+                do {
+                    try await Task.sleep(for: .milliseconds(300))
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                withAnimation {
+                    isHolding = false
+                }
+            }
+            .onDisappear {
+                isHolding = false
+                isPressed = false
+                isHovered = false
+            }
             .onLongPressGesture(minimumDuration: 0.4, pressing: { pressing in
                 withAnimation(.easeInOut(duration: 0.1)) {
                     isPressed = pressing
@@ -58,12 +75,6 @@ struct SimulatorKeycapView: View {
                     isHolding = true
                 }
                 onHold()
-                // Reset holding state after brief feedback
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    withAnimation {
-                        isHolding = false
-                    }
-                }
             }
     }
 

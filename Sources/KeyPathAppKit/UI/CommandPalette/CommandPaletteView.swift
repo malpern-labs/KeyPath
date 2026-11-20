@@ -41,12 +41,18 @@ struct CommandPaletteView: View {
         .background(VisualEffectRepresentable(material: .hudWindow, blending: .behindWindow, emphasized: false))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.3), radius: 20, y: 8)
+        .task {
+            do {
+                try await Task.sleep(for: .milliseconds(50))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            isSearchFocused = true
+        }
         .onAppear {
             selectedIndex = 0
             searchText = ""
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                isSearchFocused = true
-            }
             scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
                 handleScrollWheel(event.scrollingDeltaY)
                 return nil

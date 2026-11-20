@@ -862,8 +862,8 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
     // MARK: - Hot Reload via TCP (delegates to ConfigReloadCoordinator)
 
     /// Main reload method using TCP protocol
-    func triggerConfigReload() async -> ReloadResult {
-        await configReloadCoordinator.triggerConfigReload()
+    func triggerConfigReload(waitForCooldown: Bool = false) async -> ReloadResult {
+        await configReloadCoordinator.triggerConfigReload(waitForCooldown: waitForCooldown)
     }
 
     /// Apply rule changes that have already been validated and persisted.

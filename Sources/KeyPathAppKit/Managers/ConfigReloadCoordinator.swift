@@ -14,6 +14,7 @@ final class ConfigReloadCoordinator {
 
     private let reloadEngine: @MainActor @Sendable () async -> TCPReloadResult
     private let reloadSafetyMonitor: ReloadSafetyMonitor
+    private let cooldownWait: @MainActor @Sendable (TimeInterval) async throws -> Void
     private let healthStatusProvider: @MainActor @Sendable () async -> ServiceHealthStatus
     private let isRuntimeTransitioning: @MainActor @Sendable () -> Bool
     private let transitionRetryMaximumPolls: Int
@@ -63,9 +64,13 @@ final class ConfigReloadCoordinator {
         restartForManagedCapsChange: (@MainActor @Sendable () async -> Bool)? = nil,
         managedCapsRestartFailureReason: (@MainActor @Sendable (UInt64) -> String?)? = nil,
         sessionValidationOverride: (@MainActor @Sendable () -> (result: KanataHostBridgeValidationResult, managedCaps: Bool))? = nil,
-        admittedIntermediateOverride: (@MainActor @Sendable () -> UInt32)? = nil
+        admittedIntermediateOverride: (@MainActor @Sendable () -> UInt32)? = nil,
+        cooldownWait: @escaping @MainActor @Sendable (TimeInterval) async throws -> Void = {
+            try await Task.sleep(for: .seconds($0))
+        }
     ) {
         self.startRuntimeForExplicitApply = startRuntimeForExplicitApply
+        self.cooldownWait = cooldownWait
         self.reloadEngine = reloadEngine
         self.reloadSafetyMonitor = reloadSafetyMonitor
         self.healthStatusProvider = healthStatusProvider
@@ -92,7 +97,8 @@ final class ConfigReloadCoordinator {
     func triggerConfigReload(
         notifyOnFailure: Bool = true,
         scheduleRetryOnPending: Bool = true,
-        recoverStoppedRuntime: Bool = false
+        recoverStoppedRuntime: Bool = false,
+        waitForCooldown: Bool = false
     ) async -> ReloadResult {
         var expectedIntent = runtimeIntentGeneration()
         let wasTransitioningBeforeHealth = isRuntimeTransitioning()
@@ -135,6 +141,33 @@ final class ConfigReloadCoordinator {
                 protocol: nil,
                 disposition: .pending
             )
+        }
+
+        // Explicit CLI Apply waits for the normal throttle instead of reporting
+        // a connection failure for a saved configuration. Bound competing reloads
+        // to three short waits; every attempt still passes the safety monitor.
+        if waitForCooldown {
+            for _ in 0 ..< 3 {
+                let safety = await reloadSafetyMonitor.getStatus()
+                guard safety.backoffRemaining == nil,
+                      let remaining = safety.cooldownRemaining,
+                      remaining > 0, remaining <= 3 else { break }
+                do {
+                    try await cooldownWait(remaining)
+                } catch {
+                    return ReloadResult(success: false, response: nil,
+                                        errorMessage: String(localized: "Apply cancelled"),
+                                        protocol: nil, disposition: .pending)
+                }
+                guard !Task.isCancelled else {
+                    return ReloadResult(success: false, response: nil,
+                                        errorMessage: String(localized: "Apply cancelled"),
+                                        protocol: nil, disposition: .pending)
+                }
+                guard expectedIntent == runtimeIntentGeneration(), runtimeWantsRunning() else {
+                    return changedRuntimeIntent()
+                }
+            }
         }
 
         // Try TCP reload
