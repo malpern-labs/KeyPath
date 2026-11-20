@@ -1,5 +1,6 @@
 import AppKit
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 extension OverlayMapperSection {
@@ -107,7 +108,8 @@ extension OverlayMapperSection {
         let inputKey = OverlayKeyboardView.keyCodeToKanataName(inputSeq)
         let outputKanata = "(layer-switch \(layer))"
 
-        var customRule = kanataManager.makeCustomRule(input: inputKey, output: outputKanata)
+        let source = RuleCollectionLayer(kanataName: viewModel.currentLayer)
+        var customRule = kanataManager.makeCustomRule(input: inputKey, output: outputKanata, layer: source)
         customRule.notes = "Switch to \(layer) layer"
         customRule.shiftedOutput = nil
 

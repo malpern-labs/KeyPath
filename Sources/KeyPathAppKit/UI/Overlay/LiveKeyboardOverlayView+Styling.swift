@@ -124,6 +124,27 @@ extension LiveKeyboardOverlayView {
             onToggleSettingsShelf: toggleSettingsShelf,
             onKeySelected: onKeySelected,
             layerKeyMap: viewModel.layerKeyMap,
+            editingLayer: viewModel.currentLayerName,
+            onRemapApplied: { keyCode, layer, undo, mapper in
+                viewModel.highlightAppliedRemap(keyCode: keyCode, layer: layer)
+                guard let window = NSApp.windows.first(where: { $0 is OverlayWindow }),
+                      let undoManager = window.undoManager,
+                      let runtime = kanataViewModel?.underlyingManager
+                else { return }
+                undoManager.registerUndo(withTarget: viewModel) { [weak mapper] _ in
+                    Task { @MainActor in
+                        if await runtime.rulesManager.undoRemap(undo) {
+                            runtime.refreshRuleMappings()
+                            mapper?.lastSavedRuleID = nil
+                            mapper?.showTransientStatus(String(localized: "Remap undone"))
+                        } else {
+                            mapper?.statusMessage = String(localized: "Could not undo the remap. Your current rules were kept.")
+                            mapper?.statusIsError = true
+                        }
+                    }
+                }
+                undoManager.setActionName(String(localized: "Remap"))
+            },
             hasCustomRules: hasCustomRules,
             customRules: cachedCustomRules,
             appKeymaps: appKeymaps,

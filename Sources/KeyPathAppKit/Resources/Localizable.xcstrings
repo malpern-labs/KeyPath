@@ -10199,6 +10199,7 @@
         }
       }
     },
+    "Could not undo the remap. Your current rules were kept." : {},
     "Couldn't check setup" : {
       "localizations" : {
         "ja" : {
@@ -22471,6 +22472,7 @@
         }
       }
     },
+    "Next ⌘⇧]" : {},
     "No AI generations yet" : {
       "localizations" : {
         "ja" : {
@@ -25913,6 +25915,7 @@
         }
       }
     },
+    "Previous ⌘⇧[" : {},
     "Prior Idle" : {
       "localizations" : {
         "ja" : {
@@ -26985,6 +26988,7 @@
         }
       }
     },
+    "Remap" : {},
     "Remap Escape to something you'll use more — Caps Lock, Backtick, or Tab. Pairs naturally with Caps Lock Remap so both keys stay useful." : {
       "localizations" : {
         "ja" : {
@@ -27015,6 +27019,7 @@
         }
       }
     },
+    "Remap undone" : {},
     "Remap “%@”…" : {
       "localizations" : {
         "ja" : {

@@ -410,6 +410,7 @@ struct LiveKeyboardOverlayView: View {
                 }
             },
             onDisappearAction: {
+                viewModel.selectEditingLayer(nil)
                 inputSourceDetector.stopMonitoring()
                 autoDetectController.setFeedbackVisible(false)
             },

@@ -27,6 +27,8 @@ struct OverlayInspectorPanel: View {
     var onKeySelected: ((UInt16?) -> Void)?
     /// Layer key map for looking up actual mappings (passed from parent view)
     var layerKeyMap: [UInt16: LayerKeyInfo] = [:]
+    var editingLayer: String = "base"
+    var onRemapApplied: ((UInt16, String, RuleCollectionsManager.RemapUndo, MapperViewModel) -> Void)?
     /// Whether custom rules exist (for showing Custom Rules tab)
     var hasCustomRules: Bool = false
     /// Global custom rules for displaying in Custom Rules tab

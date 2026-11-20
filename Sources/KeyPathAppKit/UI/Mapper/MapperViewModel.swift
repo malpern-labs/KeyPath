@@ -11,6 +11,7 @@ import SwiftUI
 @Observable
 @MainActor
 class MapperViewModel {
+    var onRemapApplied: ((UInt16, String, RuleCollectionsManager.RemapUndo) -> Void)?
     var inputLabel: String = "A"
     var outputLabel: String = "A"
     var shiftedOutputLabel: String?

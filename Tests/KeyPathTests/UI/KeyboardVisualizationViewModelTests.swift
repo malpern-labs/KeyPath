@@ -5,6 +5,23 @@ import XCTest
 
 @MainActor
 final class KeyboardVisualizationViewModelTests: XCTestCase {
+    func testEditingLayerShowsSelectionUntilReturningToLiveTracking() {
+        let viewModel = KeyboardVisualizationViewModel()
+        viewModel.updateLayer("base")
+        viewModel.selectEditingLayer("nav")
+        XCTAssertEqual(viewModel.currentLayerName, "nav")
+        XCTAssertEqual(viewModel.liveLayerName, "base")
+
+        viewModel.updateLayer("symbols")
+        XCTAssertEqual(viewModel.currentLayerName, "nav")
+        XCTAssertEqual(viewModel.liveLayerName, "symbols")
+
+        viewModel.selectEditingLayer(nil)
+        XCTAssertEqual(viewModel.currentLayerName, "symbols")
+        viewModel.updateLayer("base")
+        XCTAssertEqual(viewModel.currentLayerName, "base")
+    }
+
     // MARK: - TCP-Based Key Press/Release Tests
 
     func testTcpKeyPressAddsToPressed() async {

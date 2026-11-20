@@ -167,7 +167,8 @@ extension LiveKeyboardOverlayController {
         if let urlId = layerInfo?.urlIdentifier {
             userInfo["urlIdentifier"] = urlId
         }
-        if let shiftedOutput = kanataViewModel?.underlyingManager.getCustomRule(forInput: inputKey)?.shiftedOutput {
+        let layer = RuleCollectionLayer(kanataName: currentLayer)
+        if let shiftedOutput = kanataViewModel?.underlyingManager.getCustomRule(forInput: inputKey, layer: layer)?.shiftedOutput {
             userInfo["shiftedOutputKey"] = shiftedOutput
         }
         return userInfo

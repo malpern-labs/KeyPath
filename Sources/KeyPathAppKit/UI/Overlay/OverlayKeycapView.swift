@@ -53,6 +53,7 @@ struct OverlayKeycapView: View {
     var showScoopedHomeRow: Bool = false
     /// Whether this key is selected in the mapper drawer (shows selection highlight)
     var isSelected: Bool = false
+    var showsAppliedRemap = false
     /// Whether this key is being hovered in the rules/launcher list (shows secondary highlight)
     var isHoveredByRule: Bool = false
     /// Whether the inspector/drawer is visible (determines click vs drag behavior)

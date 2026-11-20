@@ -16,7 +16,13 @@ extension OverlayMapperSection {
             refreshInstalledPacks()
             guard !shouldShowHealthGate, let kanataViewModel else { return }
             viewModel.configure(kanataManager: kanataViewModel.underlyingManager)
-            viewModel.setLayer(kanataViewModel.currentLayerName)
+            viewModel.setLayer(editingLayer)
+            let remapApplied = onRemapApplied
+            let mapper = viewModel
+            mapper.onRemapApplied = { [weak mapper] keyCode, layer, undo in
+                guard let mapper else { return }
+                remapApplied?(keyCode, layer, undo, mapper)
+            }
             if let pending = MapperDrawerSelectionRequest.take() {
                 applyDrawerKeySelection(pending)
                 onKeySelected?(viewModel.inputKeyCode)
@@ -64,8 +70,10 @@ extension OverlayMapperSection {
             updateConfiguredBehaviorSlots()
         }
 
-        let withLayerChange = withInputChange.onKanataLayerChange { change in
-            viewModel.setLayer(change.layerName)
+        let withLayerChange = withInputChange.onChange(of: editingLayer) { _, layer in
+            viewModel.stopKeyCapture()
+            viewModel.setLayer(layer)
+            refreshFromLayerMap(viewModel.inputKeyCode.flatMap { layerKeyMap[$0] }, allowUnmapped: true)
         }
 
         let withDrawerSelection = withLayerChange.onReceive(
@@ -249,6 +257,7 @@ extension OverlayMapperSection {
               let outputKey = userInfo["outputKey"] as? String
         else { return }
 
+        viewModel.setLayer(userInfo["layer"] as? String ?? editingLayer)
         let appId = userInfo["appIdentifier"] as? String
         let systemId = userInfo["systemActionIdentifier"] as? String
         let urlId = userInfo["urlIdentifier"] as? String
@@ -308,20 +317,20 @@ extension OverlayMapperSection {
         return NSImage(systemSymbolName: "app.fill", accessibilityDescription: nil) ?? NSImage()
     }
 
-    private func refreshFromLayerMap(_ newInfo: LayerKeyInfo?) {
-        guard let keyCode = viewModel.inputKeyCode, let newInfo else { return }
+    private func refreshFromLayerMap(_ newInfo: LayerKeyInfo?, allowUnmapped: Bool = false) {
+        guard let keyCode = viewModel.inputKeyCode, newInfo != nil || allowUnmapped else { return }
         let inputKey = OverlayKeyboardView.keyCodeToKanataName(keyCode)
-        let outputKey = newInfo.outputKey ?? newInfo.displayLabel
+        let outputKey = newInfo?.outputKey ?? newInfo?.displayLabel ?? inputKey
         guard !outputKey.isEmpty else { return }
         viewModel.setInputFromKeyClick(
             keyCode: keyCode,
             inputLabel: inputKey,
             outputLabel: outputKey,
-            appIdentifier: newInfo.appLaunchIdentifier,
-            systemActionIdentifier: newInfo.systemActionIdentifier,
-            urlIdentifier: newInfo.urlIdentifier
+            appIdentifier: newInfo?.appLaunchIdentifier,
+            systemActionIdentifier: newInfo?.systemActionIdentifier,
+            urlIdentifier: newInfo?.urlIdentifier
         )
-        if !newInfo.displayLabel.isEmpty, newInfo.displayLabel != outputKey {
+        if let newInfo, !newInfo.displayLabel.isEmpty, newInfo.displayLabel != outputKey {
             viewModel.outputLabel = viewModel.formatKeyForDisplay(newInfo.displayLabel)
         }
         if let manager = kanataViewModel?.underlyingManager {
