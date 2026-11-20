@@ -43,7 +43,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **O6** Plugin system | ✅ | Downloads removed (#1407); Insights linked into the app (#1411). |
 | **O7** Metal stage and first-run onboarding | ✅ | Keep the full Metal onboarding experience. Implementation simplifications can proceed when they preserve the first-run visuals and interactions. |
 | **O7** Packs | ✅ | Owner decision: keep the gallery and pack installation/dependency features. Remove only proven dead code around them; do not replace packs with built-in presets. |
-| **O7** CLI split | 🟡 | Measured a signed release baseline. The read-only config path now uses Core (#1517). A broader target split and comparative build measurements remain open. |
+| **O7** CLI split | 🟡 | Measured a signed release baseline. The read-only config path now uses Core (#1517). Clean and warm Debug baselines are recorded below. A feature-complete target split remains open. |
 | **O8** Unimplemented flags, wording, public-docs lint | ✅ | #1405. |
 | **O8** CLI link and service ownership | ✅ | New links install under `~/.local/bin` and uninstall removes matching links. `AGENTS.md` documents when to use `ServiceContainer` or a singleton (#1429). |
 | **O8** Test-mode checks and lint ratchets | 🟡 | Retired lint tests and passwordless sudo test mode (#1428). Replacing remaining production `TestEnvironment` checks with injected dependencies is open. |
@@ -294,6 +294,21 @@ linked AppKit, SwiftUI, WebKit, Metal, MetalKit, and Sparkle. The first
 invocations was 18.6 ms. These are comparison measurements from one build and
 one machine. The first sample may include operating-system work on the new
 binary, and the run did not measure incremental compilation.
+
+The Air Debug comparison at master `7e781f8f` used Xcode 27.2 (27B52),
+four build jobs and separate SwiftPM scratch directories. Package resolution
+completed before timing. These are individual wall-clock samples.
+
+| Build target | Clean | Warm, no changes | Warm, CLI source edit |
+|---|---:|---:|---:|
+| Complete `keypath-cli` product | 114.48 s | 2.52 s | 2.97 s |
+| Existing `KeyPathCLIHelp` target | 22.84 s | 2.76 s | — |
+
+The edit was a comment in the CLI config-path command, reverted after timing.
+The full Debug executable still directly links AppKit, SwiftUI, Metal,
+MetalKit, Sparkle, and WebKit. The help target shows what a much smaller
+dependency graph costs to build. A future split needs to demonstrate which
+of the difference it can recover while keeping the full command surface.
 
 Keep the existing commands and pack features. A new umbrella engine target
 would still pull in app code if it carried the current facades wholesale.
