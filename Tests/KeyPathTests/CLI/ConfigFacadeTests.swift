@@ -30,8 +30,8 @@ final class ConfigFacadeTests: XCTestCase {
         try createSymlinkedConfig(link: configLink, target: liveTarget)
         try "original".write(to: liveTarget.appendingPathComponent("RuleCollections.json"), atomically: true, encoding: .utf8)
 
-        let facade = ConfigFacade(configDirectory: configLink.path)
-        let result = try await facade.backupConfig(outputPath: backup.path)
+        let archive = ConfigurationArchive(configDirectory: configLink.path)
+        let result = try await archive.backupConfig(outputPath: backup.path)
 
         XCTAssertEqual(result.sourcePath, configLink.path)
         XCTAssertEqual(result.backupPath, backup.path)
@@ -51,11 +51,11 @@ final class ConfigFacadeTests: XCTestCase {
         try createSymlinkedConfig(link: configLink, target: liveTarget)
         try "original".write(to: liveTarget.appendingPathComponent("RuleCollections.json"), atomically: true, encoding: .utf8)
 
-        let facade = ConfigFacade(configDirectory: configLink.path)
-        _ = try await facade.backupConfig(outputPath: backup.path)
+        let archive = ConfigurationArchive(configDirectory: configLink.path)
+        _ = try await archive.backupConfig(outputPath: backup.path)
 
         try "mutated".write(to: liveTarget.appendingPathComponent("RuleCollections.json"), atomically: true, encoding: .utf8)
-        _ = try await facade.restoreConfig(from: backup.path, reload: false)
+        _ = try await archive.restoreConfig(from: backup.path, reload: false)
 
         let restored = try String(contentsOf: liveTarget.appendingPathComponent("RuleCollections.json"), encoding: .utf8)
         XCTAssertEqual(restored, "original")
@@ -72,14 +72,14 @@ final class ConfigFacadeTests: XCTestCase {
         try "rules".write(to: configDir.appendingPathComponent("RuleCollections.json"), atomically: true, encoding: .utf8)
         try "kbd".write(to: configDir.appendingPathComponent("keypath.kbd"), atomically: true, encoding: .utf8)
 
-        let facade = ConfigFacade(configDirectory: configDir.path)
-        _ = try await facade.backupConfig(outputPath: backup.path)
+        let archive = ConfigurationArchive(configDirectory: configDir.path)
+        _ = try await archive.backupConfig(outputPath: backup.path)
 
         // Post-backup drift: one mutation, one new file that isn't in the backup.
         try "mutated".write(to: configDir.appendingPathComponent("RuleCollections.json"), atomically: true, encoding: .utf8)
         try "extra".write(to: configDir.appendingPathComponent("DeviceSelection.json"), atomically: true, encoding: .utf8)
 
-        _ = try await facade.restoreConfig(from: backup.path, reload: false)
+        _ = try await archive.restoreConfig(from: backup.path, reload: false)
 
         let items = try FileManager.default.contentsOfDirectory(atPath: configDir.path).sorted()
         XCTAssertEqual(items, ["RuleCollections.json", "keypath.kbd"], "Extraneous post-backup files should be pruned")
@@ -97,8 +97,8 @@ final class ConfigFacadeTests: XCTestCase {
 
         try "rules".write(to: configDir.appendingPathComponent("RuleCollections.json"), atomically: true, encoding: .utf8)
 
-        let facade = ConfigFacade(configDirectory: configDir.path)
-        _ = try await facade.backupConfig(outputPath: backup.path)
+        let archive = ConfigurationArchive(configDirectory: configDir.path)
+        _ = try await archive.backupConfig(outputPath: backup.path)
 
         // The #881 trigger: a transient validation temp file appears in the
         // config dir before restore. The restore must neither fail on it nor
@@ -108,7 +108,7 @@ final class ConfigFacadeTests: XCTestCase {
             atomically: true, encoding: .utf8
         )
 
-        _ = try await facade.restoreConfig(from: backup.path, reload: false)
+        _ = try await archive.restoreConfig(from: backup.path, reload: false)
 
         XCTAssertEqual(
             try String(contentsOf: configDir.appendingPathComponent("RuleCollections.json"), encoding: .utf8),
@@ -124,8 +124,13 @@ final class ConfigFacadeTests: XCTestCase {
         try "rules".write(to: configDir.appendingPathComponent("RuleCollections.json"), atomically: true, encoding: .utf8)
         try "tmp".write(to: configDir.appendingPathComponent("temp_validation_AB12.kbd"), atomically: true, encoding: .utf8)
 
-        let facade = ConfigFacade(configDirectory: configDir.path)
-        let result = try await facade.backupConfig(outputPath: backup.path)
+        try "pending".write(
+            to: configDir.appendingPathComponent(".keypath-session-validation-pending.kbd"),
+            atomically: true, encoding: .utf8
+        )
+
+        let archive = ConfigurationArchive(configDirectory: configDir.path)
+        let result = try await archive.backupConfig(outputPath: backup.path)
 
         XCTAssertEqual(result.copiedItems, ["RuleCollections.json"], "Backups should not capture transient validation temp files")
     }
@@ -136,9 +141,9 @@ final class ConfigFacadeTests: XCTestCase {
 
         try createSymlinkedConfig(link: configLink, target: liveTarget)
 
-        let facade = ConfigFacade(configDirectory: configLink.path)
+        let archive = ConfigurationArchive(configDirectory: configLink.path)
         do {
-            _ = try await facade.restoreConfig(from: liveTarget.path, reload: false)
+            _ = try await archive.restoreConfig(from: liveTarget.path, reload: false)
             XCTFail("Expected restore to reject backup paths that resolve to the active config directory.")
         } catch {
             XCTAssertTrue(error.localizedDescription.contains("active config directory"))
