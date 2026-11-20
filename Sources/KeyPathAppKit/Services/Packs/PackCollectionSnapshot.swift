@@ -23,44 +23,44 @@ public struct PackCollectionSnapshot: Codable, Equatable, Sendable {
 
     // MARK: - Persistence
 
-    private static var snapshotsDirectory: URL {
-        AppPaths.configDirectory
+    private static func snapshotsDirectory(in configDirectory: URL) -> URL {
+        configDirectory
             .appendingPathComponent("pack-snapshots", isDirectory: true)
     }
 
-    static func snapshotURL(for packID: String) -> URL {
-        snapshotsDirectory.appendingPathComponent("\(packID).json")
+    static func snapshotURL(for packID: String, configDirectory: URL = AppPaths.configDirectory) -> URL {
+        snapshotsDirectory(in: configDirectory).appendingPathComponent("\(packID).json")
     }
 
-    static func save(_ snapshot: PackCollectionSnapshot) throws {
-        let dir = snapshotsDirectory
+    static func save(_ snapshot: PackCollectionSnapshot, configDirectory: URL = AppPaths.configDirectory) throws {
+        let dir = snapshotsDirectory(in: configDirectory)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let data = try JSONEncoder().encode(snapshot)
-        try data.write(to: snapshotURL(for: snapshot.packID), options: .atomic)
+        try data.write(to: snapshotURL(for: snapshot.packID, configDirectory: configDirectory), options: .atomic)
     }
 
-    static func load(for packID: String) -> PackCollectionSnapshot? {
-        let url = snapshotURL(for: packID)
+    static func load(for packID: String, configDirectory: URL = AppPaths.configDirectory) -> PackCollectionSnapshot? {
+        let url = snapshotURL(for: packID, configDirectory: configDirectory)
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(PackCollectionSnapshot.self, from: data)
     }
 
     /// Mutation paths distinguish an absent legacy snapshot from unreadable data.
-    static func loadForMutation(for packID: String) throws -> PackCollectionSnapshot? {
+    static func loadForMutation(for packID: String, configDirectory: URL = AppPaths.configDirectory) throws -> PackCollectionSnapshot? {
         let data: Data
-        do { data = try Data(contentsOf: snapshotURL(for: packID)) }
+        do { data = try Data(contentsOf: snapshotURL(for: packID, configDirectory: configDirectory)) }
         catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError { return nil }
         return try JSONDecoder().decode(PackCollectionSnapshot.self, from: data)
     }
 
-    static func remove(for packID: String) {
-        try? FileManager.default.removeItem(at: snapshotURL(for: packID))
+    static func remove(for packID: String, configDirectory: URL = AppPaths.configDirectory) {
+        try? FileManager.default.removeItem(at: snapshotURL(for: packID, configDirectory: configDirectory))
     }
 
     // MARK: - Legacy Vallack Migration
 
-    private static var legacyVallackURL: URL {
-        AppPaths.configDirectory
+    private static func legacyVallackURL(in configDirectory: URL) -> URL {
+        configDirectory
             .appendingPathComponent("vallack-system-snapshot.json")
     }
 
@@ -71,13 +71,13 @@ public struct PackCollectionSnapshot: Codable, Equatable, Sendable {
         var homeRowLayerTogglesEnabled: Bool
     }
 
-    static func loadLegacyVallack() -> PackCollectionSnapshot? {
-        try? loadLegacyVallackForMutation()
+    static func loadLegacyVallack(configDirectory: URL = AppPaths.configDirectory) -> PackCollectionSnapshot? {
+        try? loadLegacyVallackForMutation(configDirectory: configDirectory)
     }
 
-    static func loadLegacyVallackForMutation() throws -> PackCollectionSnapshot? {
+    static func loadLegacyVallackForMutation(configDirectory: URL = AppPaths.configDirectory) throws -> PackCollectionSnapshot? {
         let data: Data
-        do { data = try Data(contentsOf: legacyVallackURL) }
+        do { data = try Data(contentsOf: legacyVallackURL(in: configDirectory)) }
         catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError { return nil }
         let legacy = try JSONDecoder().decode(LegacyVallackSnapshot.self, from: data)
 
@@ -110,15 +110,15 @@ public struct PackCollectionSnapshot: Codable, Equatable, Sendable {
         )
     }
 
-    static func removeLegacyVallack() {
-        try? removeLegacyVallackIfPresent()
+    static func removeLegacyVallack(configDirectory: URL = AppPaths.configDirectory) {
+        try? removeLegacyVallackIfPresent(configDirectory: configDirectory)
     }
 
     /// Throwing cleanup for callers that need to report a legacy-file failure.
-    static func removeLegacyVallackIfPresent() throws {
-        guard FileManager.default.fileExists(atPath: legacyVallackURL.path) else {
+    static func removeLegacyVallackIfPresent(configDirectory: URL = AppPaths.configDirectory) throws {
+        guard FileManager.default.fileExists(atPath: legacyVallackURL(in: configDirectory).path) else {
             return
         }
-        try FileManager.default.removeItem(at: legacyVallackURL)
+        try FileManager.default.removeItem(at: legacyVallackURL(in: configDirectory))
     }
 }

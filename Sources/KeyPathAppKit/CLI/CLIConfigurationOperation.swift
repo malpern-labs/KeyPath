@@ -32,8 +32,8 @@ public struct CLIConfigurationOperation: Sendable {
         try await run(configDirectory: KeyPathConstants.Config.directory, body)
     }
 
-    /// Test seam for isolated rule/config operations. Pack uninstall snapshots
-    /// still use the standard user directory, so this is not a public workspace API.
+    /// Test seam for command-owned rule/config, tracker and pack snapshot files.
+    /// This remains internal rather than a public workspace API.
     static func run<Result: Sendable>(
         configDirectory: String,
         _ body: @escaping @Sendable (CLIConfigurationOperation) async throws -> Result

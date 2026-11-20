@@ -149,6 +149,7 @@ final class RuleCollectionsManager {
     // MARK: - Dependencies
 
     let ruleCollectionStore: RuleCollectionStore
+    let installedPackTracker: InstalledPackTracker
     let customRulesStore: CustomRulesStore
     let configurationService: ConfigurationService
     let eventListener: KanataEventListener
@@ -223,9 +224,11 @@ final class RuleCollectionsManager {
         configurationService: ConfigurationService,
         eventListener: KanataEventListener = KanataEventListener(),
         keymapPreferences: UserDefaults = .standard,
-        preferencesService: PreferencesService? = nil
+        preferencesService: PreferencesService? = nil,
+        installedPackTracker: InstalledPackTracker = .shared
     ) {
         self.ruleCollectionStore = ruleCollectionStore
+        self.installedPackTracker = installedPackTracker
         self.customRulesStore = customRulesStore
         self.configurationService = configurationService
         self.eventListener = eventListener

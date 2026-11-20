@@ -82,7 +82,7 @@ extension RuleCollectionsManager {
     /// Cross-reference installed packs against loaded collections and re-enable
     /// any collection that an installed pack manages but that was loaded as disabled.
     private func reconcilePackCollectionState() async {
-        let installedRecords = await InstalledPackTracker.shared.allInstalled()
+        let installedRecords = await installedPackTracker.allInstalled()
         guard !installedRecords.isEmpty else { return }
 
         var fixedCount = 0

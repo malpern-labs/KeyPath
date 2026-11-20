@@ -74,10 +74,10 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 - O7b: retain packs and their existing features; finish the CLI compile-boundary evaluation.
 - O8c: replace remaining implicit test-mode behavior with scoped dependencies where appropriate, retaining safeguards against real system operations in tests.
-- P6: finish the ownership audit and owner-lifetime checks. BuildInfo's version cache is synchronized in the current follow-up; biometric service ownership remains to review.
+- P6: finish the ownership audit and owner-lifetime checks. BuildInfo #1493, watcher/HID session and biometric ownership #1494, diagnostic callback synchronization #1495, and checked preference ownership #1497 have merged. Remaining framework and timer boundaries still need audit.
 - P7b: evaluate the remaining SwiftUI/AppKit idioms against their actual behavior and window requirements.
 - P8: finish localization layout/copy verification and native-language review.
-- P9: finish the remaining shared on-disk test fixtures before broadening parallel execution.
+- P9: the pack/collection fixtures now own their tracker, legacy snapshots and preference domains in this follow-up. Seven affected suites passed 165 checks both serially and with two XCTest workers. Global wizard-restoration defaults and fake app-control routing still need scoped dependencies; broad in-process parallel execution is not yet qualified.
 
 P2's normal usage prompt passed on a fresh macOS 27 guest. B7's current permission
 screenshot is published at gh-pages `99a2200b6`: the public guide returned HTTP
