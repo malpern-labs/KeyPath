@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// What the session runtime can emit, in one place.
 ///
@@ -7,7 +8,7 @@ import Foundation
 /// page only, within `SessionKeyMap`). Swift keeps no list of its own, so the
 /// UI, catalog and pack checks cannot drift from what the runtime accepts.
 /// See docs/architecture/rules-admission-review.md §4.1 (phase 1).
-public final class BackendCapabilityProfile: @unchecked Sendable {
+public final class BackendCapabilityProfile: Sendable {
     public static var shared: BackendCapabilityProfile {
         #if DEBUG
             if let override = testOverride { return override }
@@ -17,7 +18,12 @@ public final class BackendCapabilityProfile: @unchecked Sendable {
 
     #if DEBUG
         /// Tests inject a profile; production always uses the bridge.
-        public nonisolated(unsafe) static var testOverride: BackendCapabilityProfile?
+        private static let override = Mutex<BackendCapabilityProfile?>(nil)
+
+        public static var testOverride: BackendCapabilityProfile? {
+            get { override.withLock { $0 } }
+            set { override.withLock { $0 = newValue } }
+        }
     #endif
 
     private static let live = BackendCapabilityProfile { key in
@@ -27,9 +33,12 @@ public final class BackendCapabilityProfile: @unchecked Sendable {
     }
 
     private let query: @Sendable (String) -> Bool?
-    private let lock = NSLock()
-    private var cache: [String: Bool] = [:]
-    private var knownCache: [String: Bool] = [:]
+    private struct Cache: Sendable {
+        var emission: [String: Bool] = [:]
+        var known: [String: Bool] = [:]
+    }
+
+    private let cache = Mutex(Cache())
 
     /// `query` answers for one base key name: true/false, or nil for "no answer".
     public init(query: @escaping @Sendable (String) -> Bool?) {
@@ -41,14 +50,12 @@ public final class BackendCapabilityProfile: @unchecked Sendable {
     public func canEmit(kanataKey: String) -> Bool {
         let base = Self.baseKey(of: kanataKey)
         guard !base.isEmpty else { return true }
-        lock.lock()
-        if let known = cache[base] { lock.unlock(); return known }
-        lock.unlock()
+        if let known = cache.withLock({ $0.emission[base] }) { return known }
         // No answer (old bridge, or a name Kanata does not know): keep the
         // previous behaviour, which refused only consumer-page keys. Session
         // validation remains the backstop for anything else.
         let answer = query(base) ?? !Self.fallbackConsumerKeys.contains(base)
-        lock.lock(); cache[base] = answer; lock.unlock()
+        cache.withLock { $0.emission[base] = answer }
         return answer
     }
 
@@ -59,9 +66,7 @@ public final class BackendCapabilityProfile: @unchecked Sendable {
     public func knowsKey(_ name: String) -> Bool? {
         let key = name.lowercased()
         guard !key.isEmpty else { return nil }
-        lock.lock()
-        if let known = knownCache[key] { lock.unlock(); return known }
-        lock.unlock()
+        if let known = cache.withLock({ $0.known[key] }) { return known }
         let answer: Bool
         if query(key) != nil {
             answer = true
@@ -70,7 +75,7 @@ public final class BackendCapabilityProfile: @unchecked Sendable {
         } else {
             return nil // no bridge: the caller keeps its own fallback
         }
-        lock.lock(); knownCache[key] = answer; lock.unlock()
+        cache.withLock { $0.known[key] = answer }
         return answer
     }
 

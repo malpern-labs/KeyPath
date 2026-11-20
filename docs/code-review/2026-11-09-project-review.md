@@ -515,19 +515,27 @@ and, later, privacy annotations for anything that could reveal typed keys.
 
 ### P6. Concurrency leftovers
 
-- Five blanket `@unchecked Sendable` extensions on large types:
-  `RuntimeCoordinator`, `SystemValidator`, `PermissionRequestService`,
-  `FeatureFlags`, `AppLogger`. These are where a real data race would hide.
-- 25 `NSLock`, zero `Mutex`. `Mutex<State>` makes lock-protected state checked
-  `Sendable`.
-- Unsynchronised static caches reachable off the main actor, for example
-  `AppIconResolver.swift:10` and `FeatureFlags.swift:59`.
-- 68 `DispatchQueue.main.asyncAfter` and 25 `Timer.scheduledTimer` in UI
-  code; these are not cancellable. Use `Task.sleep` or `.task(id:)`.
-- `swift-tools-version` is 6.1. Default main-actor isolation on the UI targets
-  (Swift 6.2) would remove much of the 779 `@MainActor` and 127
-  `MainActor.run` (*unconfirmed* against the Xcode 27 toolchain). Try it on a
-  leaf UI target first.
+Verified follow-up, November 19: `RuntimeCoordinator`, `SystemValidator`, and
+`PermissionRequestService` now use checked main-actor isolation (#1481).
+`FeatureFlags` is checked `Sendable` with mutex-protected startup and override
+state. `AppIconResolver` is main-actor isolated, including its static icon cache.
+The original examples of unsynchronised caches below are therefore resolved;
+they must not be counted as outstanding defects.
+
+Remaining work:
+
+- Audit remaining `@unchecked Sendable` types according to their actual
+  ownership and synchronization. Do not replace a valid actor or framework
+  boundary with a mutex merely to reduce a count.
+- `BackendCapabilityProfile` still has manual cache locking and an unsafe debug
+  override on merged master. A checked-mutex change is under validation; it is
+  not a verified fix yet.
+- Reconcile delayed UI callbacks and timers with their owning view/window
+  lifetimes. Convert only callbacks that require cancellation, and test closing
+  or replacing the owner while a callback is pending.
+- Default main-actor isolation remains an optional compile-boundary experiment,
+  not a demonstrated correctness requirement. Check the current toolchain and
+  a leaf target before adopting it across UI targets.
 
 ### P7. SwiftUI and AppKit idioms — opportunistic
 
