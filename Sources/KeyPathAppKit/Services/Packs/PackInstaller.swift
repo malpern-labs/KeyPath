@@ -365,7 +365,7 @@ public final class PackInstaller {
                     guard result.success else {
                         throw InstallError.saveFailed(result.error?.localizedDescription ?? "could not apply managed collection restore")
                     }
-                    removeManagedSnapshot(for: pack)
+                    removeManagedSnapshot(for: pack, configDirectory: URL(fileURLWithPath: manager.configurationService.configDirectory, isDirectory: true))
                     AppLogger.shared.log("✅ [PackInstaller] Uninstalled system pack '\(packID)' (restored=\(didRestore))")
                 } catch {
                     restorePreparedRuleState(before, manager: manager)
@@ -949,9 +949,10 @@ public final class PackInstaller {
         manager: RuleCollectionsManager,
         installedSnapshot: PackCollectionSnapshot?
     ) async throws -> Bool {
-        var snapshot = try installedSnapshot ?? PackCollectionSnapshot.loadForMutation(for: pack.id)
+        let configDirectory = URL(fileURLWithPath: manager.configurationService.configDirectory, isDirectory: true)
+        var snapshot = try installedSnapshot ?? PackCollectionSnapshot.loadForMutation(for: pack.id, configDirectory: configDirectory)
         if snapshot == nil, pack.id == "com.keypath.pack.vallack-system" {
-            snapshot = try PackCollectionSnapshot.loadLegacyVallackForMutation()
+            snapshot = try PackCollectionSnapshot.loadLegacyVallackForMutation(configDirectory: configDirectory)
         }
         guard let snapshot else {
             AppLogger.shared.log("⚠️ [PackInstaller] No snapshot found for '\(pack.id)' — skipping restore")
@@ -1052,10 +1053,10 @@ public final class PackInstaller {
         return shouldRestore
     }
 
-    private func removeManagedSnapshot(for pack: Pack) {
-        PackCollectionSnapshot.remove(for: pack.id)
+    private func removeManagedSnapshot(for pack: Pack, configDirectory: URL) {
+        PackCollectionSnapshot.remove(for: pack.id, configDirectory: configDirectory)
         if pack.id == "com.keypath.pack.vallack-system" {
-            PackCollectionSnapshot.removeLegacyVallack()
+            PackCollectionSnapshot.removeLegacyVallack(configDirectory: configDirectory)
         }
     }
 

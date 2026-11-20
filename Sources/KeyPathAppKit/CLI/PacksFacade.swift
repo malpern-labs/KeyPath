@@ -326,14 +326,14 @@ public struct PacksFacade: Sendable {
             return RuleCollectionsManager(
                 ruleCollectionStore: RuleCollectionStore(fileURL: directory.appendingPathComponent("RuleCollections.json")),
                 customRulesStore: CustomRulesStore(fileURL: directory.appendingPathComponent("CustomRules.json")),
-                configurationService: operation.service
+                configurationService: operation.service, installedPackTracker: installedPackTracker
             )
         }
         let configService = ConfigurationService()
         return RuleCollectionsManager(
             ruleCollectionStore: .shared,
             customRulesStore: .shared,
-            configurationService: configService
+            configurationService: configService, installedPackTracker: installedPackTracker
         )
     }
 
