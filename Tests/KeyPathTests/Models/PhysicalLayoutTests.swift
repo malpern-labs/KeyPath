@@ -1,4 +1,5 @@
 @testable import KeyPathAppKit
+import KeyPathRulesCore
 import Testing
 
 /// Tests for PhysicalLayout model and registry

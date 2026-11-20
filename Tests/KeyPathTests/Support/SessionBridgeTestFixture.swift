@@ -51,7 +51,7 @@ extension ConfigurationService {
         configDirectory: String,
         ruleCollectionStore: RuleCollectionStore? = nil,
         customRulesStore: CustomRulesStore? = nil,
-        deviceSelectionStore: DeviceSelectionStore = .shared,
+        deviceSelectionStore: DeviceSelectionStore? = nil,
         synchronizePreferences: @escaping @Sendable (RecoverableRuleWrite.PreferenceDefaults) -> Bool = { $0.value.synchronize() }
     ) -> ConfigurationService {
         let directory = URL(fileURLWithPath: configDirectory)

@@ -1,6 +1,6 @@
 import Foundation
 
-extension PhysicalLayout {
+package extension PhysicalLayout {
     // MARK: - MacBook Layouts (Native JSON format)
 
     /// MacBook US keyboard layout

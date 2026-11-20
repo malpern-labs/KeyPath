@@ -17,6 +17,21 @@ final class KeyPathAppKitResourcesTests: XCTestCase {
             XCTAssertNotNil(resolved.url(forResource: "packaged-probe", withExtension: "txt"))
         }
     }
+
+    func testResolverSkipsAnEarlierCopyWithoutTheRequestedResources() throws {
+        let name = "KeyPath_KeyPathRulesCore.bundle"
+        let fixture = try PackagedResourceBundleFixture(bundleName: name)
+        defer { fixture.remove() }
+        let sibling = try fixture.addSiblingBundle(named: name)
+
+        let resolved = KeyPathResourceBundle.resolve(
+            named: name, mainBundle: fixture.appBundle, codeBundle: fixture.appBundle
+        ) { bundle in
+            bundle.url(forResource: "macbook-us", withExtension: "json", subdirectory: "Keyboards") != nil
+        }
+
+        XCTAssertEqual(resolved.bundleURL.standardizedFileURL, sibling.standardizedFileURL)
+    }
 }
 
 private struct PackagedResourceBundleFixture {
@@ -50,6 +65,19 @@ private struct PackagedResourceBundleFixture {
         )
 
         appBundle = try XCTUnwrap(Bundle(url: appURL))
+    }
+
+    func addSiblingBundle(named name: String) throws -> URL {
+        let sibling = rootURL.appendingPathComponent(name, isDirectory: true)
+        let keyboards = sibling.appendingPathComponent("Keyboards", isDirectory: true)
+        try FileManager.default.createDirectory(at: keyboards, withIntermediateDirectories: true)
+        try Self.writeInfoPlist(
+            to: sibling.appendingPathComponent("Info.plist"),
+            identifier: "com.keypath.tests.rules-resources",
+            packageType: "BNDL"
+        )
+        try Data("{}".utf8).write(to: keyboards.appendingPathComponent("macbook-us.json"))
+        return sibling
     }
 
     func remove() {

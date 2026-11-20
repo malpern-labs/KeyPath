@@ -1,3 +1,4 @@
+import KeyPathRulesCore
 import SwiftUI
 
 /// Sheet for importing QMK keyboard layouts from URL or file
