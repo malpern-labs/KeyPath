@@ -754,3 +754,9 @@ existing facade store initializers. They no longer clear shared custom rules
 or snapshot/restore shared collections during teardown. The fixture removes
 only its own UUID directory. This does not claim that every other CLI or pack
 suite is isolated, or that all CI jobs can safely run concurrently yet.
+
+Focused validation for those four CLI suites passed 69 tests. An additional
+CLIStoreIsolationTests regression passed concurrent writes of the same input
+through two private facades and verified that deleting one fixture leaves the
+other fixture's persisted rule intact. This is 70 focused tests, not a claim
+that the entire repository is ready for unrestricted parallel execution.
