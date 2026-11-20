@@ -480,8 +480,6 @@ class ConfigurationServiceTests: KeyPathTestCase {
 
     func testValidateConfigurationInTestModePasses() async throws {
         try SessionBridgeTestFixture.requireAvailable()
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
 
         let configContent = """
         (defcfg
@@ -503,18 +501,12 @@ class ConfigurationServiceTests: KeyPathTestCase {
     }
 
     func testValidateConfigurationInTestModeRejectsEmptyContent() async {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let result = await configService.validateConfiguration("   ")
         XCTAssertFalse(result.isValid)
         XCTAssertEqual(result.errors.first, "Configuration content is empty")
     }
 
     func testValidateConfigViaFileSkipsBinaryInTestMode() async {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (isValid, errors) = await configService.validateConfigViaFile()
         XCTAssertTrue(isValid)
         XCTAssertTrue(errors.isEmpty)

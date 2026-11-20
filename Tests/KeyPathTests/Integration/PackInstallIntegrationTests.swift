@@ -14,9 +14,6 @@ import XCTest
 final class PackInstallIntegrationTests: XCTestCase {
     @MainActor
     func testHomeRowModsPackInstall_GeneratesConfigAndUpdatesLabels() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         // --- Setup: temp directory and services ---
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("pack-integration-\(UUID().uuidString)")
@@ -71,9 +68,6 @@ final class PackInstallIntegrationTests: XCTestCase {
 
     @MainActor
     func testPackInstall_NotificationPosted() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("pack-integration-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -110,9 +104,6 @@ final class PackInstallIntegrationTests: XCTestCase {
 
     @MainActor
     func testVimNavPackInstall_GeneratesLayerConfig() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("pack-integration-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -165,9 +156,6 @@ final class PackInstallIntegrationTests: XCTestCase {
 
     @MainActor
     func testPackUninstall_RegeneratesConfigWithout() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("pack-integration-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)

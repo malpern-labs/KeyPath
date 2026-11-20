@@ -205,16 +205,11 @@ final class MyServiceTests: XCTestCase {
 }
 ```
 
-**Example 2: Testing with TestEnvironment**
-```swift
-override func setUp() async throws {
-    TestEnvironment.forceTestMode = true  // Skips admin operations
-}
+**Example 2: Tests that use system services**
 
-override func tearDown() async throws {
-    TestEnvironment.forceTestMode = false
-}
-```
+XCTest and the repository test runner detect the test host automatically.
+Use temporary stores and inject answers or service dependencies so each test
+owns its state and can verify the decisions it makes.
 
 **Example 3: Testing Permissions (Mock Oracle)**
 ```swift

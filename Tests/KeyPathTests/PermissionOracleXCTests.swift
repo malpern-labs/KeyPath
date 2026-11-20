@@ -5,13 +5,9 @@ import KeyPathCore
 
 @MainActor
 final class PermissionOracleXCTests: XCTestCase {
-    override func setUp() async throws {
-        TestEnvironment.forceTestMode = true
-    }
+    override func setUp() async throws {}
 
-    override func tearDown() async throws {
-        TestEnvironment.forceTestMode = false
-    }
+    override func tearDown() async throws {}
 
     func testSnapshotInTestModeIsFastAndNonBlocking() async {
         let start = Date()

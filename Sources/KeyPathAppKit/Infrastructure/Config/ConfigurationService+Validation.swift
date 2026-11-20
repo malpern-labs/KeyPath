@@ -27,7 +27,7 @@ extension ConfigurationService {
 
     /// Validate configuration via file-based check
     public func validateConfigViaFile() async -> (isValid: Bool, errors: [String]) {
-        if TestEnvironment.isTestMode {
+        if TestEnvironment.isRunningTests {
             AppLogger.shared.log("🧪 [ConfigService] Test mode: Skipping file validation")
             return (true, [])
         }
@@ -95,7 +95,7 @@ extension ConfigurationService {
             return (false, [error.localizedDescription])
         }
 
-        if TestEnvironment.isTestMode {
+        if TestEnvironment.isRunningTests {
             AppLogger.shared.log("🧪 [Validation] Test mode detected – using lightweight validation")
             let result = validateConfigurationInTestMode(config)
             AppLogger.shared.log("🔍 [Validation] ========== CONFIG VALIDATION END ==========")
@@ -179,7 +179,7 @@ extension ConfigurationService {
             guard Foundation.FileManager().isExecutableFile(atPath: kanataBinary) else {
                 let message = String(localized: "Kanata binary missing at \(kanataBinary)")
                 AppLogger.shared.log("❌ [Validation-CLI] \(message)")
-                if TestEnvironment.isTestMode {
+                if TestEnvironment.isRunningTests {
                     AppLogger.shared.log("🧪 [Validation-CLI] Skipping CLI validation in tests")
                     try? Foundation.FileManager().removeItem(at: tempConfigURL)
                     return (true, [])

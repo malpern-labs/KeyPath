@@ -8,8 +8,6 @@ import Testing
 @Suite("Window Snapping Activation Mode Tests")
 struct WindowSnappingActivationModeTests {
     private func createManagerWithWindowSnapping(supportedEntrance: Bool = true) async throws -> RuleCollectionsManager {
-        TestEnvironment.forceTestMode = true
-
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ws-mode-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)

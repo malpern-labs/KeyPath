@@ -47,9 +47,6 @@ enum TestSingletonReset {
             WizardSystemPaths.setBundledKanataPathOverride(nil)
         #endif
 
-        // TestEnvironment flags
-        TestEnvironment.forceTestMode = false
-
         // Feature flags — in tests these live in FeatureFlags' in-memory
         // override store, never UserDefaults (#896); clear to compiled defaults.
         FeatureFlags.resetTestOverrides()

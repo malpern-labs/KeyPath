@@ -189,9 +189,6 @@ final class VallackSystemPackTests: XCTestCase {
 
     @MainActor
     func testVallackInstallAppliesConfigPresets() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -242,9 +239,6 @@ final class VallackSystemPackTests: XCTestCase {
 
     @MainActor
     func testVallackInstallFromDefaultCatalogAppliesWithoutHomeRowArrowConflict() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
@@ -269,9 +263,6 @@ final class VallackSystemPackTests: XCTestCase {
 
     @MainActor
     func testVallackInstallEmbedsSnapshotInRecord() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -287,9 +278,6 @@ final class VallackSystemPackTests: XCTestCase {
 
     @MainActor
     func testVallackUninstallRevertsConfigs() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
@@ -348,9 +336,6 @@ final class VallackSystemPackTests: XCTestCase {
 
     @MainActor
     func testVallackUninstallRestoresHRMWhenPriorArrowStateWouldConflict() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
@@ -396,9 +381,6 @@ final class VallackSystemPackTests: XCTestCase {
 
     @MainActor
     func testVallackInstallDoesNotRecordWhenSourceChangesBeforeStaging() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         try? await tracker.remove(packID: PackRegistry.vallackSystem.id)
         PackCollectionSnapshot.remove(for: PackRegistry.vallackSystem.id, configDirectory: fixture.directory)
 
@@ -475,9 +457,6 @@ final class VallackSystemPackTests: XCTestCase {
 
     @MainActor
     func testVallackFailedInstallPreservesModernAndLegacySnapshots() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let packID = PackRegistry.vallackSystem.id
         let modernSnapshotURL = PackCollectionSnapshot.snapshotURL(for: packID, configDirectory: fixture.directory)
         let legacySnapshotURL = fixture.directory.appendingPathComponent("vallack-system-snapshot.json")
@@ -588,9 +567,6 @@ final class VallackSystemPackTests: XCTestCase {
 
     @MainActor
     func testVallackUninstallWithoutSnapshotDoesNotCrash() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 

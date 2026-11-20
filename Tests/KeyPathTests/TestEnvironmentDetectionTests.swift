@@ -12,10 +12,6 @@ final class TestEnvironmentDetectionTests: XCTestCase {
         )
     }
 
-    func testIsTestMode_TrueInTestContext() {
-        XCTAssertTrue(TestEnvironment.isTestMode)
-    }
-
     func testDetection_UsesXCTestBundleNotClassCheck() {
         // The detection should use Bundle.allBundles checking for .xctest suffix,
         // NOT NSClassFromString("XCTestCase"), because on macOS 26+ the system
@@ -64,18 +60,5 @@ final class TestEnvironmentDetectionTests: XCTestCase {
             strongSignals.contains(where: \.present),
             "isTestHostProcess must equal strong-signal detection (ci-environment excluded)"
         )
-    }
-
-    @MainActor
-    func testForceTestMode_CanBeToggled() {
-        let original = TestEnvironment.forceTestMode
-        defer { TestEnvironment.forceTestMode = original }
-
-        TestEnvironment.forceTestMode = true
-        XCTAssertTrue(TestEnvironment.isTestMode)
-
-        TestEnvironment.forceTestMode = false
-        // isTestMode is still true because isRunningTests is true
-        XCTAssertTrue(TestEnvironment.isTestMode)
     }
 }

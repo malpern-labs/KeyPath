@@ -7,7 +7,6 @@ import XCTest
 final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
     func testEnableRequiredProvidersAppliesOneAtomicRegeneration() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let provider = layerContentProvider(
             id: uuid(1),
             name: "Function",
@@ -73,7 +72,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testCancelAppliesNothing() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let provider = layerContentProvider(
             id: uuid(10),
             name: "Function",
@@ -104,7 +102,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testCancelCatalogOnlyCandidateDoesNotInsertAttemptedConfig() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
             .filter { $0.id != RuleCollectionIdentifier.homeRowMods }
         manager.onPrerequisiteResolution = { _ in nil }
@@ -127,7 +124,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testSaveWithoutProvidersAppliesOnlyCandidateEdit() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let provider = layerContentProvider(
             id: uuid(20),
             name: "Function",
@@ -170,7 +166,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testApplyLauncherConfigPersistsWithoutRuntimeReload() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
 
         let config = LauncherGridConfig(
@@ -215,7 +210,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testApplyLauncherConfigRejectsNonLauncherCollection() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let capsLock = try XCTUnwrap(
             RuleCollectionCatalog().defaultCollections().first(where: {
                 $0.id == RuleCollectionIdentifier.capsLockRemap
@@ -245,7 +239,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testApplyLauncherConfigUnreadableSourceIsNotOverwritten() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
         let didPersistOriginalState = await manager.regenerateConfigFromCollections(
             skipReload: true
@@ -315,7 +308,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testConfigurationEditAnalyzesProposedStateBeforeMutation() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let provider = layerContentProvider(
             id: uuid(30),
             name: "Function",
@@ -356,7 +348,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testHomeRowModsLayerEditDerivesAllProvidersFromGraph() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let function = layerContentProvider(
             id: uuid(35),
             name: "Function",
@@ -430,7 +421,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testMultipleProvidersDisableAutomaticFix() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let first = layerContentProvider(
             id: uuid(40),
             name: "First Function",
@@ -602,7 +592,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testNonInteractiveAutomaticFixAbortsWhenProvidersAreAmbiguous() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let first = layerContentProvider(
             id: uuid(43),
             name: "First Function",
@@ -637,7 +626,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testStagedProviderDisableCannotBeAutomaticallyUndone() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let provider = layerContentProvider(
             id: uuid(60),
             name: "Function",
@@ -687,7 +675,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testStagedDisableIsIgnoredDuringConflictAnalysis() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let stagedOff = RuleCollection(
             id: uuid(63),
             name: "Old Mapping",
@@ -731,7 +718,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testFailedAtomicSaveRestoresCandidateAndProvider() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let provider = layerContentProvider(
             id: uuid(50),
             name: "Function",
@@ -795,7 +781,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testInteractiveSetupChoosesAmbiguousProviderAndCommitsOnce() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let first = layerContentProvider(id: uuid(80), name: "First", enabled: false)
         let second = layerContentProvider(id: uuid(81), name: "Second", enabled: false)
         let candidate = homeRowToggles(id: uuid(82), enabled: false, assignments: ["a": "fun"])
@@ -819,7 +804,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testInteractiveSetupRejectsProviderConflictAndAllowsAnotherChoice() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let bad = layerContentProvider(id: uuid(83), name: "Conflicting", enabled: false, activatorKey: "f")
         let good = layerContentProvider(id: uuid(84), name: "Compatible", enabled: false, activatorKey: "g")
         let existing = RuleCollection(id: uuid(85), name: "Existing F", summary: "Test", category: .custom,
@@ -841,7 +825,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testWindowSnappingSetupEnablesLeaderInSameSave() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
         manager.onPrerequisiteSetup = { context, apply in
             XCTAssertTrue(context.availableProviders.contains { $0.id == RuleCollectionIdentifier.leaderKey })
@@ -856,7 +839,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testInteractiveSetupKeepsChoiceAvailableAfterRejectedReload() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let provider = layerContentProvider(id: uuid(90), name: "Function", enabled: false)
         let candidate = homeRowToggles(id: uuid(91), enabled: false, assignments: ["a": "fun"])
         manager.ruleCollections = [provider, candidate]
@@ -881,7 +863,6 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
 
     func testWindowLayoutEditDoesNotEnableDisabledRule() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections().map { rule in
             var copy = rule
             copy.isEnabled = false
