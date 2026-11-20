@@ -157,6 +157,7 @@ struct KeyRepeatControlView: View {
         HStack(spacing: 8) {
             ForEach(KeyRepeatControlConfig.Preset.allCases) { preset in
                 SettingsOptionCard(
+                    identifier: "settings-option-repeat-\(preset.rawValue)",
                     icon: presetIcon(preset),
                     title: preset.label,
                     subtitle: preset.description,

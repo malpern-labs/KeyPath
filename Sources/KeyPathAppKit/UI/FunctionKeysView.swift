@@ -166,6 +166,7 @@ private struct DisplayModeToggle: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 SettingsOptionCard(
+                    identifier: "function-key-mode-media",
                     icon: "sun.max",
                     title: String(localized: "Media Keys"),
                     subtitle: String(localized: "Unsupported in driverless mode"),
@@ -175,9 +176,9 @@ private struct DisplayModeToggle: View {
                     showMediaKeys = true
                 }
                 .disabled(!FunctionKeyMode.media.isSupportedInDriverlessSession)
-                .accessibilityIdentifier("function-key-mode-media")
 
                 SettingsOptionCard(
+                    identifier: "function-key-mode-function",
                     icon: "function",
                     title: String(localized: "Function Keys"),
                     subtitle: String(localized: "F1–F12 for apps"),
@@ -185,7 +186,6 @@ private struct DisplayModeToggle: View {
                 ) {
                     showMediaKeys = false
                 }
-                .accessibilityIdentifier("function-key-mode-function")
             }
         }
         .padding(.vertical, 4)

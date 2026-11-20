@@ -213,10 +213,18 @@ extension StatusSettingsTabView {
             icon: "pause.circle",
             level: .warning,
             actions: [
-                StatusDetailAction(title: String(localized: "Open System Settings"), icon: "list.bullet") {
+                StatusDetailAction(
+                    title: String(localized: "Open System Settings"),
+                    icon: "list.bullet",
+                    identifier: "status-action-open-system-settings"
+                ) {
                     SystemDiagnostics.open(.systemSettings)
                 },
-                StatusDetailAction(title: String(localized: "Open Wizard"), icon: "wand.and.stars") {
+                StatusDetailAction(
+                    title: String(localized: "Open Wizard"),
+                    icon: "wand.and.stars",
+                    identifier: "status-action-open-wizard"
+                ) {
                     wizardInitialPage = .summary
                 }
             ]
@@ -259,7 +267,11 @@ extension StatusSettingsTabView {
 
         if !evaluation.unknown.isEmpty {
             actions.append(
-                StatusDetailAction(title: String(localized: "Retry Setup"), icon: "wand.and.stars") {
+                StatusDetailAction(
+                    title: String(localized: "Retry Setup"),
+                    icon: "wand.and.stars",
+                    identifier: "status-action-retry-setup"
+                ) {
                     wizardInitialPage = .summary
                 }
             )
@@ -267,7 +279,11 @@ extension StatusSettingsTabView {
 
         if evaluation.hasErrors || !evaluation.missingOrDenied.isEmpty {
             actions.append(
-                StatusDetailAction(title: String(localized: "Fix", comment: "Status action button: fix missing permissions"), icon: "wand.and.stars") {
+                StatusDetailAction(
+                    title: String(localized: "Fix", comment: "Status action button: fix missing permissions"),
+                    icon: "wand.and.stars",
+                    identifier: "status-action-fix"
+                ) {
                     showingPermissionAlert = true
                 }
             )
@@ -278,10 +294,11 @@ extension StatusSettingsTabView {
                 StatusDetailAction(
                     title: AccessibilityPermissionPresentation.current.openButtonTitle,
                     icon: "figure.walk",
-                    handler: { SystemDiagnostics.open(.accessibility) },
                     identifier: "status-action-open-accessibility",
                     accessibilityTitle: AccessibilityPermissionPresentation.current.openTitle
-                )
+                ) {
+                    SystemDiagnostics.open(.accessibility)
+                }
             )
         }
 
@@ -306,7 +323,11 @@ extension StatusSettingsTabView {
             icon: "doc.text.magnifyingglass",
             level: .info,
             actions: [
-                StatusDetailAction(title: String(localized: "Open", comment: "Status action button: open the log file"), icon: "doc.text") {
+                StatusDetailAction(
+                    title: String(localized: "Open", comment: "Status action button: open the log file"),
+                    icon: "doc.text",
+                    identifier: "status-action-open"
+                ) {
                     openFileInPreferredEditor(FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/KeyPath/keypath-debug.log"))
                 }
             ]
@@ -322,7 +343,11 @@ extension StatusSettingsTabView {
             icon: "info.circle",
             level: .info,
             actions: [
-                StatusDetailAction(title: String(localized: "Review", comment: "Status action button: review extra app copies"), icon: "arrow.right") {
+                StatusDetailAction(
+                    title: String(localized: "Review", comment: "Status action button: review extra app copies"),
+                    icon: "arrow.right",
+                    identifier: "status-action-review"
+                ) {
                     NotificationCenter.default.post(name: .openSettingsAdvanced, object: nil)
                 }
             ]
