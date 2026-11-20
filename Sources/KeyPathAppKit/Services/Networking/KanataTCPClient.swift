@@ -118,15 +118,10 @@ actor KanataTCPClient {
 
     // MARK: - Initialization
 
-    /// Default timeout: 5 seconds for production, 0.1 seconds for tests
-    private static var defaultTimeout: TimeInterval {
-        TestEnvironment.isRunningTests ? 0.1 : 5.0
-    }
-
     /// A client of the running worker's engine socket (ADR-046).
     init(timeout: TimeInterval? = nil) {
         endpoint = .session
-        self.timeout = timeout ?? Self.defaultTimeout
+        self.timeout = timeout ?? 5.0
     }
 
     /// A client of a TCP server: tests' mock servers only. Production code
@@ -136,7 +131,7 @@ actor KanataTCPClient {
         reuseConnection _: Bool = true
     ) {
         endpoint = .tcp(host: host, port: port)
-        self.timeout = timeout ?? Self.defaultTimeout
+        self.timeout = timeout ?? 0.1
     }
 
     /// Cache-friendly hello payload strips transient request correlation fields.
