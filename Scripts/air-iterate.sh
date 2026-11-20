@@ -90,7 +90,7 @@ if ! REQUIRE_NOTARIZED=0 REQUIRE_STAPLED=0 bash ./verify-installed-app.sh >verif
     # Only the runtime check may wait: a locked screen holds Secure Input and
     # KeyPath starts after unlock. Any other Secure Input holder is a failure.
     locked=$(ioreg -n Root -d1 -a | plutil -extract IOConsoleUsers.0.CGSSessionScreenIsLocked raw - 2>/dev/null || true)
-    if [ "$locked" = "true" ] && ioreg -l -w0 | grep -q '"kCGSSessionSecureInputPID"'; then
+    if [ "$locked" = "true" ] && ioreg -l -w0 | grep '"kCGSSessionSecureInputPID"' >/dev/null; then
         echo "Installed and verified. The screen is locked: remapping starts after unlock."
         exit 0
     fi
