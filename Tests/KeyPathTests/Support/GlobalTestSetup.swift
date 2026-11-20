@@ -1,6 +1,7 @@
 @testable import KeyPathAppKit
 @testable import KeyPathCore
 @testable import KeyPathInstallationWizard
+import KeyPathRulesCore
 import XCTest
 
 /// Resets shared singleton state to prevent cross-test contamination.
