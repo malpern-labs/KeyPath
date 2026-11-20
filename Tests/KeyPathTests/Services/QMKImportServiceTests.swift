@@ -745,17 +745,10 @@ final class QMKImportServiceTests: XCTestCase {
 
         let layoutId = result.layout.id.hasPrefix("custom-") ? String(result.layout.id.dropFirst(7)) : result.layout.id
 
-        // Seed keymap tokens so fetchDefaultKeymap returns them without network
-        await QMKKeyboardDatabase.shared.seedKeymapTokens(
-            keyboardPath: "test/refresh-board",
-            tokens: ["KC_A", "KC_B"]
-        )
-
-        // Refresh should succeed
-        let refreshResult = await service.refreshKeymap(layoutId: layoutId)
-
-        // Clean up seeded tokens
-        await QMKKeyboardDatabase.shared.clearSeededKeymapTokens()
+        let keymapService = QMKImportService(userDefaultsSuiteName: testSuiteName) { keyboardPath in
+            keyboardPath == "test/refresh-board" ? ["KC_A", "KC_B"] : nil
+        }
+        let refreshResult = await keymapService.refreshKeymap(layoutId: layoutId)
 
         switch refreshResult {
         case let .success(tokenCount):

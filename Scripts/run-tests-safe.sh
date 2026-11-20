@@ -428,6 +428,10 @@ fi
 ORIGINAL_HOME="$HOME"
 export HOME=${TEST_HOME:-$(mktemp -d 2>/dev/null || mktemp -d -t keypath-tests)}
 SCRATCH_PATH="$(absolute_dir "$SCRATCH_PATH")"
+# SnapshotTesting otherwise writes failed renders to the account-wide temp folder.
+if [ "${KEYPATH_SNAPSHOTS:-0}" = "1" ] || [ "${SNAPSHOT_RECORD:-0}" = "1" ]; then
+    export SNAPSHOT_ARTIFACTS="${SNAPSHOT_ARTIFACTS:-$SCRATCH_PATH/snapshot-failures/$$}"
+fi
 MODULE_CACHE="$SCRATCH_PATH/ModuleCache.noindex"
 keypath_prepare_build_cache "$PROJECT_DIR" "$SCRATCH_PATH"
 if [ "$TEST_RESET_MODULE_CACHE" = "1" ] && [ -d "$MODULE_CACHE" ]; then
