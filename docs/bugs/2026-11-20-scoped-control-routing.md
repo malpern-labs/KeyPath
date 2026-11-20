@@ -34,3 +34,14 @@ The agent refreshed the lease before the fresh qualification. The earlier logs
 are retained rather than relabeled as fast runs. No host runtime or physical
 USB verification is claimed by these tests. Final full-gate/review and CI
 acceptance are recorded in the PR.
+
+The final integrated full gate did not pass locally: it exited 124 during
+TCPClientRobustnessTests.testReloadConfig_NoServer. It reported zero Swift
+warnings, build 40 seconds and test wall time 1,645 seconds. Maintenance sleep
+continued despite the renewed idle-sleep assertion; that assertion alone is not
+proof the host remains awake. The watchdog currently counts one-second wake
+iterations instead of elapsed wall time, explaining why its nominal 240-second
+budget stretched. This needs a separate runner fix, not a larger timeout.
+No complete main-target or full-suite pass is claimed for that run. The local
+review gate passed with no blocking findings. Required Mini CI remains the
+acceptance gate for the integrated change.
