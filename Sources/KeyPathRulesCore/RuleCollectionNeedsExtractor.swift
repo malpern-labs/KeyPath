@@ -1,6 +1,5 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
 /// Infers what a collection needs from its environment, from the mappings it
 /// will actually generate (configuration-driven families included), and checks
@@ -8,12 +7,12 @@ import KeyPathRulesCore
 ///
 /// The counterpart of `RuleCollectionDependencyExtractor`, which covers needs
 /// one rule satisfies for another (layers, Hyper).
-enum RuleCollectionNeedsExtractor {
-    static func needs(for collection: RuleCollection) -> Set<RuleEnvironmentNeed> {
+package enum RuleCollectionNeedsExtractor {
+    package static func needs(for collection: RuleCollection) -> Set<RuleEnvironmentNeed> {
         needs(for: KanataConfiguration.effectiveMappings(for: collection))
     }
 
-    static func needs(for mappings: [KeyMapping]) -> Set<RuleEnvironmentNeed> {
+    package static func needs(for mappings: [KeyMapping]) -> Set<RuleEnvironmentNeed> {
         var needs: Set<RuleEnvironmentNeed> = []
         for mapping in mappings {
             if mapping.input.lowercased() == "caps" { needs.insert(.capsLockInput) }
@@ -28,9 +27,9 @@ enum RuleCollectionNeedsExtractor {
     /// The needs the session runtime or Mac cannot meet. Caps Lock input is met
     /// by the managed intermediate key; device-specific rules
     /// (`macos-dev-names-*`) are refused by the session runtime.
-    static func unmet(_ needs: Set<RuleEnvironmentNeed>,
-                      profile: BackendCapabilityProfile = .shared,
-                      fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) })
+    package static func unmet(_ needs: Set<RuleEnvironmentNeed>,
+                              profile: BackendCapabilityProfile = .shared,
+                              fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) })
         -> [RuleEnvironmentNeed]
     {
         needs.filter { need in

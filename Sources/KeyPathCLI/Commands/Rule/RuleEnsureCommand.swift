@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import KeyPathAppKit
+import KeyPathRulesCore
 
 struct RuleEnsure: AsyncParsableCommand, Sendable {
     static let configuration = CommandConfiguration(

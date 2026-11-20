@@ -12,7 +12,7 @@ public struct CLIConfigurationOperation: Sendable {
     let installedPackTracker: InstalledPackTracker
 
     public var rules: RulesFacade {
-        RulesFacade(operation: self)
+        RulesFacade(configDirectory: URL(fileURLWithPath: directory), gate: service.operationGate, permit: permit)
     }
 
     public var collections: CollectionsFacade {
