@@ -42,8 +42,7 @@ public struct CollectionsFacade: Sendable {
     // MARK: - Collection CRUD
 
     public func loadRuleCollections() async -> [CLIRuleCollection] {
-        let collections = await store.loadCollections()
-        return collections.map { CLIRuleCollection(from: $0) }
+        await store.listCollections()
     }
 
     public func enableCollection(nameOrId: String) async throws -> String? {
@@ -89,19 +88,11 @@ public struct CollectionsFacade: Sendable {
     }
 
     public func showCollection(nameOrId: String) async throws -> CLIRuleCollection? {
-        let collections = await store.loadCollections()
-        guard let index = try resolveCollectionIndex(nameOrId: nameOrId, in: collections) else {
-            return nil
-        }
-        return CLIRuleCollection(from: collections[index])
+        try await store.showCollection(nameOrId: nameOrId)
     }
 
     public func showCollectionDetail(nameOrId: String) async throws -> CLIRuleCollectionDetail? {
-        let collections = await store.loadCollections()
-        guard let index = try resolveCollectionIndex(nameOrId: nameOrId, in: collections) else {
-            return nil
-        }
-        return CLIRuleCollectionDetail(from: collections[index])
+        try await store.showCollectionDetail(nameOrId: nameOrId)
     }
 
     public func createCollection(name: String, category: String?, summary: String?) async throws -> CLIRuleCollection {
@@ -377,59 +368,7 @@ public struct CollectionsFacade: Sendable {
     // MARK: - Helpers
 
     public func resolveCollectionIndex(nameOrId: String, in collections: [RuleCollection]) throws -> Int? {
-        if let index = collections.firstIndex(where: { $0.id.uuidString == nameOrId }) {
-            return index
-        }
-
-        let exactMatches = collections.enumerated().filter {
-            $0.element.name.caseInsensitiveCompare(nameOrId) == .orderedSame
-        }
-        if exactMatches.count == 1 {
-            return exactMatches[0].offset
-        }
-        if exactMatches.count > 1 {
-            throw AmbiguousCollectionMatch(
-                query: nameOrId,
-                matches: exactMatches.map { .init(name: $0.element.name, id: $0.element.id.uuidString) },
-                hint: "Multiple collections share this name. Use the ID to disambiguate."
-            )
-        }
-
-        let normalizedQuery = nameOrId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let slugMatches = collections.enumerated().filter {
-            Self.slug(for: $0.element.name) == normalizedQuery
-        }
-        if slugMatches.count == 1 {
-            return slugMatches[0].offset
-        }
-        if slugMatches.count > 1 {
-            throw AmbiguousCollectionMatch(
-                query: nameOrId,
-                matches: slugMatches.map { .init(name: $0.element.name, id: $0.element.id.uuidString) },
-                hint: "Multiple collections match this slug. Use the ID to disambiguate."
-            )
-        }
-
-        if let aliasID = Self.collectionAliasIDs[normalizedQuery],
-           let index = collections.firstIndex(where: { $0.id == aliasID })
-        {
-            return index
-        }
-
-        let substringMatches = collections.enumerated().filter {
-            $0.element.name.localizedCaseInsensitiveContains(nameOrId)
-        }
-        if substringMatches.count == 1 {
-            return substringMatches[0].offset
-        }
-        if substringMatches.count > 1 {
-            throw AmbiguousCollectionMatch(
-                query: nameOrId,
-                matches: substringMatches.map { .init(name: $0.element.name, id: $0.element.id.uuidString) }
-            )
-        }
-
-        return nil
+        try RuleCollectionLookup.index(nameOrId: nameOrId, in: collections)
     }
 
     static func parseLayer(_ name: String) -> RuleCollectionLayer {
@@ -438,87 +377,6 @@ public struct CollectionsFacade: Sendable {
         case "nav", "navigation": .navigation
         default: .custom(name)
         }
-    }
-
-    private static let collectionAliasIDs: [String: UUID] = [
-        "home-row": RuleCollectionIdentifier.homeRowMods,
-        "home-row-mod": RuleCollectionIdentifier.homeRowMods,
-        "hrm": RuleCollectionIdentifier.homeRowMods,
-    ]
-
-    private static func slug(for name: String) -> String {
-        var result = ""
-        var previousWasSeparator = false
-        for scalar in name.lowercased().unicodeScalars {
-            if CharacterSet.alphanumerics.contains(scalar) {
-                result.unicodeScalars.append(scalar)
-                previousWasSeparator = false
-            } else if !previousWasSeparator {
-                result.append("-")
-                previousWasSeparator = true
-            }
-        }
-        return result.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
-    }
-}
-
-// MARK: - Collection Types
-
-public struct CLIRuleCollection: Codable, Sendable {
-    public let id: String
-    public let name: String
-    public let isEnabled: Bool
-    public let mappingCount: Int
-    public let summary: String
-
-    public init(from collection: RuleCollection) {
-        id = collection.id.uuidString
-        name = collection.name
-        isEnabled = collection.isEnabled
-        mappingCount = collection.mappings.count
-        summary = collection.summary
-    }
-}
-
-public struct CLIRuleCollectionDetail: Codable, Sendable {
-    public let id: String
-    public let name: String
-    public let summary: String
-    public let category: String
-    public let displayStyle: String
-    public let isEnabled: Bool
-    public let isSystemDefault: Bool
-    public let owningPackID: String?
-    public let icon: String?
-    public let tags: [String]
-    public let targetLayer: String
-    public let activationHint: String?
-    public let mappingCount: Int
-    public let mappings: [KeyMapping]
-    public let configuration: RuleCollectionConfiguration
-    public let windowKeyConvention: String?
-    public let windowSnappingActivationMode: String?
-    public let functionKeyMode: String?
-
-    public init(from collection: RuleCollection) {
-        id = collection.id.uuidString
-        name = collection.name
-        summary = collection.summary
-        category = collection.category.rawValue
-        displayStyle = collection.displayStyle.rawValue
-        isEnabled = collection.isEnabled
-        isSystemDefault = collection.isSystemDefault
-        owningPackID = collection.owningPackID
-        icon = collection.icon
-        tags = collection.tags
-        targetLayer = collection.targetLayer.kanataName
-        activationHint = collection.activationHint
-        mappingCount = collection.mappings.count
-        mappings = collection.mappings
-        configuration = collection.configuration
-        windowKeyConvention = collection.windowKeyConvention?.rawValue
-        windowSnappingActivationMode = collection.windowSnappingActivationMode?.rawValue
-        functionKeyMode = collection.functionKeyMode?.rawValue
     }
 }
 
@@ -598,32 +456,4 @@ public struct CLIKarabinerProfile: Codable, Sendable {
     public let name: String
     public let index: Int
     public let isSelected: Bool
-}
-
-// MARK: - Ambiguous Match Error
-
-public struct AmbiguousCollectionMatch: Error, CustomStringConvertible {
-    public struct Match: Sendable {
-        public let name: String
-        public let id: String
-    }
-
-    public let query: String
-    public let matches: [Match]
-    public let hint: String
-
-    public init(query: String, matches: [Match], hint: String = "Use the full name or ID to disambiguate.") {
-        self.query = query
-        self.matches = matches
-        self.hint = hint
-    }
-
-    public var description: String {
-        var lines = ["Found \(matches.count) collections matching \"\(query)\":"]
-        for match in matches {
-            lines.append("  - \(match.name) (id: \(match.id))")
-        }
-        lines.append(hint)
-        return lines.joined(separator: "\n")
-    }
 }

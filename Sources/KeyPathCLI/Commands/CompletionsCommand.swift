@@ -282,8 +282,7 @@ struct Completions: ParsableCommand {
                     CLIOutput.writeRaw(slug)
                 }
             case "collection":
-                let facade = CollectionsFacade()
-                let collections = await facade.loadRuleCollections()
+                let collections = await RuleCollectionStore.shared.listCollections()
                 for c in collections {
                     CLIOutput.writeRaw(c.name)
                 }

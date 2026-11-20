@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathRulesCore
 
 struct CollectionShow: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -18,17 +18,17 @@ struct CollectionShow: AsyncParsableCommand {
 
     mutating func run() async throws {
         let ctx = globals.outputContext
-        let facade = CollectionsFacade()
+        let store = RuleCollectionStore.shared
 
         if full {
-            try await showFullCollection(ctx: ctx, facade: facade)
+            try await showFullCollection(ctx: ctx, store: store)
             return
         }
 
         let collection: CLIRuleCollection
         do {
-            guard let found = try await facade.showCollection(nameOrId: nameOrId) else {
-                let candidates = await facade.loadRuleCollections().map(\.name)
+            guard let found = try await store.showCollection(nameOrId: nameOrId) else {
+                let candidates = await store.listCollections().map(\.name)
                 let suggestions = FuzzyMatch.suggestions(for: nameOrId, from: candidates)
                 let error = CLIError.notFound("Collection", query: nameOrId, listCommand: "keypath collection list", suggestions: suggestions)
                 CLIOutput.writeError(error, context: ctx)
@@ -55,11 +55,11 @@ struct CollectionShow: AsyncParsableCommand {
         }
     }
 
-    private func showFullCollection(ctx: OutputContext, facade: CollectionsFacade) async throws {
+    private func showFullCollection(ctx: OutputContext, store: RuleCollectionStore) async throws {
         let collection: CLIRuleCollectionDetail
         do {
-            guard let found = try await facade.showCollectionDetail(nameOrId: nameOrId) else {
-                let candidates = await facade.loadRuleCollections().map(\.name)
+            guard let found = try await store.showCollectionDetail(nameOrId: nameOrId) else {
+                let candidates = await store.listCollections().map(\.name)
                 let suggestions = FuzzyMatch.suggestions(for: nameOrId, from: candidates)
                 let error = CLIError.notFound("Collection", query: nameOrId, listCommand: "keypath collection list", suggestions: suggestions)
                 CLIOutput.writeError(error, context: ctx)

@@ -1,4 +1,5 @@
 import Foundation
+import KeyPathRulesCore
 
 /// Central service container created once in App.init() and passed through the view hierarchy.
 ///

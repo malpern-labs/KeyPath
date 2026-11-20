@@ -1,45 +1,45 @@
-import KeyPathRulesCore
+import Foundation
 
 /// Canonical user-facing explanations for KeyPath's activation concepts.
 ///
 /// Keep first-use UI copy based on these definitions so Leader and Hyper do not
 /// acquire different meanings in the catalog, editors, and onboarding.
-enum KeyboardConceptCopy {
+package enum KeyboardConceptCopy {
     /// Formats the primary instruction shown on a rule card.
     ///
     /// Keep activation separate from counts, delays, and prerequisites: those
     /// describe a rule, but do not tell someone what to physically do.
-    static func activationHint(_ instruction: String) -> String {
+    package static func activationHint(_ instruction: String) -> String {
         String(localized: "Use: \(instruction)")
     }
 
-    static let leaderMeaning =
+    package static let leaderMeaning =
         String(localized: "Your Leader key is the starting key for KeyPath layers and sequences.")
 
-    static let leaderDefinition =
+    package static let leaderDefinition =
         String(localized: "\(leaderMeaning) It is Space by default.")
 
-    static let hyperDefinition =
+    package static let hyperDefinition =
         String(
             localized: "Hyper combines Control, Option, Command, and Shift into one modifier. Apps rarely use all four together, so Hyper creates clean shortcuts that are unlikely to conflict. Caps Lock Remap provides Hyper by default when you hold Caps Lock."
         )
 
-    static let hyperInlineDefinition =
+    package static let hyperInlineDefinition =
         String(localized: "Hyper combines all four modifiers, creating clean shortcuts apps rarely use.")
 
-    static let leaderCatalogSummary =
+    package static let leaderCatalogSummary =
         String(localized: "\(leaderDefinition) Choose Space, Caps Lock, Tab, or Backtick.")
 
-    static let launcherCatalogSummary =
+    package static let launcherCatalogSummary =
         String(localized: "\(hyperDefinition) Use it with a shortcut key to launch an app or website.")
 
-    static let leaderPackDescription =
+    package static let leaderPackDescription =
         String(localized: "\(leaderDefinition) Choose Space, Caps Lock, Tab, or Backtick once, and every layer follows your choice.")
 
-    static let launcherPackDescription =
+    package static let launcherPackDescription =
         String(localized: "\(hyperDefinition) Hold your Hyper key and press a shortcut key, or switch Quick Launcher to Leader → L activation.")
 
-    static func launcherActivationDescription(
+    package static func launcherActivationDescription(
         mode: LauncherActivationMode,
         hyperTriggerMode: HyperTriggerMode,
         leaderKeyDisplay: String = String(localized: "your Leader key", comment: "Fills a sentence such as 'Press your Leader key, then L'")
