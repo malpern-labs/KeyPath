@@ -292,7 +292,7 @@ public final class ConfigurationService {
         ruleCollections: [RuleCollection],
         customRules: [CustomRule] = [],
         mutationPermit: ConfigurationOperationGate.Permit?,
-        preferenceDefaults: UserDefaults = PreferencesService.canonicalDefaults
+        preferenceDefaults: UserDefaults = RecoverableRuleWrite.PreferenceDefaults.canonical
     ) async throws {
         try await operationGate.withOperation(using: mutationPermit) { @MainActor [self] permit in
             try await recoverPendingRuleWrite(mutationPermit: permit, preferenceDefaults: preferenceDefaults)
@@ -356,7 +356,7 @@ public final class ConfigurationService {
         ruleCollections: [RuleCollection], customRules: [CustomRule],
         collectionStore: RuleCollectionStore, customStore: CustomRulesStore,
         mutationPermit: ConfigurationOperationGate.Permit? = nil,
-        preferenceDefaults: UserDefaults = PreferencesService.canonicalDefaults
+        preferenceDefaults: UserDefaults = RecoverableRuleWrite.PreferenceDefaults.canonical
     ) async throws {
         try await operationGate.withOperation(using: mutationPermit) { @MainActor [self] permit in
             let write = try await stageRuleState(
@@ -390,7 +390,7 @@ public final class ConfigurationService {
         collectionStore: RuleCollectionStore, customStore: CustomRulesStore,
         mutationPermit: ConfigurationOperationGate.Permit,
         packRecord: InstalledPackTracker.RecordChange? = nil,
-        preferenceDefaults: UserDefaults? = PreferencesService.canonicalDefaults,
+        preferenceDefaults: UserDefaults? = RecoverableRuleWrite.PreferenceDefaults.canonical,
         preferenceChanges: [RecoverableRuleWrite.PreferenceChange] = [],
         leaderKeyPreference: LeaderKeyPreference? = nil,
         shortcutListGenerationInput: ShortcutListGenerationInput? = nil,
@@ -448,7 +448,7 @@ public final class ConfigurationService {
             // Capture a coherent source/config revision while holding the operation lease.
             // A requested restore must have a safety backup before replacing current rules.
             let backedUp = ConfigBackupManager(configPath: configurationPath).createPreEditBackup(
-                generationPreferences: RuleBackupPreferences(defaults: preferenceDefaults ?? PreferencesService.canonicalDefaults)
+                generationPreferences: RuleBackupPreferences(defaults: preferenceDefaults ?? RecoverableRuleWrite.PreferenceDefaults.canonical)
             )
             if restoringBackupContent != nil, !backedUp {
                 throw RuleBackupSnapshot.Failure.inconsistentSnapshot
@@ -519,7 +519,7 @@ public final class ConfigurationService {
         customStore: CustomRulesStore? = nil,
         mutationPermit: ConfigurationOperationGate.Permit? = nil,
         installedPackTracker: InstalledPackTracker? = nil,
-        preferenceDefaults: UserDefaults? = PreferencesService.canonicalDefaults
+        preferenceDefaults: UserDefaults? = RecoverableRuleWrite.PreferenceDefaults.canonical
     ) async throws -> Bool {
         try await operationGate.withOperation(using: mutationPermit) { @MainActor [self] _ in
             let files = await ruleWriteFiles(collectionStore: collectionStore ?? ruleCollectionStore, customStore: customStore ?? customRulesStore)
@@ -630,9 +630,9 @@ public final class ConfigurationService {
                 throw AppConfigError.validationFailed(errors: [String(localized: "Rule collections could not be read completely; repair them before saving app-specific rules")])
             }
             let rules = try await customRulesStore.loadForMutation()
-            let leaderKeyPreference = persistedLeaderPreference(in: PreferencesService.canonicalDefaults)
+            let leaderKeyPreference = persistedLeaderPreference(in: RecoverableRuleWrite.PreferenceDefaults.canonical)
             let persistedInputs = try await persistedGlobalRuleGenerationInputs(
-                preferenceDefaults: PreferencesService.canonicalDefaults
+                preferenceDefaults: RecoverableRuleWrite.PreferenceDefaults.canonical
             )
             // Refuse a lossy regeneration, including manual edits to a generated file.
             // A generated header alone does not prove that the visual editor owns it.
@@ -972,7 +972,7 @@ public final class ConfigurationService {
     private func persistedGlobalRuleGenerationInputs(
         preferenceDefaults: UserDefaults?
     ) async throws -> GlobalRuleGenerationInputs {
-        let defaults = preferenceDefaults ?? PreferencesService.canonicalDefaults
+        let defaults = preferenceDefaults ?? RecoverableRuleWrite.PreferenceDefaults.canonical
         let shortcut = ShortcutListGenerationInput(persistedIn: defaults)
         let selections = try await deviceSelectionStore.loadForMutation()
         let appKeymapStore = AppKeymapStore(
@@ -993,10 +993,7 @@ public final class ConfigurationService {
     @MainActor
     private func persistedLeaderPreference(in defaults: UserDefaults?) -> LeaderKeyPreference? {
         guard let defaults else { return nil }
-        guard let data = defaults.data(forKey: PreferencesService.leaderKeyPreferenceKey) else {
-            return .default
-        }
-        return (try? JSONDecoder().decode(LeaderKeyPreference.self, from: data)) ?? .default
+        return LeaderKeyPreference(persistedData: defaults.data(forKey: RecoverableRuleWrite.PreferenceRole.leader.key))
     }
 
     private func publishSavedConfiguration(_ newConfig: KanataConfiguration) async {

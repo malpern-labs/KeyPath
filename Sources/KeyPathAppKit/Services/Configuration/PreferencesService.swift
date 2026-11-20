@@ -145,18 +145,6 @@ final class PreferencesService: Sendable {
 
     static let shared = PreferencesService()
 
-    nonisolated static var canonicalDefaults: UserDefaults {
-        TestEnvironment.isRunningTests
-            ? .standard
-            : canonicalDefaults(using: UserDefaults(suiteName: "com.keypath.KeyPath"))
-    }
-
-    /// The suite can be unavailable during early app launch. Preferences must
-    /// still initialize so launchd does not restart the app in a crash loop.
-    nonisolated static func canonicalDefaults(using suiteDefaults: UserDefaults?) -> UserDefaults {
-        suiteDefaults ?? .standard
-    }
-
     nonisolated static let leaderKeyPreferenceKey = RecoverableRuleWrite.PreferenceRole.leader.key
     private let defaults: UserDefaults
     private let leaderDefaults: UserDefaults
@@ -306,10 +294,10 @@ final class PreferencesService: Sendable {
         suppressLeaderPersistence = false
     }
 
-    func reloadLeaderKeyPreference(from defaults: UserDefaults = PreferencesService.canonicalDefaults) {
-        let value = defaults.data(forKey: Self.leaderKeyPreferenceKey)
-            .flatMap { try? JSONDecoder().decode(LeaderKeyPreference.self, from: $0) } ?? .default
-        stageLeaderKeyPreference(value)
+    func reloadLeaderKeyPreference(from defaults: UserDefaults = RecoverableRuleWrite.PreferenceDefaults.canonical) {
+        stageLeaderKeyPreference(
+            LeaderKeyPreference(persistedData: defaults.data(forKey: Self.leaderKeyPreferenceKey))
+        )
     }
 
     // MARK: - Education Hints
@@ -506,7 +494,7 @@ final class PreferencesService: Sendable {
     // MARK: - Initialization
 
     init(
-        leaderDefaults: UserDefaults = PreferencesService.canonicalDefaults,
+        leaderDefaults: UserDefaults = RecoverableRuleWrite.PreferenceDefaults.canonical,
         defaults: UserDefaults = .standard
     ) {
         self.defaults = defaults
@@ -562,13 +550,9 @@ final class PreferencesService: Sendable {
                 ?? Defaults.accessibilityTestMode
 
         // Leader key preference
-        if let data = leaderDefaults.data(forKey: Keys.leaderKeyPreference),
-           let stored = try? JSONDecoder().decode(LeaderKeyPreference.self, from: data)
-        {
-            leaderKeyPreference = stored
-        } else {
-            leaderKeyPreference = .default
-        }
+        leaderKeyPreference = LeaderKeyPreference(
+            persistedData: leaderDefaults.data(forKey: Keys.leaderKeyPreference)
+        )
 
         // Education hints
         overlayHiddenHintShowCount =
