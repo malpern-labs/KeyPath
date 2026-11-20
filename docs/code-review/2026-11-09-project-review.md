@@ -528,9 +528,9 @@ Remaining work:
 - Audit remaining `@unchecked Sendable` types according to their actual
   ownership and synchronization. Do not replace a valid actor or framework
   boundary with a mutex merely to reduce a count.
-- `BackendCapabilityProfile` still has manual cache locking and an unsafe debug
-  override on merged master. A checked-mutex change is under validation; it is
-  not a verified fix yet.
+- `BackendCapabilityProfile` uses checked mutex-backed state after #1487.
+  Its full gate passed 5,525 tests and six post-integration regressions passed.
+  The unprotected BuildInfo version cache is a separate current follow-up.
 - Reconcile delayed UI callbacks and timers with their owning view/window
   lifetimes. Convert only callbacks that require cancellation, and test closing
   or replacing the owner while a callback is pending.
