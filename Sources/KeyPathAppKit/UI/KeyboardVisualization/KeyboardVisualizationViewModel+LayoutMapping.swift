@@ -21,8 +21,17 @@ extension KeyboardVisualizationViewModel {
 
     /// Update the current layer and rebuild key mapping
     func updateLayer(_ layerName: String) {
-        let targetLayerName = layerName
+        liveLayerName = layerName
+        guard editingLayerName == nil else { return }
+        displayLayer(layerName)
+    }
 
+    func selectEditingLayer(_ layerName: String?) {
+        editingLayerName = layerName
+        displayLayer(layerName ?? liveLayerName)
+    }
+
+    private func displayLayer(_ targetLayerName: String) {
         guard currentLayerName != targetLayerName else { return }
 
         let wasLauncherMode = isLauncherModeActive

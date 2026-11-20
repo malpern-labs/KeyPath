@@ -49,6 +49,7 @@ struct OverlayKeyboardView: View {
     var resettableInputs: Set<String> = []
     /// Key code of currently selected key in mapper drawer (shows selection highlight)
     var selectedKeyCode: UInt16?
+    var appliedRemapKeyCode: UInt16?
     /// Key code being hovered in rules/launcher tabs (for secondary highlight)
     var hoveredRuleKeyCode: UInt16?
 
@@ -521,6 +522,7 @@ struct OverlayKeyboardView: View {
             showScoopedHomeRow: layout.id == "kinesis-360",
             // Selection highlight for mapper drawer
             isSelected: selectedKeyCode == key.keyCode,
+            showsAppliedRemap: appliedRemapKeyCode == key.keyCode,
             // Rule hover highlight (from Custom Rules or Launcher tabs)
             isHoveredByRule: hoveredRuleKeyCode == key.keyCode,
             // Inspector/drawer state for click vs drag behavior

@@ -80,7 +80,7 @@ extension MapperViewModel {
 
         // Use makeCustomRule to reuse existing rule ID for the same input key
         // This prevents duplicate keys in defsrc which causes Kanata validation errors
-        var customRule = kanataManager.makeCustomRule(input: inputKanata, output: outputKanata)
+        var customRule = kanataManager.makeCustomRule(input: inputKanata, output: outputKanata, layer: targetLayer)
         customRule.notes = "Created via Mapper [\(currentLayer) layer]"
         customRule.targetLayer = targetLayer
         customRule.shiftedOutput = shiftedOutputKanata
@@ -154,7 +154,19 @@ extension MapperViewModel {
         }
 
         AppLogger.shared.log("💾 [MapperViewModel] Saving '\(inputKanata)' → '\(outputKanata)' [layer: \(currentLayer)]")
-        let customRuleSaved = await kanataManager.saveCustomRule(customRule, skipReload: false, autoResolveConflicts: true)
+        let customRuleSaved: Bool
+        if let onRemapApplied, let inputKeyCode, inputSeq.keys.count == 1, !advancedBehavior.hasValidCombo {
+            let layer = targetLayer.kanataName
+            let result = await kanataManager.rulesManager.saveRemap(customRule)
+            kanataManager.refreshRuleMappings()
+            customRuleSaved = result.saved
+            if result.saved { SoundManager.shared.playGlassSound() }
+            if let undo = result.undo {
+                onRemapApplied(inputKeyCode, layer, undo)
+            }
+        } else {
+            customRuleSaved = await kanataManager.saveCustomRule(customRule, skipReload: false, autoResolveConflicts: true)
+        }
         AppLogger.shared.log("💾 [MapperViewModel] saveCustomRule returned: \(customRuleSaved)")
 
         if customRuleSaved {
@@ -239,7 +251,7 @@ extension MapperViewModel {
                 lastSavedRuleID = nil
             } else if let inputKanata = currentInputKanataString() {
                 // Use makeCustomRule to reuse existing rule ID for this input (if any)
-                let probeRule = manager.makeCustomRule(input: inputKanata, output: "xx")
+                let probeRule = manager.makeCustomRule(input: inputKanata, output: "xx", layer: layerFromString(currentLayer))
                 Task {
                     await manager.removeCustomRule(withID: probeRule.id)
                     AppLogger.shared.log("🧹 [MapperViewModel] Deleted rule by input \(inputKanata) (id: \(probeRule.id))")
@@ -323,7 +335,7 @@ extension MapperViewModel {
                 lastSavedRuleID = nil
             } else if let inputKanata = currentInputKanataString() {
                 AppLogger.shared.log("🧹 [MapperViewModel] revertToKeystroke: no lastSavedRuleID, probing by input='\(inputKanata)'")
-                let probeRule = manager.makeCustomRule(input: inputKanata, output: "xx")
+                let probeRule = manager.makeCustomRule(input: inputKanata, output: "xx", layer: layerFromString(currentLayer))
                 AppLogger.shared.log("🧹 [MapperViewModel] revertToKeystroke: probeRule.id=\(probeRule.id)")
                 Task {
                     await manager.removeCustomRule(withID: probeRule.id)

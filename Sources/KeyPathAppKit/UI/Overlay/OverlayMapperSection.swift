@@ -17,6 +17,8 @@ struct OverlayMapperSection: View {
     var onKeySelected: ((UInt16?) -> Void)?
     /// Layer key map for looking up actual mappings (passed from overlay view)
     var layerKeyMap: [UInt16: LayerKeyInfo] = [:]
+    var editingLayer: String = "base"
+    var onRemapApplied: ((UInt16, String, RuleCollectionsManager.RemapUndo, MapperViewModel) -> Void)?
 
     @Environment(\.services) var services
     @State var viewModel = MapperViewModel()

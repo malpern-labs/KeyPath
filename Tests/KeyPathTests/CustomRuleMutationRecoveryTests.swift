@@ -132,6 +132,81 @@ final class CustomRuleMutationRecoveryTests: KeyPathTestCase {
         XCTAssertEqual(try files(), before)
     }
 
+    func testRemapRuleIdentityIsScopedToTheEditingLayer() {
+        let base = manager.customRules[0]
+        let next = manager.makeCustomRule(input: base.input, output: "f18", layer: .navigation)
+        XCTAssertNotEqual(next.id, base.id)
+        XCTAssertEqual(next.targetLayer, .navigation)
+        manager.customRules.append(next)
+        XCTAssertEqual(manager.getCustomRule(forInput: base.input, layer: .base)?.id, base.id)
+        XCTAssertEqual(manager.makeCustomRule(input: base.input, output: "f17", layer: .navigation).id, next.id)
+    }
+
+    func testRemapUndoRestoresConflictingRuleAndKeepsInterveningEdit() async throws {
+        let original = manager.customRules[0]
+        manager.onRulesChanged = { Self.reload(.applied) }
+        let candidate = CustomRule(input: original.input, action: .keystroke(key: "f18"), createdAt: Date(timeIntervalSince1970: 43.5))
+        let saved = await manager.saveRemap(candidate)
+        let undo = try XCTUnwrap(saved.undo)
+        XCTAssertEqual(manager.customRules.first { $0.id == original.id }?.isEnabled, false)
+
+        let unrelated = CustomRule(input: "f13", action: .keystroke(key: "f14"), createdAt: Date(timeIntervalSince1970: 44))
+        let added = await manager.saveCustomRule(unrelated)
+        XCTAssertTrue(added)
+        let undone = await manager.undoRemap(undo)
+        XCTAssertTrue(undone)
+        let stored = try await manager.customRulesStore.loadForMutation()
+        XCTAssertEqual(stored, [original, unrelated])
+    }
+
+    func testRemapUndoIncludesCollectionChangedDuringSave() async throws {
+        manager.onRulesChanged = { Self.reload(.applied) }
+        let group = RuleCollection(
+            name: "Test collection", summary: "", category: .custom,
+            mappings: [KeyMapping(input: "f15", action: .keystroke(key: "f16"))]
+        )
+        let added = await manager.addCollection(group)
+        XCTAssertTrue(added)
+
+        // Model a collection being disabled by conflict resolution after save starts.
+        let manager = manager!
+        manager.onBeforeSave = { [weak manager] in
+            guard let manager, let index = manager.ruleCollections.firstIndex(where: { $0.id == group.id }) else { return }
+            manager.ruleCollections[index].isEnabled = false
+        }
+        let saved = await manager.saveRemap(CustomRule(input: "f13", action: .keystroke(key: "f14")))
+        manager.onBeforeSave = nil
+        let undo = try XCTUnwrap(saved.undo)
+        XCTAssertEqual(manager.ruleCollections.first { $0.id == group.id }?.isEnabled, false)
+
+        let undone = await manager.undoRemap(undo)
+        XCTAssertTrue(undone)
+        let stored = try await manager.ruleCollectionStore.loadForMutation()
+        XCTAssertEqual(stored.first { $0.id == group.id }, group)
+    }
+
+    func testRemapUndoPreservesNewerEditToTheSameRule() async throws {
+        manager.onRulesChanged = { Self.reload(.applied) }
+        var candidate = manager.makeCustomRule(input: "f20", output: "f18", layer: .base)
+        let saved = await manager.saveRemap(candidate)
+        let undo = try XCTUnwrap(saved.undo)
+
+        candidate.action = .keystroke(key: "f17")
+        let updated = await manager.saveCustomRule(candidate)
+        XCTAssertTrue(updated)
+        let undone = await manager.undoRemap(undo)
+        XCTAssertFalse(undone)
+        XCTAssertEqual(manager.customRules, [candidate])
+    }
+
+    func testRejectedRemapProducesNoUndo() async throws {
+        try await assertRejectedMutationRestores {
+            let result = await self.manager.saveRemap(CustomRule(input: "f13", action: .keystroke(key: "f14")))
+            XCTAssertFalse(result.saved)
+            XCTAssertNil(result.undo)
+        }
+    }
+
     func testRejectedSaveRestoresFilesAndReportsFailure() async throws {
         try await assertRejectedMutationRestores {
             let saved = await self.manager.saveCustomRule(CustomRule(input: "f13", action: .keystroke(key: "f14")))

@@ -168,7 +168,7 @@ extension MapperViewModel {
 
         // Use makeCustomRule to reuse existing rule ID for the same input key
         // This prevents duplicate keys in defsrc which causes Kanata validation errors
-        var customRule = kanataManager.makeCustomRule(input: inputKanata, output: app.kanataOutput)
+        var customRule = kanataManager.makeCustomRule(input: inputKanata, output: app.kanataOutput, layer: targetLayer)
         customRule.notes = "Launch \(app.name) [\(currentLayer) layer]"
         customRule.targetLayer = targetLayer
 
@@ -259,7 +259,7 @@ extension MapperViewModel {
 
         AppLogger.shared.log("⚙️ [MapperViewModel] Creating rule: input='\(inputKanata)' output='\(action.kanataOutput)' layer=\(targetLayer)")
 
-        var customRule = kanataManager.makeCustomRule(input: inputKanata, output: action.kanataOutput)
+        var customRule = kanataManager.makeCustomRule(input: inputKanata, output: action.kanataOutput, layer: targetLayer)
         customRule.notes = "\(action.name) [\(currentLayer) layer]"
         customRule.targetLayer = targetLayer
 
@@ -361,7 +361,7 @@ extension MapperViewModel {
 
         AppLogger.shared.log("🌐 [MapperViewModel] Creating rule: input='\(inputKanata)' output='\(outputKanata)' layer=\(targetLayer)")
 
-        var customRule = kanataManager.makeCustomRule(input: inputKanata, output: outputKanata)
+        var customRule = kanataManager.makeCustomRule(input: inputKanata, output: outputKanata, layer: targetLayer)
         customRule.notes = "Open \(url) [\(currentLayer) layer]"
         customRule.targetLayer = targetLayer
 
@@ -434,7 +434,7 @@ extension MapperViewModel {
         let targetLayer = layerFromString(currentLayer)
         clearShiftedOutput()
 
-        var customRule = kanataManager.makeCustomRule(input: inputKanata, output: action.kanataOutput)
+        var customRule = kanataManager.makeCustomRule(input: inputKanata, output: action.kanataOutput, layer: targetLayer)
         customRule.action = action
         customRule.notes = "Open \(folder.name ?? folder.path) [\(currentLayer) layer]"
         customRule.targetLayer = targetLayer
@@ -498,7 +498,7 @@ extension MapperViewModel {
         let targetLayer = layerFromString(currentLayer)
         clearShiftedOutput()
 
-        var customRule = kanataManager.makeCustomRule(input: inputKanata, output: action.kanataOutput)
+        var customRule = kanataManager.makeCustomRule(input: inputKanata, output: action.kanataOutput, layer: targetLayer)
         customRule.action = action
         customRule.notes = "Run \(script.name ?? script.path) [\(currentLayer) layer]"
         customRule.targetLayer = targetLayer

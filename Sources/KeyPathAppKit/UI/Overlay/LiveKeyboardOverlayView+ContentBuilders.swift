@@ -20,7 +20,8 @@ extension LiveKeyboardOverlayView {
         keyboardTrailingPadding: CGFloat,
         allowKeyboardDrag: Bool
     ) -> some View {
-        VStack(spacing: 0) {
+        let isEditingLayer = uiState.isInspectorOpen && inspectorSection == .mapper && !isSettingsShelfActive
+        return VStack(spacing: 0) {
             OverlayDragHeader(
                 isDark: isDark,
                 fadeAmount: fadeAmount,
@@ -45,19 +46,28 @@ extension LiveKeyboardOverlayView {
                 onKeyboardSelected: { keyboardID in
                     autoDetectController.selectKeyboard(keyboardID)
                 },
-                onLayerSelected: { layerName in
-                    Task {
-                        _ = await kanataViewModel?.changeLayer(layerName)
+                onLayerSelected: { layer in
+                    if isEditingLayer {
+                        viewModel.selectEditingLayer(layer)
+                    } else {
+                        Task { _ = await kanataViewModel?.changeLayer(layer) }
                     }
                 },
                 onCreateLayer: { layerName in
                     Task {
                         await kanataViewModel?.underlyingManager.rulesManager.createLayer(layerName)
-                        _ = await kanataViewModel?.changeLayer(layerName)
+                        if viewModel.editingLayerName != nil {
+                            viewModel.selectEditingLayer(layerName)
+                        } else if !isEditingLayer {
+                            _ = await kanataViewModel?.changeLayer(layerName)
+                        }
                     }
                 },
                 onDeleteLayer: { layerName in
                     Task {
+                        if viewModel.editingLayerName?.lowercased() == layerName.lowercased() {
+                            viewModel.selectEditingLayer("base")
+                        }
                         if kanataViewModel?.currentLayerName.lowercased() == layerName.lowercased() {
                             _ = await kanataViewModel?.changeLayer("base")
                         }
@@ -65,6 +75,7 @@ extension LiveKeyboardOverlayView {
                     }
                 }
             )
+            .environment(\.overlayLayerShortcutsEnabled, isEditingLayer)
             .frame(maxWidth: .infinity)
 
             overlayMainContent(
@@ -83,6 +94,9 @@ extension LiveKeyboardOverlayView {
                 allowKeyboardDrag: allowKeyboardDrag,
                 inspectorSection: inspectorSection
             )
+        }
+        .onChange(of: isEditingLayer, initial: true) { _, editing in
+            viewModel.selectEditingLayer(editing ? viewModel.currentLayerName : nil)
         }
     }
 
@@ -177,6 +191,8 @@ extension LiveKeyboardOverlayView {
                         in: kanataViewModel?.customRules ?? [], layer: viewModel.currentLayerName
                     ),
                     selectedKeyCode: viewModel.selectedKeyCode,
+                    appliedRemapKeyCode: viewModel.appliedRemapLayer?.lowercased() == viewModel.currentLayerName.lowercased()
+                        ? viewModel.appliedRemapKeyCode : nil,
                     hoveredRuleKeyCode: viewModel.hoveredRuleKeyCode,
                     vimHintsActive: kindaVimPackInstalled && VimHintLayer.isCurrentlyRendering,
                     isLauncherMode: viewModel.isLauncherModeActive || (uiState.isInspectorOpen && inspectorSection == .launchers),

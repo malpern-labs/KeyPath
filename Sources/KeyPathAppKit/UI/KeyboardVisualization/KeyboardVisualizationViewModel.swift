@@ -56,11 +56,29 @@ class KeyboardVisualizationViewModel {
 
     /// Current Kanata layer name (e.g., "base", "nav", "symbols")
     var currentLayerName: String = "base"
+    var editingLayerName: String?
+    var liveLayerName = "base"
     /// Whether the layer key mapping is being built (for loading indicator)
     var isLoadingLayerMap: Bool = false
     /// Key code of the currently selected key in the mapper drawer (nil when no selection)
     /// Used to show a visual highlight on the key being edited
     var selectedKeyCode: UInt16?
+    private(set) var appliedRemapKeyCode: UInt16?
+    private(set) var appliedRemapLayer: String?
+    private var appliedRemapTask: Task<Void, Never>?
+
+    func highlightAppliedRemap(keyCode: UInt16, layer: String) {
+        appliedRemapTask?.cancel()
+        appliedRemapKeyCode = keyCode
+        appliedRemapLayer = layer
+        appliedRemapTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(700))
+            guard !Task.isCancelled else { return }
+            self?.appliedRemapKeyCode = nil
+            self?.appliedRemapLayer = nil
+        }
+    }
+
     /// Key code being hovered in rules/launcher tabs (for secondary highlight)
     var hoveredRuleKeyCode: UInt16?
     /// Key mapping for the current layer: keyCode -> LayerKeyInfo

@@ -71,6 +71,11 @@ package actor CustomRulesStore {
         try encoder.encode(rules)
     }
 
+    /// Round-trip through the store's codecs so transaction comparisons use persisted precision.
+    package func rulesInPersistenceFormat(_ rules: [CustomRule]) throws -> [CustomRule] {
+        try decoder.decode([CustomRule].self, from: encodedRules(rules))
+    }
+
     package var persistenceURL: URL {
         fileURL
     }

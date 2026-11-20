@@ -199,7 +199,7 @@ final class SaveCoordinator {
                     _ = try await configurationService.applyRecoveredRuntimeIfNeeded(mutationPermit: permit, reloadHandler: reloadHandler)
                     let snapshot = ruleCollectionsManager.snapshotRuleState()
                     let (sanitizedInput, sanitizedOutput) = try validateInputOutput(input: input, output: output)
-                    let rule = ruleCollectionsManager.makeCustomRule(input: sanitizedInput, output: sanitizedOutput)
+                    let rule = ruleCollectionsManager.makeCustomRule(input: sanitizedInput, output: sanitizedOutput, layer: .base)
                     guard await ruleCollectionsManager.updateCustomRuleInMemory(rule, mutationPermit: permit) else {
                         let error = KeyPathError.configuration(.validationFailed(errors: [String(localized: "The rule change was cancelled or conflicts with an existing mapping.")]))
                         saveStatus = .failed(error.localizedDescription)
@@ -240,6 +240,7 @@ final class SaveCoordinator {
         deviceSelections: [DeviceSelection]? = nil,
         restoringBackupContent: String? = nil,
         restoringManagedBackup: Bool = false,
+        resolvesMappingConflicts: Bool = true,
         reloadHandler: (() async -> ReloadResult)?
     ) async -> SaveResult {
         do {
@@ -280,7 +281,7 @@ final class SaveCoordinator {
                         return SaveResult(success: true, error: nil, mappings: manager.enabledMappings(),
                                           reloadResult: result, recoveryResult: .notAttempted)
                     } catch {
-                        if staged == nil, reload == nil,
+                        if resolvesMappingConflicts, staged == nil, reload == nil,
                            await manager.resolveMappingConflictInMemory(error, depth: conflictDepth, mutationPermit: permit)
                         {
                             conflictDepth += 1

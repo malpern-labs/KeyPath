@@ -247,6 +247,7 @@ extension RuleCollectionsManager {
                                   keymapBefore: (id: String, includePunctuation: Bool)? = nil,
                                   packRecord: InstalledPackTracker.RecordChange? = nil,
                                   reloadHandler: (@MainActor @Sendable () async -> ReloadResult)? = nil,
+                                  resolvesMappingConflicts: Bool = true,
                                   mutationPermit: ConfigurationOperationGate.Permit) async -> SaveResult
     {
         let preparedLeaderPreference = pendingLeaderKeyPreference ?? preferencesService.leaderKeyPreference
@@ -267,6 +268,7 @@ extension RuleCollectionsManager {
             manager: self, mutationPermit: mutationPermit, packRecord: packRecord,
             preferenceChanges: preferenceChanges,
             leaderKeyPreference: leaderPreferenceBefore == nil ? nil : preparedLeaderPreference,
+            resolvesMappingConflicts: resolvesMappingConflicts,
             reloadHandler: skipReload ? nil : (reloadHandler ?? onRulesChanged)
         )
         pendingLeaderKeyPreference = nil

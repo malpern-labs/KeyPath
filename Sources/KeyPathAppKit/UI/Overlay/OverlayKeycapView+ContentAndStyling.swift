@@ -44,6 +44,13 @@ extension OverlayKeycapView {
                     .shadow(color: Color.accentColor.opacity(0.4), radius: 4 * scale)
             }
 
+            if showsAppliedRemap {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(Color.green, lineWidth: 2.5 * scale)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+
             // Glow layers for dark mode backlight effect
             // Glow increases as keyboard fades out for ethereal effect
             // Skip glow when content is Color.clear (floating labels handle glow instead)

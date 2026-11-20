@@ -26,6 +26,19 @@ extension OverlayDragHeader {
 
             PopoverListDivider()
 
+            if layerShortcutsEnabled {
+                HStack {
+                    Button { stepLayer(by: -1) } label: { Text("Previous ⌘⇧[") }
+                        .accessibilityIdentifier("layer-picker-previous")
+                    Spacer()
+                    Button { stepLayer(by: 1) } label: { Text("Next ⌘⇧]") }
+                        .accessibilityIdentifier("layer-picker-next")
+                }
+                .buttonStyle(.borderless)
+                .padding(12)
+                PopoverListDivider()
+            }
+
             // New Layer option - styled same as layer rows
             Button {
                 isLayerPickerOpen = false

@@ -72,7 +72,7 @@ extension LiveKeyboardOverlayController {
 
                 // Allow physical Escape to always dismiss momentary/one-shot layer state.
                 // This recovers from missed layer-exit notifications.
-                if Self.isEscapeKeyName(key), currentLayerName.lowercased() != "base" {
+                if Self.isEscapeKeyName(key), viewModel.liveLayerName.lowercased() != "base" {
                     _ = ActionDispatcher.shared.dispatch(message: "layer:base")
                 }
             }

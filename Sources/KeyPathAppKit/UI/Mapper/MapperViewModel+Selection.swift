@@ -72,6 +72,7 @@ extension MapperViewModel {
         shiftedOutputKey: String? = nil
     ) {
         stopRecording()
+        lastSavedRuleID = nil
 
         inputKeyCode = keyCode
         self.inputLabel = formatKeyForDisplay(inputLabel)
@@ -144,7 +145,7 @@ extension MapperViewModel {
         guard let keyCode = inputKeyCode else { return }
         let inputKey = OverlayKeyboardView.keyCodeToKanataName(keyCode)
 
-        guard let existingRule = kanataManager.getCustomRule(forInput: inputKey) else {
+        guard let existingRule = kanataManager.getCustomRule(forInput: inputKey, layer: layerFromString(currentLayer)) else {
             if !hasShiftedOutputConfigured, let defaultShift = defaultShiftSymbol {
                 shiftedOutputLabel = defaultShift
                 shiftedOutputSequence = KeySequence(
