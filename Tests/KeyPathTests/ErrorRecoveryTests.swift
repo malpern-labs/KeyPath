@@ -11,9 +11,6 @@ final class ErrorRecoveryTests: XCTestCase {
 
     @MainActor
     func testConfigBackup_InvalidConfigGetsBackedUp() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("recovery-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -36,9 +33,6 @@ final class ErrorRecoveryTests: XCTestCase {
 
     @MainActor
     func testConfigValidation_ValidConfigPasses() async {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("validation-test-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -54,9 +48,6 @@ final class ErrorRecoveryTests: XCTestCase {
 
     @MainActor
     func testConfigValidation_EmptyConfigFails() async {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("validation-test-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
