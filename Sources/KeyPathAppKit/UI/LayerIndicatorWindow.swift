@@ -3,10 +3,15 @@ import KeyPathCore
 import SwiftUI
 
 /// Floating window that displays the current layer name
-class LayerIndicatorWindow: NSWindow {
-    private var hideTimer: Timer?
+final class LayerIndicatorWindow: NSWindow {
+    typealias Fade = @MainActor (NSWindow, @escaping @MainActor @Sendable () -> Void) -> Void
 
-    init() {
+    private let fade: Fade
+    private var presentationID: UUID?
+    private(set) var hideTimer: Timer?
+
+    init(fade: @escaping Fade = LayerIndicatorWindow.animateFade) {
+        self.fade = fade
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 200, height: 60),
             styleMask: [.borderless],
@@ -39,30 +44,43 @@ class LayerIndicatorWindow: NSWindow {
             hostingView.rootView = LayerIndicatorView(layerName: layerName)
         }
 
-        // Cancel any existing hide timer
         hideTimer?.invalidate()
+        let presentationID = UUID()
+        self.presentationID = presentationID
 
-        // Show window immediately (no fade-in)
+        // Show the current layer immediately.
         alphaValue = 1.0
         orderFront(nil)
 
-        // Schedule fade-out after 1 second
         hideTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
             Task { @MainActor in
-                self?.hideWithFadeOut()
+                self?.hideWithFadeOut(presentationID: presentationID)
             }
         }
     }
 
-    @MainActor
-    private func hideWithFadeOut() {
+    func dismissImmediately() {
+        presentationID = nil
+        hideTimer?.invalidate()
+        hideTimer = nil
+        orderOut(nil)
+    }
+
+    private func hideWithFadeOut(presentationID: UUID) {
+        guard self.presentationID == presentationID else { return }
+        hideTimer = nil
+        fade(self) { [weak self] in
+            guard let self, self.presentationID == presentationID else { return }
+            dismissImmediately()
+        }
+    }
+
+    private static func animateFade(_ window: NSWindow, completion: @escaping @MainActor @Sendable () -> Void) {
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.5
-            animator().alphaValue = 0.0
+            window.animator().alphaValue = 0.0
         } completionHandler: {
-            Task { @MainActor in
-                self.orderOut(nil)
-            }
+            Task { @MainActor in completion() }
         }
     }
 }
@@ -128,7 +146,7 @@ class LayerIndicatorManager {
         {
             AppLogger.shared.debug("🪟 [LayerIndicator] Suppressed for app \(frontBundle)")
             previousLayer = layerName
-            window?.orderOut(nil)
+            window?.dismissImmediately()
             return
         }
 
