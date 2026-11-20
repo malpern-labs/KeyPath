@@ -201,6 +201,16 @@ extension KanataTCPClient {
         }
     }
 
+    /// Cancel the failed connection. Only its owner can clear the client's
+    /// current buffers and waiters.
+    func closeTimedOutConnection(_ timedOutConnection: NWConnection) {
+        guard connection === timedOutConnection else {
+            timedOutConnection.cancel()
+            return
+        }
+        closeConnection()
+    }
+
     func closeConnection() {
         let currentState = stateString(connection?.state)
         AppLogger.shared.log("🔌 [TCP] closeConnection() called (current state=\(currentState))")

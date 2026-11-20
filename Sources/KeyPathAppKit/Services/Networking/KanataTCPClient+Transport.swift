@@ -38,7 +38,7 @@ extension KanataTCPClient {
             // Timeout task
             group.addTask {
                 try await Task.sleep(for: .seconds(self.timeout))
-                await self.closeConnection()
+                await self.closeTimedOutConnection(connection)
                 throw KeyPathError.communication(.timeout)
             }
 
@@ -69,16 +69,7 @@ extension KanataTCPClient {
             return line
         }
 
-        // Thread-safe accumulator for use in NWConnection callback
-        final class Accumulator: @unchecked Sendable {
-            var data: Data
-            init(initial: Data) {
-                data = initial
-            }
-        }
-
-        // Start with existing buffer contents
-        let accumulator = Accumulator(initial: readBuffer)
+        var accumulated = readBuffer
         let deadline = seconds.map { CFAbsoluteTimeGetCurrent() + $0 }
 
         // No complete line in buffer, need to read from connection
@@ -87,7 +78,7 @@ extension KanataTCPClient {
             if let deadline {
                 let timeLeft = deadline - CFAbsoluteTimeGetCurrent()
                 guard timeLeft > 0 else {
-                    closeConnection()
+                    closeTimedOutConnection(connection)
                     throw OperationTimeoutError()
                 }
                 remaining = timeLeft
@@ -95,21 +86,27 @@ extension KanataTCPClient {
                 remaining = nil
             }
 
-            let chunk = try await receiveChunk(on: connection, maxLength: maxLength, timeout: remaining)
+            let chunk: (content: Data?, isComplete: Bool)
+            do {
+                chunk = try await receiveChunk(on: connection, maxLength: maxLength, timeout: remaining)
+            } catch let error as OperationTimeoutError {
+                closeTimedOutConnection(connection)
+                throw error
+            }
 
             if let content = chunk.content {
-                accumulator.data.append(content)
+                accumulated.append(content)
             }
 
             if chunk.isComplete {
                 // Connection closed - return what we have if we have data, otherwise error
-                if accumulator.data.isEmpty {
+                if accumulated.isEmpty {
                     throw KeyPathError.communication(.connectionFailed(reason: "Connection closed"))
                 }
             }
 
             // Check if we have a complete line now
-            if let (line, remaining) = extractFirstLine(from: accumulator.data) {
+            if let (line, remaining) = extractFirstLine(from: accumulated) {
                 // Store remaining data back in the persistent buffer
                 readBuffer = remaining
                 AppLogger.shared.debug("🔌 [TCP] Returning line (\(line.count) bytes, \(remaining.count) bytes remaining in buffer)")
@@ -117,15 +114,15 @@ extension KanataTCPClient {
             }
 
             // If we've accumulated too much without a newline, something is wrong
-            if accumulator.data.count >= maxLength {
+            if accumulated.count >= maxLength {
                 throw KeyPathError.communication(
                     .connectionFailed(reason: "Response too large or malformed")
                 )
             }
 
-            if chunk.isComplete, !accumulator.data.isEmpty {
+            if chunk.isComplete, !accumulated.isEmpty {
                 readBuffer.removeAll()
-                return accumulator.data
+                return accumulated
             }
         }
     }
@@ -150,9 +147,6 @@ extension KanataTCPClient {
                     if completionFlag.markCompleted() {
                         connection.cancel()
                         continuation.resume(throwing: OperationTimeoutError())
-                        Task {
-                            await self.closeConnection()
-                        }
                     }
                 }
             }
