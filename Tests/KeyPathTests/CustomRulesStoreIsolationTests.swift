@@ -1,6 +1,6 @@
 import Foundation
-@testable import KeyPathAppKit
 import KeyPathCore
+import KeyPathRulesCore
 import XCTest
 
 /// The shared store must never resolve to the developer's real config under test.

@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathRulesCore
 
 struct RuleList: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -15,8 +15,7 @@ struct RuleList: AsyncParsableCommand {
 
     mutating func run() async throws {
         let ctx = globals.outputContext
-        let facade = RulesFacade()
-        let rules = await facade.listRules(enabledOnly: enabledOnly)
+        let rules = await CustomRulesStore.shared.listRules(enabledOnly: enabledOnly)
 
         CLIOutput.write(rules, context: ctx) {
             if rules.isEmpty {

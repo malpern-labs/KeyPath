@@ -1,5 +1,6 @@
 import Foundation
 @testable import KeyPathAppKit
+import KeyPathRulesCore
 
 /// Each CLI test owns its persistence files; teardown never restores another
 /// test's snapshot over a concurrently committed rule or collection.
