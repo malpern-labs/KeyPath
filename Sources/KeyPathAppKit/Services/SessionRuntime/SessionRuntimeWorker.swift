@@ -2,6 +2,7 @@ import AppKit
 import Carbon
 import KeyPathCore
 import KeyPathPermissions
+import Synchronization
 #if KEYPATH_TAP_TIMEOUT_EXPERIMENT
     import CryptoKit
     import Darwin
@@ -1322,20 +1323,15 @@ public final class SessionRuntimeWorker {
 
 /// One result passes from the HID queue to its synchronously waiting caller.
 /// Every access is protected; Value and Error can cross concurrency domains.
-private final class SessionRuntimeBackgroundResult<Value: Sendable>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var result: Result<Value, Error>?
+private final class SessionRuntimeBackgroundResult<Value: Sendable>: Sendable {
+    private let result = Mutex<Result<Value, Error>?>(nil)
 
     func store(_ value: Result<Value, Error>) {
-        lock.lock()
-        defer { lock.unlock() }
-        result = value
+        result.withLock { $0 = value }
     }
 
     func load() -> Result<Value, Error> {
-        lock.lock()
-        defer { lock.unlock() }
         // The semaphore is signaled only after store returns.
-        return result!
+        result.withLock { $0! }
     }
 }
