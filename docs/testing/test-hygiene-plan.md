@@ -745,3 +745,13 @@ the product default or loosen precision to make the test pass.
 Final combined validation after merging current master passed all 5,524 tests
 with `KEYPATH_SWIFT_BUILD_JOBS=4 ./Scripts/test-full.sh`, including snapshots.
 The two real-Keychain integration tests remain explicitly opt-in.
+
+### Preference-domain isolation
+
+PreferencesService keeps its existing canonical leader-preference default and
+standard general-preference default, but accepts an explicit general defaults
+dependency. ConfigurationManager accepts the same preference owner for launch
+arguments; GlobalHotkeyService accepts a defaults dependency with its existing
+standard default. Preference persistence and hotkey recovery tests use unique
+per-test suites and delete only those suites. They no longer change the shared
+preference owner to verify launch logging or hotkey consent recovery.

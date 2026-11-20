@@ -8,9 +8,11 @@ import KeyPathRulesCore
 final class ConfigurationManager {
     let configPath: String
 
+    private let preferences: PreferencesService
     private let configurationService: ConfigurationService
 
-    init(configurationService: ConfigurationService) {
+    init(configurationService: ConfigurationService, preferences: PreferencesService = .shared) {
+        self.preferences = preferences
         self.configurationService = configurationService
 
         configPath = configurationService.configurationPath
@@ -23,7 +25,7 @@ final class ConfigurationManager {
             arguments.append("--check")
         } else {
             // Add logging flags based on user preference
-            let verboseLogging = PreferencesService.shared.verboseKanataLogging
+            let verboseLogging = preferences.verboseKanataLogging
             if verboseLogging {
                 // Trace mode: comprehensive logging with event timing
                 arguments.append("--trace")
