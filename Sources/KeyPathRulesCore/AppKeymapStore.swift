@@ -16,6 +16,12 @@ package extension Notification.Name {
 package actor AppKeymapStore {
     package static let shared = AppKeymapStore()
 
+    package static var defaultDirectory: URL {
+        TestEnvironment.isRunningTests
+            ? AppPaths.configDirectory
+            : URL(fileURLWithPath: WizardSystemPaths.userConfigDirectory, isDirectory: true)
+    }
+
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
     private let fileURL: URL
@@ -26,10 +32,7 @@ package actor AppKeymapStore {
 
     package init(fileURL: URL? = nil, fileManager: FileManager = Foundation.FileManager()) {
         self.fileManager = fileManager
-        let defaultDirectory = URL(
-            fileURLWithPath: WizardSystemPaths.userConfigDirectory, isDirectory: true
-        )
-        self.fileURL = fileURL ?? defaultDirectory.appendingPathComponent("AppKeymaps.json")
+        self.fileURL = fileURL ?? Self.defaultDirectory.appendingPathComponent("AppKeymaps.json")
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
