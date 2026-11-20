@@ -94,7 +94,7 @@ func openPreferencesTab(_ notification: Notification.Name, userInfo: [AnyHashabl
                let action = item.action
             {
                 AppLogger.shared.log("✅ [App] Found Settings menu item, triggering it")
-                NSApp.activate(ignoringOtherApps: true)
+                NSApp.activate()
                 NSApp.sendAction(action, to: item.target, from: item)
                 return
             }
@@ -104,7 +104,7 @@ func openPreferencesTab(_ notification: Notification.Name, userInfo: [AnyHashabl
     AppLogger.shared.log("⚠️ [App] Could not find Settings menu item, trying fallback")
 
     // Fallback: Use the selector method
-    NSApp.activate(ignoringOtherApps: true)
+    NSApp.activate()
     NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
 }
 
@@ -317,7 +317,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if !isHeadlessMode {
             setupMenuBarController()
             SplashView.PosterCache.warmIfNeeded()
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate()
         }
 
         if isHeadlessMode {
@@ -419,7 +419,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if NSApp.isHidden {
             NSApp.unhide(nil)
         }
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
     }
 
     /// Present the right surface for a user-initiated "open KeyPath" action
