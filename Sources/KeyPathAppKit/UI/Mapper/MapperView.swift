@@ -97,7 +97,7 @@ struct MapperView: View {
             .toolbar {
                 ToolbarItem(placement: .automatic) {
                     ResetMappingButton(
-                        onSingleClick: { viewModel.clear() },
+                        viewModel: viewModel,
                         onDoubleClick: { showingResetAllConfirmation = true }
                     )
                 }

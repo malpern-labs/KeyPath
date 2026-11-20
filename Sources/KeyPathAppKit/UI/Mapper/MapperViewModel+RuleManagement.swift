@@ -208,6 +208,19 @@ extension MapperViewModel {
         statusMessage = nil
     }
 
+    /// A delayed reset must still target the mapping visible at the first click.
+    func resetActionForCurrentMapping() -> @MainActor () -> Void {
+        let layer = currentLayer
+        let input = currentInputKanataString()
+        let savedRuleID = lastSavedRuleID
+        return { [weak self] in
+            guard let self, currentLayer == layer,
+                  currentInputKanataString() == input,
+                  lastSavedRuleID == savedRuleID else { return }
+            clear()
+        }
+    }
+
     /// Clear all values, delete the saved rule, and reset to original key context (or default)
     func clear() {
         stopRecording()
