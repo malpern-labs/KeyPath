@@ -3,7 +3,7 @@ import Foundation
 /// Standard ANSI keyboard position table
 /// Maps (row, col) matrix positions to macOS keyCodes and labels for standard ANSI layouts
 /// Used for Tier 2 keyboards (60%, 65%, 75%, 80%, 100%) where physical layout JSON doesn't include keyCode/label
-enum ANSIPositionTable {
+package enum ANSIPositionTable {
     /// Standard ANSI key mapping from (row, col) to (keyCode, label)
     /// Row 0: Number row (1 2 3 4 5 6 7 8 9 0 - = Backspace)
     /// Row 1: Top row (Tab q w e r t y u i o p [ ] \)
@@ -12,7 +12,7 @@ enum ANSIPositionTable {
     /// Row 4: Modifier row (Ctrl Alt Cmd Space Cmd Alt Ctrl)
     ///
     /// Note: This assumes standard ANSI layout. Non-standard layouts (HHKB, Alice, etc.) need custom mappings.
-    static func keyMapping(row: Int, col: Int) -> (keyCode: UInt16, label: String)? {
+    package static func keyMapping(row: Int, col: Int) -> (keyCode: UInt16, label: String)? {
         switch (row, col) {
         // Row 0: Number row
         // Standard: ` 1 2 3 4 5 6 7 8 9 0 - = Backspace`
@@ -123,7 +123,7 @@ enum ANSIPositionTable {
     /// Get key mapping with support for non-standard column positions
     /// Some keyboards may have keys in non-standard positions (e.g., split spacebar)
     /// This allows extending the standard table
-    static func keyMapping(row: Int, col: Int, customMappings: [((Int, Int), (UInt16, String))] = []) -> (keyCode: UInt16, label: String)? {
+    package static func keyMapping(row: Int, col: Int, customMappings: [((Int, Int), (UInt16, String))] = []) -> (keyCode: UInt16, label: String)? {
         // Check custom mappings first
         if let custom = customMappings.first(where: { $0.0 == (row, col) }) {
             return custom.1

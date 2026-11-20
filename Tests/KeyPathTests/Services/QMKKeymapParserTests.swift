@@ -1,5 +1,5 @@
 import Foundation
-@testable import KeyPathAppKit
+@testable import KeyPathRulesCore
 import Testing
 
 /// Tests for QMK keymap.c / keymap.json parsing and keycode resolution

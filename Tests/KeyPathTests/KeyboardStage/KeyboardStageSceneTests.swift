@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 @testable import KeyPathAppKit
+import KeyPathRulesCore
 import SwiftUI
 import XCTest
 
