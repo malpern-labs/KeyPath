@@ -185,7 +185,7 @@ final class PreferencesService: Sendable {
         suiteDefaults ?? .standard
     }
 
-    nonisolated static let leaderKeyPreferenceKey = "KeyPath.LeaderKey.Preference"
+    nonisolated static let leaderKeyPreferenceKey = RecoverableRuleWrite.PreferenceRole.leader.key
     private let defaults: UserDefaults
     private let leaderDefaults: UserDefaults
     var persistenceDefaults: UserDefaults {
