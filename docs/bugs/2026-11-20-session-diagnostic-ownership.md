@@ -21,3 +21,13 @@ It needs caller and actor-isolation review before the broader item can close.
 NotificationObserverManager protects observer storage with an NSLock and removes
 notifications outside that lock. Its setup-only safety comment is outdated; a
 lock-backed framework token boundary is not itself a reason for a rewrite.
+
+## Validation
+
+Sixteen injected HID service-group checks passed with zero Swift warnings.
+The local review gate passed, and accessibility, no-sleep lint and string-catalog
+checks passed. The full safe gate compiled without warnings and passed its
+4,452-case main XCTest target (46 skipped), then exceeded the shared 240-second
+test budget in the snapshot run. This is retained as a timeout, not a full pass.
+Master's owner-lifetime changes were subsequently merged normally; integrated
+focused validation and required CI remain the merge acceptance gates.
