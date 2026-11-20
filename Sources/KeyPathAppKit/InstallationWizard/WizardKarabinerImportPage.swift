@@ -4,6 +4,7 @@
 
 import KeyPathCore
 import KeyPathInstallationWizard
+import KeyPathRulesCore
 import KeyPathWizardCore
 import SwiftUI
 

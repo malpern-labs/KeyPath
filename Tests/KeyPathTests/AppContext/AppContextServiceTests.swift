@@ -1,4 +1,5 @@
 @testable import KeyPathAppKit
+import KeyPathRulesCore
 @preconcurrency import XCTest
 
 /// Tests for AppContextService - the service that monitors frontmost application
