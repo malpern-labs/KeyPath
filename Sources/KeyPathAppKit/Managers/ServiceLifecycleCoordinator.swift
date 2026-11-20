@@ -220,7 +220,7 @@ final class ServiceLifecycleCoordinator {
 
     init() {
         #if DEBUG
-            if TestEnvironment.isTestHostProcess {
+            if TestEnvironment.isRunningTests {
                 testSessionStart = { _ in false }
                 testSessionStop = { true }
             }
@@ -398,7 +398,7 @@ final class ServiceLifecycleCoordinator {
         #if DEBUG
             if let validate = testSessionConfigurationValidation {
                 result = validate()
-            } else if TestEnvironment.isTestHostProcess {
+            } else if TestEnvironment.isRunningTests {
                 result = .valid
             } else {
                 result = readSessionConfigurationAdmission()
@@ -467,7 +467,7 @@ final class ServiceLifecycleCoordinator {
                 return
             }
         #endif
-        guard !TestEnvironment.isTestHostProcess,
+        guard !TestEnvironment.isRunningTests,
               SessionCapsRuntimeSupport.selectedKeyboardOnly(),
               SessionCapsRuntimeSupport.validate(configPath: KeyPathConstants.Config.mainConfigPath,
                                                  runtimeHost: .current(), requireSelection: false).managedCaps,

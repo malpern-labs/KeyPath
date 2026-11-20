@@ -10204,7 +10204,16 @@
       }
     },
     "Could not undo the assignment change. Your current rules were kept." : {},
-    "Could not undo the remap. Your current rules were kept." : {},
+    "Could not undo the remap. Your current rules were kept." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リマップを取り消せませんでした。現在のルールは変更されていません。"
+          }
+        }
+      }
+    },
     "Couldn't check setup" : {
       "localizations" : {
         "ja" : {
@@ -22477,7 +22486,16 @@
         }
       }
     },
-    "Next ⌘⇧]" : {},
+    "Next ⌘⇧]" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "次へ ⌘⇧]"
+          }
+        }
+      }
+    },
     "No AI generations yet" : {
       "localizations" : {
         "ja" : {
@@ -25921,7 +25939,16 @@
         }
       }
     },
-    "Previous ⌘⇧[" : {},
+    "Previous ⌘⇧[" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前へ ⌘⇧["
+          }
+        }
+      }
+    },
     "Prior Idle" : {
       "localizations" : {
         "ja" : {
@@ -26994,7 +27021,16 @@
         }
       }
     },
-    "Remap" : {},
+    "Remap" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リマップ"
+          }
+        }
+      }
+    },
     "Remap Escape to something you'll use more — Caps Lock, Backtick, or Tab. Pairs naturally with Caps Lock Remap so both keys stay useful." : {
       "localizations" : {
         "ja" : {
@@ -27025,7 +27061,16 @@
         }
       }
     },
-    "Remap undone" : {},
+    "Remap undone" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リマップを取り消しました"
+          }
+        }
+      }
+    },
     "Remap “%@”…" : {
       "localizations" : {
         "ja" : {
