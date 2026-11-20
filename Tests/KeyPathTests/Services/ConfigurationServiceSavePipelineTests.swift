@@ -819,34 +819,6 @@ final class ConfigurationServiceSavePipelineTests: KeyPathTestCase {
         }
     }
 
-    // MARK: - Kanata Error Parsing Tests
-
-    func testParseKanataErrors_ExtractsHelpLines() {
-        let output = """
-        [ERROR] Could not parse configuration
-        help: Unknown key in defsrc: "hangeul"
-        """
-        let errors = configService.parseKanataErrors(output)
-        XCTAssertTrue(errors.count >= 2, "Should extract both ERROR and help lines")
-        XCTAssertTrue(errors.contains(where: { $0.contains("hangeul") }))
-    }
-
-    func testParseKanataErrors_HandlesMultipleHelpLines() {
-        let output = """
-        [ERROR] Multiple issues found
-        help: Unknown key: "foo"
-        help: Missing layer definition
-        """
-        let errors = configService.parseKanataErrors(output)
-        XCTAssertTrue(errors.count >= 3)
-    }
-
-    func testParseKanataErrors_ReturnsEmptyForCleanOutput() {
-        let output = ""
-        let errors = configService.parseKanataErrors(output)
-        XCTAssertTrue(errors.isEmpty)
-    }
-
     // MARK: - StripManagedRepeat Tests
 
     func testStripManagedRepeatForValidation_RemovesManagedRepeatLines() {

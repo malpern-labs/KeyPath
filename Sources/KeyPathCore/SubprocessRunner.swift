@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 // MARK: - Protocol
 
@@ -54,6 +55,7 @@ public actor SubprocessRunner: SubprocessRunning {
         args: [String],
         timeout: TimeInterval? = 30
     ) async throws -> ProcessResult {
+        try Task.checkCancellation()
         let startTime = Date()
         let timeoutInterval = timeout ?? 30.0
 
@@ -85,7 +87,6 @@ public actor SubprocessRunner: SubprocessRunning {
                     let duration = Date().timeIntervalSince(startTime)
                     let exitCode = process.terminationStatus
                     let (stdoutData, stderrData) = output.read()
-                    runContext.timeoutTask?.cancel()
                     let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
                     let stderr = String(data: stderrData, encoding: .utf8) ?? ""
 
@@ -111,7 +112,7 @@ public actor SubprocessRunner: SubprocessRunning {
                 }
 
                 // Set up timeout task
-                runContext.timeoutTask = Task {
+                runContext.setTimeout(Task {
                     do {
                         try await Task.sleep(for: .seconds(timeoutInterval))
                     } catch {
@@ -119,23 +120,25 @@ public actor SubprocessRunner: SubprocessRunning {
                         return
                     }
 
-                    terminateIfRunning(task)
                     if runContext.resume(
                         with: .failure(SubprocessError.timeout(executable: executable, timeout: timeoutInterval))
                     ) {
+                        terminateIfRunning(task)
                         AppLogger.shared.warn(
                             "⏱️ [SubprocessRunner] \(executable) timed out after \(String(format: "%.2f", timeoutInterval))s - terminated"
                         )
                     }
-                }
+                })
 
                 // Launch process
                 do {
-                    try task.run()
-                    output.start()
+                    if try runContext.launch(task.run) {
+                        output.start()
+                    } else {
+                        output.abandon()
+                    }
                 } catch {
                     output.abandon()
-                    runContext.timeoutTask?.cancel()
                     AppLogger.shared.errorUnlessQuietTest("❌ [SubprocessRunner] Failed to launch \(executable): \(error)")
                     runContext.resume(
                         with: .failure(SubprocessError.launchFailed(executable: executable, error: error))
@@ -143,9 +146,9 @@ public actor SubprocessRunner: SubprocessRunning {
                 }
             }
         }, onCancel: {
-            terminateIfRunning(task)
-            runContext.timeoutTask?.cancel()
-            runContext.resume(with: .failure(CancellationError()))
+            if runContext.resume(with: .failure(CancellationError())) {
+                terminateIfRunning(task)
+            }
         })
     }
 
@@ -214,47 +217,65 @@ final class ProcessOutputCapture: @unchecked Sendable {
 
 // MARK: - Run Context
 
-private final class RunContext: @unchecked Sendable {
-    private let resumeQueue = DispatchQueue(label: "com.keypath.subprocess.resume")
-    private var hasResumed = false
-    private var continuation: CheckedContinuation<ProcessResult, Error>?
-    private var pendingResult: Result<ProcessResult, Error>?
+private final class RunContext: Sendable {
+    private struct State {
+        var hasCompleted = false
+        var continuation: CheckedContinuation<ProcessResult, Error>?
+        var pendingResult: Result<ProcessResult, Error>?
+        var timeout: Task<Void, Never>?
+    }
 
-    var timeoutTask: Task<Void, Never>?
+    private let state = Mutex(State())
 
     func setContinuation(_ continuation: CheckedContinuation<ProcessResult, Error>) {
-        var resultToResume: Result<ProcessResult, Error>?
-        resumeQueue.sync {
-            if let pendingResult {
-                resultToResume = pendingResult
-                self.pendingResult = nil
-            } else {
-                self.continuation = continuation
+        let pending = state.withLock { state in
+            let pending = state.pendingResult
+            state.pendingResult = nil
+            if pending == nil {
+                state.continuation = continuation
             }
+            return pending
         }
+        if let pending {
+            continuation.resume(with: pending)
+        }
+    }
 
-        if let resultToResume {
-            continuation.resume(with: resultToResume)
+    func setTimeout(_ timeout: Task<Void, Never>) {
+        let shouldCancel = state.withLock { state in
+            if state.hasCompleted { return true }
+            state.timeout = timeout
+            return false
+        }
+        if shouldCancel { timeout.cancel() }
+    }
+
+    /// Serialize the launch decision with completion. A pre-launch cancellation
+    /// prevents spawning the process, and a later one can see that it started.
+    func launch(_ start: () throws -> Void) rethrows -> Bool {
+        try state.withLock { state in
+            guard !state.hasCompleted else { return false }
+            try start()
+            return true
         }
     }
 
     @discardableResult
     func resume(with result: Result<ProcessResult, Error>) -> Bool {
-        var continuationToResume: CheckedContinuation<ProcessResult, Error>?
-        let didResume = resumeQueue.sync {
-            guard !hasResumed else { return false }
-            hasResumed = true
-            if let continuation {
-                continuationToResume = continuation
-                self.continuation = nil
-            } else {
-                pendingResult = result
-            }
-            return true
+        let completion = state.withLock { state -> (CheckedContinuation<ProcessResult, Error>?, Task<Void, Never>?)? in
+            guard !state.hasCompleted else { return nil }
+            state.hasCompleted = true
+            let continuation = state.continuation
+            let timeout = state.timeout
+            state.continuation = nil
+            state.timeout = nil
+            if continuation == nil { state.pendingResult = result }
+            return (continuation, timeout)
         }
 
-        guard didResume else { return false }
-        continuationToResume?.resume(with: result)
+        guard let (continuation, timeout) = completion else { return false }
+        timeout?.cancel()
+        continuation?.resume(with: result)
         return true
     }
 }

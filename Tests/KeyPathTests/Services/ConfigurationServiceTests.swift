@@ -444,41 +444,9 @@ class ConfigurationServiceTests: KeyPathTestCase {
         XCTAssertTrue(saved.contains("f18"), saved)
     }
 
-    // MARK: - Error Parsing Tests
+    // MARK: - Session validation
 
-    func testParseKanataErrors_WithErrorTags() {
-        let output = """
-        [ERROR] Line 5: Invalid key 'foo'
-        [ERROR] Line 10: Missing closing parenthesis
-        Some other output
-        """
-
-        let errors = configService.parseKanataErrors(output)
-
-        XCTAssertEqual(errors.count, 2, "Should parse 2 errors")
-        XCTAssertTrue(errors[0].contains("Line 5"), "Should extract error details")
-        XCTAssertTrue(errors[1].contains("Line 10"), "Should extract error details")
-    }
-
-    func testParseKanataErrors_NoErrorTags() {
-        let output = "Some validation output without error tags"
-
-        let errors = configService.parseKanataErrors(output)
-
-        // Should return the full output as error if no [ERROR] tags found
-        XCTAssertEqual(errors.count, 1, "Should return full output as error")
-        XCTAssertEqual(errors[0], output.trimmingCharacters(in: .whitespacesAndNewlines))
-    }
-
-    func testParseKanataErrors_EmptyOutput() {
-        let errors = configService.parseKanataErrors("")
-
-        XCTAssertEqual(errors.count, 0, "Should return empty array for empty output")
-    }
-
-    // MARK: - Test-Mode Validation
-
-    func testValidateConfigurationInTestModePasses() async throws {
+    func testValidateConfigurationAcceptsParsedSessionConfig() async throws {
         try SessionBridgeTestFixture.requireAvailable()
 
         let configContent = """
@@ -500,10 +468,26 @@ class ConfigurationServiceTests: KeyPathTestCase {
         XCTAssertTrue(result.errors.isEmpty)
     }
 
-    func testValidateConfigurationInTestModeRejectsEmptyContent() async {
+    func testValidateConfigurationRejectsEmptyContent() async {
         let result = await configService.validateConfiguration("   ")
         XCTAssertFalse(result.isValid)
         XCTAssertEqual(result.errors.first, "Configuration content is empty")
+    }
+
+    func testValidateConfigurationResolvesRelativeIncludesAndRejectsMissingOnes() async throws {
+        try SessionBridgeTestFixture.requireAvailable()
+
+        let include = tempDirectory.appendingPathComponent("included.kbd")
+        try "(defsrc tab)(deflayer base esc)".write(to: include, atomically: true, encoding: .utf8)
+        let source = "(include included.kbd)"
+
+        let admitted = await configService.validateConfiguration(source)
+        XCTAssertTrue(admitted.isValid, admitted.errors.joined(separator: "\n"))
+
+        try FileManager.default.removeItem(at: include)
+        let missing = await configService.validateConfiguration(source)
+        XCTAssertFalse(missing.isValid)
+        XCTAssertFalse(missing.errors.isEmpty)
     }
 
     func testCreateInitialConfigWritesDefaultFile() async throws {
@@ -1717,6 +1701,23 @@ class ConfigurationServiceTests: KeyPathTestCase {
         await fulfillment(of: [exp], timeout: 2.0)
         let fired = await flag.get()
         XCTAssertTrue(fired, "Observer should fire on main actor for UI safety")
+    }
+
+    func testReloadReadsExternallyRestoredConfigurationAfterWrite() async throws {
+        let initial = "(defsrc a)\n(deflayer base b)\n"
+        let replacement = "(defsrc a)\n(deflayer base c)\n"
+        let url = URL(fileURLWithPath: configService.configurationPath)
+        try initial.write(to: url, atomically: true, encoding: .utf8)
+        let firstRead = try await configService.reload()
+        XCTAssertEqual(firstRead.content, initial)
+
+        try await configService.writeConfigurationContent(replacement)
+        let afterWrite = await configService.current()
+        XCTAssertEqual(afterWrite.content, replacement)
+
+        try initial.write(to: url, atomically: true, encoding: .utf8)
+        let restored = try await configService.reload()
+        XCTAssertEqual(restored.content, initial)
     }
 
     func testReloadCreatesDefaultConfigWhenMissing() async throws {

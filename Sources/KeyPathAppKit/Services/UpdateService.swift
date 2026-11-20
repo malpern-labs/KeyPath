@@ -4,6 +4,7 @@ import KeyPathCore
 import KeyPathInstallationWizard
 import Observation
 import Sparkle
+import Synchronization
 
 public enum UpdateChannel: String, CaseIterable, Identifiable {
     case stable = "Stable"
@@ -32,6 +33,7 @@ private final class SparkleInstallHandler: @unchecked Sendable {
         self.block = block
     }
 
+    @MainActor
     func invoke() {
         block()
     }
@@ -40,28 +42,27 @@ private final class SparkleInstallHandler: @unchecked Sendable {
 /// Records delegate evidence inline, before an asynchronous main-actor hop can
 /// lose a race with AppKit termination. Sparkle may finish a successful check
 /// while its external installer remains staged for Quit.
-final class UpdateTerminationExpectation: @unchecked Sendable {
-    private let lock = NSLock()
-    private var expected = false
-    private var staged = false
+final class UpdateTerminationExpectation: Sendable {
+    private enum Phase {
+        case idle
+        case extracting
+        case staged
+    }
+
+    private let phase = Mutex(Phase.idle)
 
     var isExpected: Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return expected
+        phase.withLock { $0 != .idle }
     }
 
     func willExtract() {
-        lock.lock()
-        defer { lock.unlock() }
-        expected = true
+        phase.withLock { phase in
+            if phase == .idle { phase = .extracting }
+        }
     }
 
     func willInstall() {
-        lock.lock()
-        defer { lock.unlock() }
-        expected = true
-        staged = true
+        phase.withLock { $0 = .staged }
     }
 
     func didFinishCycle(errorOccurred: Bool) {
@@ -70,11 +71,10 @@ final class UpdateTerminationExpectation: @unchecked Sendable {
     }
 
     func didAbort() {
-        lock.lock()
-        defer { lock.unlock() }
-        // An error during a later update check does not prove that a previously
-        // staged external installer has gone away. Keep that evidence.
-        if !staged { expected = false }
+        phase.withLock { phase in
+            // A later failed check says nothing about a previously staged installer.
+            if phase != .staged { phase = .idle }
+        }
     }
 }
 

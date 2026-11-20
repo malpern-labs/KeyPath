@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathRulesCore
 
 struct LayerDelete: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

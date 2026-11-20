@@ -1,26 +1,11 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
 // MARK: - Notifications
 
-public extension Notification.Name {
+package extension Notification.Name {
     /// Posted when app keymaps are added, updated, or removed
     static let appKeymapsDidChange = Notification.Name("appKeymapsDidChange")
-    /// Posted when user should navigate to App Rules tab in drawer
-    static let switchToAppRulesTab = Notification.Name("switchToAppRulesTab")
-    /// Posted when Mapper should open the app condition picker (for "New Rule" from App Rules tab)
-    static let openMapperAppConditionPicker = Notification.Name("openMapperAppConditionPicker")
-    /// Posted when overlay should open with mapper tab selected (from Settings)
-    static let openOverlayWithMapper = Notification.Name("openOverlayWithMapper")
-    /// Posted when overlay view should switch to mapper tab
-    static let switchToMapperTab = Notification.Name("switchToMapperTab")
-    /// Posted when overlay should open with mapper tab and preset values for editing
-    /// UserInfo: inputKey (String), outputKey (String), optional shiftedOutputKey (String), optionally appBundleId (String)
-    static let openOverlayWithMapperPreset = Notification.Name("openOverlayWithMapperPreset")
-    /// Posted to set the app condition on the mapper (for adding a rule to a specific app)
-    /// UserInfo: bundleId (String), displayName (String)
-    static let mapperSetAppCondition = Notification.Name("mapperSetAppCondition")
 }
 
 /// Persists app-specific keymaps to disk.
@@ -28,8 +13,8 @@ public extension Notification.Name {
 /// File location: `~/.config/keypath/AppKeymaps.json`
 ///
 /// See ADR-027 for the full architecture.
-actor AppKeymapStore {
-    static let shared = AppKeymapStore()
+package actor AppKeymapStore {
+    package static let shared = AppKeymapStore()
 
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
@@ -39,7 +24,7 @@ actor AppKeymapStore {
     /// In-memory cache of keymaps
     private var cachedKeymaps: [AppKeymap]?
 
-    init(fileURL: URL? = nil, fileManager: FileManager = Foundation.FileManager()) {
+    package init(fileURL: URL? = nil, fileManager: FileManager = Foundation.FileManager()) {
         self.fileManager = fileManager
         let defaultDirectory = URL(
             fileURLWithPath: WizardSystemPaths.userConfigDirectory, isDirectory: true
@@ -56,12 +41,12 @@ actor AppKeymapStore {
         self.decoder = decoder
     }
 
-    var persistenceURL: URL {
+    package var persistenceURL: URL {
         fileURL
     }
 
     /// Transaction reads must not use a stale cache or replace malformed data.
-    func loadForMutation() throws -> [AppKeymap] {
+    package func loadForMutation() throws -> [AppKeymap] {
         let data: Data
         do { data = try Data(contentsOf: fileURL) }
         catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError {
@@ -70,11 +55,11 @@ actor AppKeymapStore {
         return try decoder.decode([AppKeymap].self, from: data)
     }
 
-    func encodedKeymaps(_ keymaps: [AppKeymap]) throws -> Data {
+    package func encodedKeymaps(_ keymaps: [AppKeymap]) throws -> Data {
         try encoder.encode(keymaps)
     }
 
-    func publishCommittedKeymaps(_ keymaps: [AppKeymap]) {
+    package func publishCommittedKeymaps(_ keymaps: [AppKeymap]) {
         cachedKeymaps = keymaps
         postChangeNotification()
     }
@@ -82,7 +67,7 @@ actor AppKeymapStore {
     // MARK: - CRUD Operations
 
     /// Load all app keymaps from disk
-    func loadKeymaps() -> [AppKeymap] {
+    package func loadKeymaps() -> [AppKeymap] {
         if let cached = cachedKeymaps {
             return cached
         }
@@ -114,7 +99,7 @@ actor AppKeymapStore {
     }
 
     /// Save all app keymaps to disk
-    func saveKeymaps(_ keymaps: [AppKeymap]) throws {
+    package func saveKeymaps(_ keymaps: [AppKeymap]) throws {
         AppLogger.shared.log("💾 [AppKeymapStore] saveKeymaps: \(keymaps.count) keymaps to \(fileURL.path)")
 
         let directory = fileURL.deletingLastPathComponent()
@@ -128,14 +113,14 @@ actor AppKeymapStore {
     }
 
     /// Add or update an app keymap
-    func upsertKeymap(_ keymap: AppKeymap) throws {
+    package func upsertKeymap(_ keymap: AppKeymap) throws {
         var keymaps = loadKeymaps()
         Self.upsert(keymap, in: &keymaps)
         try saveKeymaps(keymaps)
         postChangeNotification()
     }
 
-    nonisolated static func upsert(_ keymap: AppKeymap, in keymaps: inout [AppKeymap]) {
+    package nonisolated static func upsert(_ keymap: AppKeymap, in keymaps: inout [AppKeymap]) {
         if let index = keymaps.firstIndex(where: { $0.mapping.bundleIdentifier == keymap.mapping.bundleIdentifier }) {
             keymaps[index] = keymap
             AppLogger.shared.log("📝 [AppKeymapStore] Updated keymap for \(keymap.mapping.displayName)")
@@ -171,7 +156,7 @@ actor AppKeymapStore {
     }
 
     /// Remove an app keymap by bundle identifier
-    func removeKeymap(bundleIdentifier: String) throws {
+    package func removeKeymap(bundleIdentifier: String) throws {
         var keymaps = loadKeymaps()
         let countBefore = keymaps.count
         keymaps.removeAll { $0.mapping.bundleIdentifier == bundleIdentifier }
@@ -194,17 +179,17 @@ actor AppKeymapStore {
     }
 
     /// Get keymap for a specific bundle identifier
-    func getKeymap(bundleIdentifier: String) -> AppKeymap? {
+    package func getKeymap(bundleIdentifier: String) -> AppKeymap? {
         loadKeymaps().first { $0.mapping.bundleIdentifier == bundleIdentifier }
     }
 
     /// Get all enabled keymaps
-    func getEnabledKeymaps() -> [AppKeymap] {
+    package func getEnabledKeymaps() -> [AppKeymap] {
         loadKeymaps().filter(\.mapping.isEnabled)
     }
 
     /// Get mapping from bundle ID to virtual key name for enabled apps
-    func getBundleToVKMapping() -> [String: String] {
+    package func getBundleToVKMapping() -> [String: String] {
         var result: [String: String] = [:]
         for keymap in getEnabledKeymaps() {
             result[keymap.mapping.bundleIdentifier] = keymap.mapping.virtualKeyName
@@ -213,7 +198,7 @@ actor AppKeymapStore {
     }
 
     /// Get all apps that have a mapping for a specific input key
-    func getAppsWithMapping(forInputKey inputKey: String) -> [AppKeymap] {
+    package func getAppsWithMapping(forInputKey inputKey: String) -> [AppKeymap] {
         let lowercased = inputKey.lowercased()
         return loadKeymaps().filter { keymap in
             keymap.overrides.contains { $0.inputKey.lowercased() == lowercased }
@@ -221,7 +206,7 @@ actor AppKeymapStore {
     }
 
     /// Invalidate the cache (call after external modifications)
-    func invalidateCache() {
+    package func invalidateCache() {
         cachedKeymaps = nil
     }
 }
@@ -229,7 +214,7 @@ actor AppKeymapStore {
 // MARK: - Test Support
 
 #if DEBUG
-    extension AppKeymapStore {
+    package extension AppKeymapStore {
         nonisolated static func testStore(at url: URL) -> AppKeymapStore {
             AppKeymapStore(fileURL: url)
         }
