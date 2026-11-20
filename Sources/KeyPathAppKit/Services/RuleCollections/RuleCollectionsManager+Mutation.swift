@@ -3,6 +3,16 @@ import KeyPathCore
 import KeyPathRulesCore
 
 extension RuleCollectionsManager {
+    /// Publish source changes written by a separate KeyPath process after its
+    /// configuration operation has settled.
+    func refreshExternallyAppliedRules() async -> Bool {
+        await withRuleMutation(failure: false) { [self] permit in
+            let before = snapshotRuleState()
+            guard let refreshed = await recoverAndSnapshotRuleState(mutationPermit: permit) else { return false }
+            return refreshed != before
+        }
+    }
+
     /// Restore only a verifiable managed snapshot, through the same retained write as edits.
     /// Current handwritten config and changed generation inputs fail closed.
     func restoreConfigurationBackup(_ backup: BackupInfo) async -> SaveResult {

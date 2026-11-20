@@ -142,6 +142,22 @@ final class CustomRuleMutationRecoveryTests: KeyPathTestCase {
         XCTAssertEqual(manager.makeCustomRule(input: base.input, output: "f17", layer: .navigation).id, next.id)
     }
 
+    func testExternalRuleRefreshMakesCLIAssignmentEligibleWithoutAnEditorWrite() async throws {
+        let before = manager.committedCustomRules
+        try await CLIConfigurationOperation.run(configDirectory: directory.path) { operation in
+            _ = try await operation.rules.addSimpleRemap(input: "f13", output: "f14")
+        }
+        let persistedFiles = try files()
+        XCTAssertEqual(manager.committedCustomRules, before)
+        let refreshed = await manager.refreshExternallyAppliedRules()
+        XCTAssertTrue(refreshed)
+        let assignment = RuleCollectionsManager.assignmentRule(input: "f13", layer: .base, in: manager.committedCustomRules)
+        XCTAssertEqual(assignment?.action, .keystroke(key: "f14"))
+        XCTAssertEqual(try files(), persistedFiles)
+        let refreshedAgain = await manager.refreshExternallyAppliedRules()
+        XCTAssertFalse(refreshedAgain)
+    }
+
     func testSwapAndUndoKeepBothSlotsAndTheirCompleteAssignments() async throws {
         manager.onRulesChanged = { Self.reload(.applied) }
         let first = try XCTUnwrap(manager.customRules.first)

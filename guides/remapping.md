@@ -184,6 +184,8 @@ Open the Mapper and select the layer you want to edit. Control-click a key with 
 
 Choose **Copy Assignment** to put an output on the Mac clipboard. Choose **Paste Assignment** on the destination key, which can be on another layer. **Edit → Undo** restores the previous assignments after a swap or paste.
 
+Mapper also picks up assignments applied through the command-line tool with `--apply`.
+
 Keystrokes, tap-hold, tap dance, macros, layer switches, and supported Mac actions retain their settings. Swap works on two explicit custom assignments. Paste can also assign an unmapped key. Chords are tied to multiple physical keys. Pack-managed rules, device overrides, scripts, and custom Kanata expressions are edited in their original settings.
 
 ## What's next?
