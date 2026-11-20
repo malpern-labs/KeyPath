@@ -255,7 +255,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_: Notification) {
-        OverlayWindow.installAssignmentMenuItems(in: NSApp.mainMenu)
         AppLogger.shared.debug(
             "🔍 [AppDelegate] applicationDidBecomeActive called (initialShown=\(initialMainWindowShown))"
         )

@@ -166,6 +166,11 @@ final class OverlayWindow: NSWindow {
     let remapUndoManager = UndoManager()
     weak var assignmentMenuSource: OverlayAssignmentMenuBridge.MenuSource?
 
+    override func becomeKey() {
+        super.becomeKey()
+        Self.installAssignmentMenuItems(in: NSApp.mainMenu)
+    }
+
     @objc(undo:)
     func undoOverlayRemap(_: Any?) {
         guard isKeyWindow else { return }

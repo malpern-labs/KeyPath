@@ -74,10 +74,13 @@ extension OverlayWindow {
     }
 
     static func installAssignmentMenuItems(in mainMenu: NSMenu?) {
-        // Locate the system Edit menu by its standard Paste item, independent of locale.
+        // SwiftUI may wrap the standard actions in its own selectors. Their
+        // standard shortcuts identify the Edit menu independently of locale.
         guard let edit = mainMenu?.items.compactMap(\.submenu).first(where: {
-            $0.items.contains { $0.action == #selector(NSText.paste(_:)) }
-        }), let selectAllIndex = edit.items.lastIndex(where: { $0.action == #selector(NSText.selectAll(_:)) }) else { return }
+            $0.items.contains { $0.keyEquivalent == "v" && $0.keyEquivalentModifierMask == .command }
+        }), let selectAllIndex = edit.items.lastIndex(where: {
+            $0.keyEquivalent == "a" && $0.keyEquivalentModifierMask == .command
+        }) else { return }
         for (offset, action) in AssignmentMenuAction.allCases.enumerated() where !edit.items.contains(where: { $0.identifier == action.identifier }) {
             let item = NSMenuItem(title: action.title, action: action.selector, keyEquivalent: "")
             item.identifier = action.identifier

@@ -42,9 +42,9 @@ final class OverlayWindowFactoryTests: XCTestCase {
         main.addItem(rootItem)
         let edit = NSMenu()
         rootItem.submenu = edit
-        let paste = NSMenuItem(title: "Text Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        let paste = NSMenuItem(title: "Text Paste", action: Selector(("performAction:")), keyEquivalent: "v")
         edit.addItem(paste)
-        edit.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        edit.addItem(NSMenuItem(title: "Select All", action: Selector(("performAction:")), keyEquivalent: "a"))
 
         OverlayWindow.installAssignmentMenuItems(in: main)
         OverlayWindow.installAssignmentMenuItems(in: main)
