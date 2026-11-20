@@ -206,6 +206,14 @@ public enum SessionCapsMappingPolicy {
         }
     }
 
+    package static func validateLocator(_ device: DeviceIdentity) throws {
+        guard device.registryEntryID != 0, device.vendorID != 0 || (device.appleBuiltIn == true && device.productID == 0 && (device.locationID ?? 0) != 0), device.vendorID <= 0xFFFF,
+              device.productID <= 0xFFFF, (device.locationID ?? 0) != 0 || device.serialNumber != nil else { throw Refusal.invalidDevice }
+        if let serial = device.serialNumber {
+            guard !serial.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, serial.utf8.count <= 1024 else { throw Refusal.invalidDevice }
+        }
+    }
+
     /// The chosen keyboard must be connected exactly once, by registry ID and by
     /// the locator hidutil matches on. Other keyboards may be connected: the
     /// mapping is written only to this instance, and the intermediate is reserved for all.
