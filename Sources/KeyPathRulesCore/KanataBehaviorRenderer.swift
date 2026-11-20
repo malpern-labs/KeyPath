@@ -1,5 +1,4 @@
 import Foundation
-import KeyPathRulesCore
 
 // MARK: - Hyper Linked Layer Info
 
@@ -192,7 +191,7 @@ public enum KanataBehaviorRenderer {
     // MARK: - Action Conversion
 
     /// Convert a KeyAction to Kanata syntax, handling hyper with linked layers.
-    static func convertAction(_ action: KeyAction, hyperLinkedLayerInfos: [HyperLinkedLayerInfo]) -> String {
+    package static func convertAction(_ action: KeyAction, hyperLinkedLayerInfos: [HyperLinkedLayerInfo]) -> String {
         if case .hyper = action, !hyperLinkedLayerInfos.isEmpty {
             return renderHyperWithLayers(hyperLinkedLayerInfos)
         }
@@ -201,7 +200,7 @@ public enum KanataBehaviorRenderer {
 
     /// Parse a string action into a typed KeyAction.
     /// Used by convertAction as the single parsing entry point.
-    static func parseActionString(_ action: String) -> KeyAction {
+    package static func parseActionString(_ action: String) -> KeyAction {
         let stripped = action.trimmingCharacters(in: .whitespacesAndNewlines)
 
         // S-expressions: try structured parsing before falling back to rawKanata
