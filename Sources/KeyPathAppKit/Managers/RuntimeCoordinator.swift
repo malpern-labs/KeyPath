@@ -548,7 +548,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
                         try SessionCapsRuntimeSupport.requirePhysicalAllUp()
                     }.value
                 }, commit: {
-                    try SessionCapsSelectionStore.save(selection)
+                    try SessionCapsSelectionStore.shared.save(selection)
                     // Before any restart: start-up reads this to decide automatic Caps setup.
                     if let automaticSetupDisabled {
                         UserDefaults.standard.set(automaticSetupDisabled, forKey: SessionCapsRuntimeSupport.automaticSetupDisabledKey)

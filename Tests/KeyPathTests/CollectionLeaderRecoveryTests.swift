@@ -7,31 +7,44 @@ import KeyPathRulesCore
 final class CollectionLeaderRecoveryTests: KeyPathTestCase {
     private var directory: URL!
     private var manager: RuleCollectionsManager!
-    private var originalLeaderPreference: LeaderKeyPreference!
+    private var defaultsFixture: IsolatedPreferenceDefaults!
+    private var preferences: PreferencesService!
 
     override func setUp() async throws {
         try await super.setUp()
-        originalLeaderPreference = PreferencesService.shared.leaderKeyPreference
-        PreferencesService.shared.leaderKeyPreference = .default
+        let defaultsFixture = try IsolatedPreferenceDefaults()
+        self.defaultsFixture = defaultsFixture
+        preferences = PreferencesService(leaderDefaults: defaultsFixture.defaults, defaults: defaultsFixture.defaults)
+        preferences.leaderKeyPreference = .default
         directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let collections = RuleCollectionStore.testStore(at: directory.appendingPathComponent("RuleCollections.json"))
         let rules = CustomRulesStore.testStore(at: directory.appendingPathComponent("CustomRules.json"))
-        let service = ConfigurationService(configDirectory: directory.path, ruleCollectionStore: collections, customRulesStore: rules)
-        manager = RuleCollectionsManager(ruleCollectionStore: collections, customRulesStore: rules, configurationService: service)
+        let devices = DeviceSelectionStore.testStore(at: directory.appendingPathComponent("DeviceSelections.json"))
+        let service = ConfigurationService.sessionTestService(
+            configDirectory: directory.path, ruleCollectionStore: collections, customRulesStore: rules, deviceSelectionStore: devices
+        )
+        manager = RuleCollectionsManager(
+            ruleCollectionStore: collections, customRulesStore: rules, configurationService: service,
+            keymapPreferences: defaultsFixture.defaults, preferencesService: preferences
+        )
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections().map { collection in
             var copy = collection
             copy.isEnabled = copy.id == RuleCollectionIdentifier.leaderKey
             return copy
         }
         manager.customRules = []
-        try await service.saveRuleState(ruleCollections: manager.ruleCollections, customRules: [], collectionStore: collections, customStore: rules)
+        try await service.saveRuleState(
+            ruleCollections: manager.ruleCollections, customRules: [],
+            collectionStore: collections, customStore: rules, preferenceDefaults: defaultsFixture.defaults
+        )
     }
 
     override func tearDown() async throws {
-        if let originalLeaderPreference { PreferencesService.shared.leaderKeyPreference = originalLeaderPreference }
         try? FileManager.default.removeItem(at: directory)
         manager = nil
+        preferences = nil
+        defaultsFixture = nil
         directory = nil
         try await super.tearDown()
     }
@@ -49,12 +62,12 @@ final class CollectionLeaderRecoveryTests: KeyPathTestCase {
     private func assertRejectedMutationRestores(_ mutate: @MainActor () async -> Void) async throws {
         let before = try files()
         let snapshot = manager.snapshotRuleState()
-        let leaderBefore = PreferencesService.shared.leaderKeyPreference
+        let leaderBefore = preferences.leaderKeyPreference
         var reloads = 0
         var errors: [String] = []
         manager.onError = {
             errors.append($0)
-            XCTAssertEqual(PreferencesService.shared.leaderKeyPreference, leaderBefore, "Restore preferences before error feedback")
+            XCTAssertEqual(self.preferences.leaderKeyPreference, leaderBefore, "Restore preferences before error feedback")
         }
         manager.onRulesChanged = {
             reloads += 1
@@ -71,7 +84,7 @@ final class CollectionLeaderRecoveryTests: KeyPathTestCase {
         XCTAssertEqual(try files(), before)
         XCTAssertEqual(manager.ruleCollections, snapshot.collections)
         XCTAssertEqual(manager.customRules, snapshot.customRules)
-        XCTAssertEqual(PreferencesService.shared.leaderKeyPreference, leaderBefore)
+        XCTAssertEqual(preferences.leaderKeyPreference, leaderBefore)
         XCTAssertEqual(errors.count, 1)
     }
 
@@ -115,7 +128,7 @@ final class CollectionLeaderRecoveryTests: KeyPathTestCase {
         manager.onRulesChanged = { reloads += 1; return Self.reload(.pending) }
         await manager.updateCollectionOutput(id: RuleCollectionIdentifier.leaderKey, output: "f18")
         XCTAssertEqual(reloads, 1)
-        XCTAssertEqual(PreferencesService.shared.leaderKeyPreference.key, "f18")
+        XCTAssertEqual(preferences.leaderKeyPreference.key, "f18")
         let stored = await manager.ruleCollectionStore.loadCollections()
         let leader = try XCTUnwrap(stored.first { $0.id == RuleCollectionIdentifier.leaderKey })
         XCTAssertEqual(leader.configuration.singleKeyPickerConfig?.selectedOutput, "f18")
@@ -129,14 +142,14 @@ final class CollectionLeaderRecoveryTests: KeyPathTestCase {
         manager.onRulesChanged = {
             reloads += 1
             if reloads == 1 {
-                PreferencesService.shared.leaderKeyPreference = LeaderKeyPreference(key: "f17", targetLayer: .navigation, enabled: true)
+                self.preferences.leaderKeyPreference = LeaderKeyPreference(key: "f17", targetLayer: .navigation, enabled: true)
             }
             return Self.reload(reloads == 1 ? .rejected : .applied)
         }
         await manager.updateLeaderKey("f18")
         XCTAssertEqual(reloads, 1, "A preference conflict must not reload a partially recovered revision")
         XCTAssertNotEqual(try files(), before, "Fail-closed recovery must preserve the attempted files for diagnosis")
-        XCTAssertEqual(PreferencesService.shared.leaderKeyPreference.key, "f17")
+        XCTAssertEqual(preferences.leaderKeyPreference.key, "f17")
         XCTAssertTrue(FileManager.default.fileExists(atPath: RecoverableRuleWrite.journalURL(directory).path))
         XCTAssertTrue(errors.first?.contains("newer leader-key preference was preserved") == true)
     }

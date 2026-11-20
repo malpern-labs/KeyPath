@@ -182,7 +182,7 @@ extension ServiceLifecycleCoordinator {
                             sessionCapsNotice = nil
                             sessionCapsPaused = SessionCapsRuntimeSupport.selectedKeyboardOnly()
                                 ? Self.capsPausedMessage(
-                                    disconnected: SessionCapsSelectionStore.savedName ?? String(localized: "The keyboard chosen for Caps Lock"),
+                                    disconnected: SessionCapsSelectionStore.shared.savedName ?? String(localized: "The keyboard chosen for Caps Lock"),
                                     setupOff: false
                                 )
                                 : String(localized: "Caps Lock rules could not start on a connected keyboard. Your other rules keep working. Check keyboard details in Settings > General.")
@@ -514,10 +514,10 @@ extension ServiceLifecycleCoordinator {
             if restart == .keyboardDisconnected {
                 // The leased instance is gone and took its mapping with it; the
                 // restore above retired the record. Keep every other rule running.
-                sessionCapsDisconnectedName = SessionCapsSelectionStore.savedName ?? String(localized: "The keyboard chosen for Caps Lock")
+                sessionCapsDisconnectedName = SessionCapsSelectionStore.shared.savedName ?? String(localized: "The keyboard chosen for Caps Lock")
                 // Kept so the same keyboard at the same port gets the choice back.
-                SessionCapsSelectionStore.setDisplaced(UserDefaults.standard.data(forKey: SessionCapsRuntimeSupport.selectionKey),
-                                                       name: SessionCapsSelectionStore.savedName)
+                SessionCapsSelectionStore.shared.setDisplaced(UserDefaults.standard.data(forKey: SessionCapsRuntimeSupport.selectionKey),
+                                                              name: SessionCapsSelectionStore.shared.savedName)
             }
             AppLogger.shared.info("[SessionRuntime] Restarting session: \(restart.rawValue)")
             _ = await resumeSessionRuntime(expectedGeneration: generation, reason: restart.rawValue)
@@ -949,7 +949,7 @@ extension ServiceLifecycleCoordinator {
         if let lost = sessionCapsDisconnectedName {
             // Automatic setup found exactly one other keyboard (see
             // guides/driverless-caps-lock.md); say where Caps rules went.
-            sessionCapsNotice = if let newName = SessionCapsSelectionStore.savedName {
+            sessionCapsNotice = if let newName = SessionCapsSelectionStore.shared.savedName {
                 String(localized: "\(lost) was disconnected. Caps Lock rules now apply to \(newName).")
             } else {
                 String(localized: "\(lost) was disconnected. Caps Lock rules now apply to your other keyboard.")
@@ -960,7 +960,7 @@ extension ServiceLifecycleCoordinator {
         if selection != current {
             AppLogger.shared
                 .info("[SessionRuntime] Caps intermediate moved from \(SessionCapsIntermediate.label(current.intermediateUsage)) to \(SessionCapsIntermediate.label(selection.intermediateUsage))")
-            try SessionCapsSelectionStore.save(selection)
+            try SessionCapsSelectionStore.shared.save(selection)
         }
         return selection
     }
@@ -1011,19 +1011,19 @@ extension ServiceLifecycleCoordinator {
     func watchForCapsReconnect(generation: UInt64) {
         sessionCapsReconnectTask?.cancel()
         sessionCapsReconnectTask = nil
-        guard SessionCapsSelectionStore.displaced != nil else { return }
+        guard SessionCapsSelectionStore.shared.displaced != nil else { return }
         sessionCapsReconnectTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(2))
                 guard let self, !Task.isCancelled, sessionStartIsCurrent(generation),
-                      let displaced = SessionCapsSelectionStore.displaced?.data else { return }
+                      let displaced = SessionCapsSelectionStore.shared.displaced?.data else { return }
                 let state = await Task.detached {
                     SessionCapsRuntimeSupport.reconnectState(displaced: displaced,
                                                              boot: try? SessionCapsRuntimeSupport.bootSessionUUID(),
                                                              devices: { try SessionCapsHIDUtilTransport.inventory().devices })
                 }.value
                 if state == .stale {
-                    SessionCapsSelectionStore.setDisplaced(nil, name: nil)
+                    SessionCapsSelectionStore.shared.setDisplaced(nil, name: nil)
                     return
                 }
                 guard state == .back, !Task.isCancelled, sessionStartIsCurrent(generation) else { continue }

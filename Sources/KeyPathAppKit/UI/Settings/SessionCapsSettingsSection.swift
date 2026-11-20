@@ -408,7 +408,7 @@ struct SessionCapsSettingsSection: View {
             let raycastRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.raycast.macos").isEmpty
             raycastIsRunning = raycastRunning
             let storedData = UserDefaults.standard.data(forKey: SessionCapsRuntimeSupport.selectionKey)
-            let displaced = SessionCapsSelectionStore.displaced?.data
+            let displaced = SessionCapsSelectionStore.shared.displaced?.data
             let found = try await Task.detached {
                 let boot = try SessionCapsRuntimeSupport.bootSessionUUID()
                 let stored = storedData.flatMap { try? SessionCapsSelection.decode($0, currentBoot: boot) }
@@ -444,8 +444,8 @@ struct SessionCapsSettingsSection: View {
             let stored = found.2
             device = Self.effectiveDevice(saved: stored?.device, connected: keyboards.map(\.device), withheld: withheld)
             saved = stored?.device == device ? stored : nil
-            disconnected = found.3 && saved == nil ? SessionCapsSelectionStore.savedName ?? String(localized: "Your keyboard") : nil
-            if saved != nil { SessionCapsSelectionStore.saveName(keyboards.first { $0.device == device }?.name) }
+            disconnected = found.3 && saved == nil ? SessionCapsSelectionStore.shared.savedName ?? String(localized: "Your keyboard") : nil
+            if saved != nil { SessionCapsSelectionStore.shared.saveName(keyboards.first { $0.device == device }?.name) }
             conflict = await Self.conflict(on: device, intermediate: saved?.intermediateUsage)
             if !keepMessage { message = nil }
         } catch {
@@ -538,7 +538,7 @@ struct SessionCapsSettingsSection: View {
         message = nil
         saved = selection
         disconnected = nil
-        SessionCapsSelectionStore.saveName(keyboards.first { $0.device == selection?.device }?.name)
+        SessionCapsSelectionStore.shared.saveName(keyboards.first { $0.device == selection?.device }?.name)
         conflict = await Self.conflict(on: selection?.device, intermediate: selection?.intermediateUsage)
     }
 }

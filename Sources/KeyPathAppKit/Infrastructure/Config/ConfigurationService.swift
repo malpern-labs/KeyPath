@@ -409,15 +409,18 @@ public final class ConfigurationService: FileConfigurationProviding {
     /// Persist the generated file and its two source stores as one recoverable
     /// write set. The manager supplies its actual stores, which can differ from
     /// this service's defaults in tests and isolated CLI workflows.
+    @MainActor
     func saveRuleState(
         ruleCollections: [RuleCollection], customRules: [CustomRule],
         collectionStore: RuleCollectionStore, customStore: CustomRulesStore,
-        mutationPermit: ConfigurationOperationGate.Permit? = nil
+        mutationPermit: ConfigurationOperationGate.Permit? = nil,
+        preferenceDefaults: UserDefaults = PreferencesService.canonicalDefaults
     ) async throws {
         try await operationGate.withOperation(using: mutationPermit) { @MainActor [self] permit in
             let write = try await stageRuleState(
                 ruleCollections: ruleCollections, customRules: customRules,
-                collectionStore: collectionStore, customStore: customStore, mutationPermit: permit
+                collectionStore: collectionStore, customStore: customStore, mutationPermit: permit,
+                preferenceDefaults: preferenceDefaults
             )
             do {
                 try Task.checkCancellation()

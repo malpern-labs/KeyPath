@@ -308,7 +308,7 @@ final class ServiceLifecycleCoordinator {
         try commit()
         sessionCapsDisconnectedName = nil
         // An explicit choice replaces any claim of a disconnected keyboard.
-        SessionCapsSelectionStore.setDisplaced(nil, name: nil)
+        SessionCapsSelectionStore.shared.setDisplaced(nil, name: nil)
         refreshSessionConfigurationAdmission()
         notifyStateChanged()
         return true
@@ -464,7 +464,7 @@ final class ServiceLifecycleCoordinator {
               SessionCapsRuntimeSupport.validate(configPath: KeyPathConstants.Config.mainConfigPath,
                                                  runtimeHost: .current(), requireSelection: false).managedCaps,
               !UserDefaults.standard.bool(forKey: SessionCapsRuntimeSupport.automaticSetupDisabledKey) else { return }
-        let displaced = SessionCapsSelectionStore.displaced?.data
+        let displaced = SessionCapsSelectionStore.shared.displaced?.data
         let hasCurrent = (try? SessionCapsRuntimeSupport.selectedDevice()) != nil
         // A current choice stands unless a disconnected one may come back.
         guard !hasCurrent || displaced != nil else { return }
@@ -490,10 +490,10 @@ final class ServiceLifecycleCoordinator {
         }.value
         guard sessionStartIsCurrent(generation) else { throw CancellationError() }
         // A new boot ends any claim: a restart always asks again.
-        if found.displacedStale { SessionCapsSelectionStore.setDisplaced(nil, name: nil) }
+        if found.displacedStale { SessionCapsSelectionStore.shared.setDisplaced(nil, name: nil) }
         guard let (selection, name, rebound) = found.choice else { return }
-        try SessionCapsSelectionStore.save(selection)
-        SessionCapsSelectionStore.saveName(name)
+        try SessionCapsSelectionStore.shared.save(selection)
+        SessionCapsSelectionStore.shared.saveName(name)
         if rebound {
             AppLogger.shared.info("[Session] Caps keyboard reconnected at the same port; keeping its choice")
             if sessionCapsDisconnectedName != nil || displaced != nil {
@@ -504,7 +504,7 @@ final class ServiceLifecycleCoordinator {
                 }
             }
             sessionCapsDisconnectedName = nil
-            SessionCapsSelectionStore.setDisplaced(nil, name: nil)
+            SessionCapsSelectionStore.shared.setDisplaced(nil, name: nil)
         }
     }
 

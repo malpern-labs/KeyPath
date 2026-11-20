@@ -259,26 +259,19 @@ final class SessionCapsUnplugRecoveryTests: XCTestCase {
 
     @MainActor
     func testClearingTheSelectionForgetsItsName() throws {
-        let defaults = UserDefaults.standard
-        let keys = [SessionCapsRuntimeSupport.selectionKey, SessionCapsRuntimeSupport.selectionNameKey,
-                    "keypath.session.caps.displaced.v1"]
-        let original = keys.map { defaults.object(forKey: $0) }
-        defer {
-            for (key, value) in zip(keys, original) {
-                if let value { defaults.set(value, forKey: key) } else { defaults.removeObject(forKey: key) }
-            }
-        }
-        SessionCapsSelectionStore.saveName("cl80")
-        XCTAssertEqual(SessionCapsSelectionStore.savedName, "cl80")
-        SessionCapsSelectionStore.saveName(nil)
-        XCTAssertNil(SessionCapsSelectionStore.savedName, "An unknown name clears the old one, never names the wrong keyboard")
-        SessionCapsSelectionStore.saveName("cl80")
-        SessionCapsSelectionStore.setDisplaced(Data("x".utf8), name: "cl80")
-        XCTAssertEqual(SessionCapsSelectionStore.displaced?.data, Data("x".utf8))
-        XCTAssertEqual(SessionCapsSelectionStore.displaced?.name, "cl80")
-        try SessionCapsSelectionStore.save(nil)
-        XCTAssertNil(SessionCapsSelectionStore.savedName)
-        XCTAssertNil(SessionCapsSelectionStore.displaced, "Turning setup off ends a disconnected keyboard's claim")
+        let fixture = try IsolatedPreferenceDefaults()
+        let store = SessionCapsSelectionStore(defaults: fixture.defaults)
+        store.saveName("cl80")
+        XCTAssertEqual(store.savedName, "cl80")
+        store.saveName(nil)
+        XCTAssertNil(store.savedName, "An unknown name clears the old one, never names the wrong keyboard")
+        store.saveName("cl80")
+        store.setDisplaced(Data("x".utf8), name: "cl80")
+        XCTAssertEqual(store.displaced?.data, Data("x".utf8))
+        XCTAssertEqual(store.displaced?.name, "cl80")
+        try store.save(nil)
+        XCTAssertNil(store.savedName)
+        XCTAssertNil(store.displaced, "Turning setup off ends a disconnected keyboard's claim")
     }
 
     // MARK: Stuck-key snapshot
