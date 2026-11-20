@@ -115,6 +115,14 @@ Notes:
   it with `vm-lab keypath daily --close`. Use
   a fresh clone for onboarding, permission changes, and release qualification.
   Follow the [VM lab guide](docs/testing/remote-installer-lab.md#daily-ui-and-remapping).
+  The installed checkout is `/Users/malpern/local-code/vm-lab-prepared` on
+  `main`; confirm with `vm-lab --version`. After a signed swap, retain the
+  replacement hashes and receipt, run its `rig/check-virtual-remap.sh <lease>`
+  once, and record splash evidence separately. Keep the owned guest during
+  the iteration batch; close it afterward and verify complete cleanup. Do not
+  repeat two-hour expiry qualification for ordinary development. Candidate
+  isolation results are not installed-launcher results; preserve that distinction
+  and keep the base fingerprint check intact.
 - For GUI tests, verify the desktop is unlocked before first launch. A trusted
   automation bridge can report ready while the guest is on the lock screen.
   Use the [smoke checklist](docs/testing/remote-installer-lab.md#desktop-smoke-checklist)

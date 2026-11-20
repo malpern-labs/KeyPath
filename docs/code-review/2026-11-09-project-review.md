@@ -42,7 +42,8 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **O5** Events, health polling, stacked caches | ✅ | Removed the dead router and drove app validation from lifecycle health changes (#1406, #1442). Migrated key input, activation and resolution, and the remaining engine events to typed messages ([#1448](https://github.com/malpern-labs/KeyPath/pull/1448), [#1450](https://github.com/malpern-labs/KeyPath/pull/1450), [#1451](https://github.com/malpern-labs/KeyPath/pull/1451)). Made `PermissionOracle` the sole validation permission cache ([#1452](https://github.com/malpern-labs/KeyPath/pull/1452)) and consolidated async timeout helpers in `KeyPathCore` ([#1453](https://github.com/malpern-labs/KeyPath/pull/1453)). |
 | **O6** Plugin system | ✅ | Downloads removed (#1407); Insights linked into the app (#1411). |
 | **O7** Metal stage and first-run onboarding | ✅ | Keep the full Metal onboarding experience. Implementation simplifications can proceed when they preserve the first-run visuals and interactions. |
-| **O7** Packs and CLI split | ⬜ | Product decisions open. |
+| **O7** Packs | ✅ | Owner decision: keep the gallery and pack installation/dependency features. Remove only proven dead code around them; do not replace packs with built-in presets. |
+| **O7** CLI split | ⬜ | Evaluate the engine/core target boundary without removing CLI features. |
 | **O8** Unimplemented flags, wording, public-docs lint | ✅ | #1405. |
 | **O8** CLI link and service ownership | ✅ | New links install under `~/.local/bin` and uninstall removes matching links. `AGENTS.md` documents when to use `ServiceContainer` or a singleton (#1429). |
 | **O8** Test-mode checks and lint ratchets | 🟡 | Retired lint tests and passwordless sudo test mode (#1428). Replacing remaining production `TestEnvironment` checks with injected dependencies is open. |
@@ -50,17 +51,17 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **B2** Scripts | ✅ | #1395. |
 | **B3** Dead Swift | ✅ | Deletion pass merged (#1398, #1406). Function-level Periphery scan completed with 3.8.0; retired unregistered CLI commands and their formatter are removed in this follow-up. Candidate diagnostics are not automatically safe deletions. |
 | **B4** Tests for removed behaviour | ✅ | Dead tests removed and two stale references refreshed (#1420). The historical General Settings reference was refreshed to the existing Nothing default in #1478, retaining tolerances. The combined gate passed 5,524 tests. |
-| **B5** Binary assets | 🟡 | Unused assets removed (#1397). Help asset compression and deduplication are in open PR #1422. Metal snapshot sizing remains open. |
-| **B6** Root and package stragglers | 🟡 | Root cleanup merged (#1395). Process probes moved into Core and the unused wizard screenshot and resource bundle were removed (#1440). Removed the nine unused library products; executable products and internal target dependencies remain unchanged. |
+| **B5** Binary assets | ✅ | Unused assets removed (#1397); help assets compressed/deduplicated (#1422). Metal goldens losslessly recompressed in #1479: 28.7% smaller, identical decoded scanlines, full resolution and tolerances retained. |
+| **B6** Root and package stragglers | ✅ | Root cleanup merged (#1395). Process probes moved into Core and the unused wizard screenshot and resource bundle were removed (#1440). Nine unused library product exports removed in #1475; executable products and internal target dependencies remain unchanged. |
 | **B7** Docs | 🟡 | Public docs republished, archive removed, and runtime architecture page rewritten and published (#1394, #1399, #1402, #1437). The macOS 27 Accessibility screenshot remains. |
 | **P1** Sparkle | ✅ | See row 5. |
 | **P2** Apple Events usage string | ✅ | #1404. Verify the consent prompt on a clean VM. |
-| **P3** Blocking subprocesses | ✅ | `SecCodeCopySelf` replaces the signing shell-out and pipes are drained before waiting (#1404). The migration process probe remains. |
+| **P3** Blocking subprocesses | ✅ | `SecCodeCopySelf` replaces the signing shell-out and pipes are drained before waiting (#1404). Migration discovery is async and bounded, with retryable unknown states and tested stop routing (#1480). System probes also drain both output pipes concurrently (#1483); the serialized full gate passed 5,534 tests. Latest-master deployment and live verification remain separate release checks. |
 | **P4** Shell-outs with API replacements | ✅ | Hidden flags, editor launch, function key preference writes, and signals use direct APIs. Spotlight search keeps a cancellable subprocess (#1426). |
 | **P5** `os.Logger` in `AppLogger` | ✅ | Unified log output added (#1427). File logger state is synchronized and queued writes flush (#1445). |
-| **P6** Concurrency leftovers | 🟡 | Feature flags and the app icon cache were synchronized (#1439). Broader Sendable, lock, timer, and actor isolation work remains. |
+| **P6** Concurrency leftovers | 🟡 | Feature flags and the app icon cache were synchronized (#1439). Three main-actor service conformances are compiler checked (#1481). Broader lock, timer, and actor-isolation work remains. |
 | **P7** Liquid Glass | ✅ | System glass in `AppGlassBackground` (#1408), checked on screen in light and dark. |
-| **P7** Other idioms | ⬜ | Color, activation, image drawing, wrappers, and window scenes remain opportunistic. |
+| **P7** Other idioms | 🟡 | Deprecated lockFocus drawing replaced (#1460). Color, activation, wrappers and window-scene follow-ups remain. |
 | **P8** Localization | 🟡 | English and Japanese, a CI-checked catalog, plurals, and localization of text passed to views as `String` merged (#1430–#1433). Accessibility IDs, remaining English values, layout fit, and native-speaker review remain. |
 | **P9** Test isolation | 🟡 | Config migration tests use isolated directories and passed concurrently (#1434). Subprocess test waits are bounded (#1438); concurrent stdout/stderr draining fixes pipe-capacity deadlocks (#1476). Approval-storage and script-action tests use isolated stores (#1478), and standalone smoke and Core lanes passed concurrently (#1446). Broader on-disk state isolation remains. |
 
@@ -73,7 +74,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 - P2: run the clean-VM installation and confirm the Apple Events consent prompt. B7 also tracks the macOS 27 Accessibility screenshot.
 - P8 and P9: finish localization verification and continue isolating shared test state.
-- B5: help asset compression and deduplication are tracked in [#1422](https://github.com/malpern-labs/KeyPath/pull/1422).
+- B5 and B6 are complete: merged asset and package cleanups are linked above.
 
 ---
 
@@ -262,7 +263,7 @@ inside the app bundle and drop the downloader. Product decision.
 |---|---|---|
 | Metal keyboard stage | 6,022 lines Swift + 1,190-line shader + build plugin | Keep the full Metal experience. Review shared scene state and fallback behavior for duplication, and verify visual and interaction parity before changing the implementation. |
 | First-success onboarding | 3,549 lines | Preserve the complete first-run flow when simplifying its implementation. |
-| Packs | ~8,000 lines (services, gallery, facade) | A second catalog over rule collections, all hardcoded in Swift. If packs will never be distributed, presets would do |
+| Packs | ~8,000 lines (services, gallery, facade) | Owner decision (November 19): retain the gallery, installation and dependency features. Keep their behavior while removing proven unused surrounding code. |
 | `keypath-cli` | imports AppKit in 57 files | Links SwiftUI and the Metal renderer. A `KeyPathEngine` target (config, rules, session runtime, networking) would be the split that pays |
 
 The Karabiner converter, QMK import and layout tracer are proportionate.
@@ -515,19 +516,27 @@ and, later, privacy annotations for anything that could reveal typed keys.
 
 ### P6. Concurrency leftovers
 
-- Five blanket `@unchecked Sendable` extensions on large types:
-  `RuntimeCoordinator`, `SystemValidator`, `PermissionRequestService`,
-  `FeatureFlags`, `AppLogger`. These are where a real data race would hide.
-- 25 `NSLock`, zero `Mutex`. `Mutex<State>` makes lock-protected state checked
-  `Sendable`.
-- Unsynchronised static caches reachable off the main actor, for example
-  `AppIconResolver.swift:10` and `FeatureFlags.swift:59`.
-- 68 `DispatchQueue.main.asyncAfter` and 25 `Timer.scheduledTimer` in UI
-  code; these are not cancellable. Use `Task.sleep` or `.task(id:)`.
-- `swift-tools-version` is 6.1. Default main-actor isolation on the UI targets
-  (Swift 6.2) would remove much of the 779 `@MainActor` and 127
-  `MainActor.run` (*unconfirmed* against the Xcode 27 toolchain). Try it on a
-  leaf UI target first.
+Verified follow-up, November 19: `RuntimeCoordinator`, `SystemValidator`, and
+`PermissionRequestService` now use checked main-actor isolation (#1481).
+`FeatureFlags` is checked `Sendable` with mutex-protected startup and override
+state. `AppIconResolver` is main-actor isolated, including its static icon cache.
+The original examples of unsynchronised caches below are therefore resolved;
+they must not be counted as outstanding defects.
+
+Remaining work:
+
+- Audit remaining `@unchecked Sendable` types according to their actual
+  ownership and synchronization. Do not replace a valid actor or framework
+  boundary with a mutex merely to reduce a count.
+- `BackendCapabilityProfile` still has manual cache locking and an unsafe debug
+  override on merged master. A checked-mutex change is under validation; it is
+  not a verified fix yet.
+- Reconcile delayed UI callbacks and timers with their owning view/window
+  lifetimes. Convert only callbacks that require cancellation, and test closing
+  or replacing the owner while a callback is pending.
+- Default main-actor isolation remains an optional compile-boundary experiment,
+  not a demonstrated correctness requirement. Check the current toolchain and
+  a leaf target before adopting it across UI targets.
 
 ### P7. SwiftUI and AppKit idioms — opportunistic
 

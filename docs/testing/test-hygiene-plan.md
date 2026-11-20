@@ -764,3 +764,23 @@ PreferencesServicePersistenceTests and GlobalHotkeyPermissionRecoveryTests use
 private per-test suites; ConfigurationManager reads the injected preference owner.
 This does not establish that all other defaults or notification-based tests are
 parallel-safe. Full log: `/private/tmp/keypath-preference-isolation-full-tests.log`.
+
+### CLI rule and collection store isolation
+
+CLIRuleCRUDTests, CLIRuleAddIntegrationTests, CLILayerCRUDTests and
+CLIKarabinerImportTests now use a unique per-test CLIStoreFixture and the
+existing facade store initializers. They no longer clear shared custom rules
+or snapshot/restore shared collections during teardown. The fixture removes
+only its own UUID directory. This does not claim that every other CLI or pack
+suite is isolated, or that all CI jobs can safely run concurrently yet.
+
+Focused validation for those four CLI suites passed 69 tests. An additional
+CLIStoreIsolationTests regression passed concurrent writes of the same input
+through two private facades and verified that deleting one fixture leaves the
+other fixture's persisted rule intact. This is 70 focused tests, not a claim
+that the entire repository is ready for unrestricted parallel execution.
+
+The CLI store-isolation branch also passed the full safe gate on November 19:
+5,525 tests, zero Swift warnings, 201 s build and 218 s tests (421 s total).
+Log: `/private/tmp/keypath-cli-isolation-full-tests.log`. The 70 focused
+checks remain the direct evidence for the changed CLI persistence paths.
