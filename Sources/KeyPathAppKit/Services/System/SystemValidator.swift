@@ -16,19 +16,18 @@ public class SystemValidator {
     /// Outside KeyPath.app (the CLI) there is no runtime coordinator; this
     /// asks the running app instead. True means its session runtime is ready.
     private let appSessionReady: (@Sendable () async -> Bool)?
-    private let useTestSnapshot: Bool
+    private let snapshotProvider: (@MainActor () -> SystemSnapshot)?
 
     init(
         systemStateProvider: SystemStateProvider = .shared,
         kanataManager: RuntimeCoordinator? = nil,
         appSessionReady: (@Sendable () async -> Bool)? = nil,
-        useTestSnapshot: Bool = TestEnvironment.isRunningTests
-            && ProcessInfo.processInfo.environment["KEYPATH_FORCE_REAL_VALIDATION"] != "1"
+        snapshotProvider: (@MainActor () -> SystemSnapshot)? = nil
     ) {
         self.systemStateProvider = systemStateProvider
         self.kanataManager = kanataManager
         self.appSessionReady = appSessionReady
-        self.useTestSnapshot = useTestSnapshot
+        self.snapshotProvider = snapshotProvider
     }
 
     public func checkSystem() async -> SystemSnapshot {
@@ -36,8 +35,8 @@ public class SystemValidator {
     }
 
     public func checkSystem(freshness: WizardSystemSnapshotFreshness) async -> SystemSnapshot {
-        if useTestSnapshot {
-            return Self.makeTestSnapshot()
+        if let snapshotProvider {
+            return snapshotProvider()
         }
 
         return await Self.boundedCapture(timeout: Self.canonicalCaptureTimeout) {
@@ -104,26 +103,6 @@ public class SystemValidator {
             ),
             compatibility: SystemCompatibilityStatus(macOSVersion: ProcessInfo.processInfo.operatingSystemVersionString),
             timestamp: Date()
-        )
-    }
-
-    // MARK: - Test Support
-
-    /// Create a minimal snapshot for test mode - returns immediately without system calls
-    /// This provides realistic-looking stub data for tests that don't need real system state
-    private static func makeTestSnapshot() -> SystemSnapshot {
-        let now = Date()
-        return SystemSnapshot(
-            permissions: PermissionOracle.Snapshot(
-                accessibility: .granted,
-                runtimeKeyAccess: .init(status: .granted, source: "test-stub", confidence: .high, timestamp: now),
-                timestamp: now
-            ),
-            components: ComponentStatus(kanataBinaryInstalled: true, requiredRuntimePayloadPresent: true),
-            conflicts: ConflictStatus(conflicts: [], canAutoResolve: false),
-            health: HealthStatus(kanataRunning: true),
-            compatibility: SystemCompatibilityStatus(macOSVersion: "test"),
-            timestamp: now
         )
     }
 }

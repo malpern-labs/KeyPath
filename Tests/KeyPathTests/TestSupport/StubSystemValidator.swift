@@ -1,5 +1,7 @@
+import Foundation
 @testable import KeyPathAppKit
 @testable import KeyPathInstallationWizard
+import KeyPathPermissions
 import KeyPathWizardCore
 
 @MainActor
@@ -55,5 +57,26 @@ final class StubSystemValidator: WizardSystemValidating {
             ),
             timestamp: context.timestamp
         )
+    }
+}
+
+@MainActor
+extension SystemValidator {
+    static func readyTestFixture() -> SystemValidator {
+        SystemValidator(snapshotProvider: {
+            let now = Date()
+            return SystemSnapshot(
+                permissions: PermissionOracle.Snapshot(
+                    accessibility: .granted,
+                    runtimeKeyAccess: .init(status: .granted, source: "test-stub", confidence: .high, timestamp: now),
+                    timestamp: now
+                ),
+                components: ComponentStatus(kanataBinaryInstalled: true, requiredRuntimePayloadPresent: true),
+                conflicts: ConflictStatus(conflicts: [], canAutoResolve: false),
+                health: HealthStatus(kanataRunning: true),
+                compatibility: SystemCompatibilityStatus(macOSVersion: "test"),
+                timestamp: now
+            )
+        })
     }
 }

@@ -99,7 +99,7 @@ struct MainAppStateControllerTests {
         #expect(controller.isConfigured == false)
 
         // Inject validator
-        controller.setValidator(SystemValidator())
+        controller.setValidator(SystemValidator.readyTestFixture())
 
         // Now should be true
         #expect(controller.isConfigured == true)

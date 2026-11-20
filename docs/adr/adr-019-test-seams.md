@@ -40,12 +40,16 @@ Would require injecting: SoundManager, NotificationService, EventTapController, 
 
 These checks guard **side effects**, not business logic. Core logic still executes and is tested.
 
-## Escape Hatches
+## System Validation
 
-```bash
-KEYPATH_FORCE_REAL_VALIDATION=1 swift test
-```
+`SystemValidator` captures system evidence by default. Tests that need
+synthetic evidence pass a snapshot provider or a `WizardSystemValidating`
+stub. Run `TEST_FILTER=SystemValidatorTests ./Scripts/run-tests-safe.sh` to
+exercise the real capture path with a test runtime probe and verify the
+timeout and cancellation contracts.
 
 ## For New Code
 
-Prefer injectable seams (like `VHIDDeviceManager.testPIDProvider`) over environment checks where practical. Use `TestEnvironment.isRunningTests` for UI/system side effects.
+Inject dependencies when they control a decision or return synthetic
+evidence. Use test-host checks where needed to prevent real system side
+effects during tests.
