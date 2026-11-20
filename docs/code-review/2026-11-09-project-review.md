@@ -61,7 +61,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **P5** `os.Logger` in `AppLogger` | ✅ | Unified log output added (#1427). File logger state is synchronized and queued writes flush (#1445). |
 | **P6** Concurrency leftovers | 🟡 | Feature flags and the app icon cache were synchronized (#1439). Three main-actor service conformances are compiler checked (#1481), and capability caches use checked mutex state (#1487). Palette search focus and simulator feedback now use cancellable view tasks in this follow-up; the full safe gate passed 5,526 tests with zero Swift warnings. Broader lock, timer, and actor-isolation work remains. |
 | **P7** Liquid Glass | ✅ | System glass in `AppGlassBackground` (#1408), checked on screen in light and dark. |
-| **P7** Other idioms | 🟡 | Deprecated lockFocus drawing replaced (#1460). Color, activation, wrappers and window-scene follow-ups remain. |
+| **P7** Other idioms | ✅ | Deprecated drawing and activation replaced (#1460, #1508). The window and wrapper audit removed an unused control and records the behavior each remaining bridge supports (#1509). Color conversion stays with individual surface changes. |
 | **P8** Localization | 🟡 | English and Japanese, a CI-checked catalog, plurals, and localization of text passed to views as `String` merged (#1430–#1433). Accessibility IDs, remaining English values, layout fit, and native-speaker review remain. |
 | **P9** Test isolation | 🟡 | Config migration tests use isolated directories and passed concurrently (#1434). Subprocess test waits are bounded (#1438); concurrent stdout/stderr draining fixes pipe-capacity deadlocks (#1476). Approval-storage and script-action tests use isolated stores (#1478), and standalone smoke and Core lanes passed concurrently (#1446). Broader on-disk state isolation remains. |
 
@@ -76,10 +76,9 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 - O7b: retain packs and their existing features. See the [CLI compile-boundary evaluation](#cli-compile-boundary-evaluation) for the extraction decision and verification criteria.
 - O8c: replace remaining implicit test-mode behavior with scoped dependencies where appropriate, retaining safeguards against real system operations in tests.
-- P6: finish the ownership audit and owner-lifetime checks. BuildInfo #1493, watcher/HID session and biometric ownership #1494, diagnostic callback synchronization #1495, and checked preference ownership #1497 have merged. Remaining framework and timer boundaries still need audit.
-- P7b: evaluate the remaining SwiftUI/AppKit idioms against their actual behavior and window requirements.
-- P8: finish localization layout/copy verification and native-language review.
-- P9: the pack/collection fixtures now own their tracker, legacy snapshots and preference domains in this follow-up. Seven affected suites passed 165 checks both serially and with two XCTest workers. The unused wizard restart helper was removed and fake app-control routing is scoped per test facade (#1499). Other shared preference fixtures and broad in-process parallel qualification remain open.
+- P6: finish the ownership audit and owner-lifetime checks. BuildInfo #1493, watcher/HID session and biometric ownership #1494, diagnostic callback synchronization #1495, checked preference ownership #1497, CLI spinner cancellation #1505, and device cache ownership #1511 have merged. Remaining framework and timer boundaries still need audit.
+- P8: finish localization layout, copy, and native-language review. The Japanese virtual-key confirmation fit on the macOS 27.2.1 test guest. This covers one prompt at the tested window size.
+- P9: the pack/collection fixtures now own their tracker, legacy snapshots and preference domains in this follow-up. Seven affected suites passed 165 checks both serially and with two XCTest workers. The unused wizard restart helper was removed and fake app-control routing is scoped per test facade (#1499). Overlay style fixtures passed 96 checks serially and with two XCTest workers (#1510). Wizard handoff and frame persistence passed 15 focused checks (#1512). Other shared preference fixtures and broad in-process parallel qualification remain open.
 
 P2's normal usage prompt passed on a fresh macOS 27 guest. B7's current permission
 screenshot is published at gh-pages `99a2200b6`: the public guide returned HTTP
@@ -287,6 +286,14 @@ on the app library through `KeyPathCLI`. On a local Debug build containing
 the scoped routing change, `otool -L` listed AppKit, SwiftUI, Metal,
 MetalKit, and Sparkle. This shows the link boundary. It does not measure
 release binary size, launch time, or incremental build savings.
+
+A follow-up measured the signed arm64 release candidate at `945753e3` on the
+Air. The installed-layout CLI executable was 63,032,528 bytes and directly
+linked AppKit, SwiftUI, WebKit, Metal, MetalKit, and Sparkle. The first
+`--help` invocation took 1,292 ms, and the median of five immediately repeated
+invocations was 18.6 ms. These are comparison measurements from one build and
+one machine. The first sample may include operating-system work on the new
+binary, and the run did not measure incremental compilation.
 
 Keep the existing commands and pack features. A new umbrella engine target
 would still pull in app code if it carried the current facades wholesale.
@@ -579,8 +586,10 @@ Remaining work:
 
 The main glass surface uses system glass (#1408), and the deprecated image
 drawing was replaced (#1460). The source scan found no assignment to
-`Process.launchPath`. Cooperative activation is in #1508. Live foreground
-checks remain for requests that arrive while another app is active.
+`Process.launchPath`. Cooperative activation merged in #1508. On a macOS
+27.2.1 guest, the signed candidate showed both external confirmation prompts
+above Terminal. The uninstall prompt closed on disconnect, the hidden
+launcher overlay reopened, and the virtual remap worked after restarting.
 
 | Surface | Current behavior and decision |
 |---|---|
