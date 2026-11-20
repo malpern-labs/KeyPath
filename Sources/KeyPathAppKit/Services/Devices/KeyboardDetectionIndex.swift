@@ -3,7 +3,7 @@ import KeyPathCore
 
 /// Looks up known keyboards by USB Vendor ID and Product ID using a normalized
 /// detection index generated from VIA, QMK, and local overrides.
-enum KeyboardDetectionIndex {
+struct KeyboardDetectionIndex: Sendable {
     enum MatchType: String, Codable, Sendable, Equatable {
         case exactVIDPID
         case vendorOnly
@@ -55,52 +55,29 @@ enum KeyboardDetectionIndex {
         let exactEntries: [OverrideExactEntry]
     }
 
-    private struct Cache: Sendable {
-        let exactEntries: [String: Record]
-        let vendorFallbackEntries: [String: Record]
+    private let exactEntries: [String: Record]
+    private let vendorFallbackEntries: [String: Record]
+
+    static let bundled = loadBundledIndex()
+
+    init(exactEntries: [Record], vendorFallbackEntries: [Record] = []) {
+        self.exactEntries = Dictionary(uniqueKeysWithValues: exactEntries.map { ($0.matchKey, $0) })
+        self.vendorFallbackEntries = Dictionary(uniqueKeysWithValues: vendorFallbackEntries.map { ($0.matchKey, $0) })
     }
 
-    private static let cacheLock = NSLock()
-    private nonisolated(unsafe) static var cached: Cache?
+    private init(exactEntries: [String: Record], vendorFallbackEntries: [String: Record]) {
+        self.exactEntries = exactEntries
+        self.vendorFallbackEntries = vendorFallbackEntries
+    }
 
-    #if DEBUG
-        private nonisolated(unsafe) static var seededExactEntries: [Record]?
-        private nonisolated(unsafe) static var seededVendorFallbackEntries: [Record]?
-
-        static func seedIndex(exactEntries: [Record], vendorFallbackEntries: [Record] = []) {
-            cacheLock.lock()
-            defer { cacheLock.unlock() }
-            seededExactEntries = exactEntries
-            seededVendorFallbackEntries = vendorFallbackEntries
-            cached = nil
-        }
-
-        static func resetCache() {
-            cacheLock.lock()
-            defer { cacheLock.unlock() }
-            cached = nil
-            seededExactEntries = nil
-            seededVendorFallbackEntries = nil
-        }
-    #endif
-
-    static func lookup(vendorID: Int, productID: Int) -> Match? {
-        let cache = loadCache()
-        guard !cache.exactEntries.isEmpty || !cache.vendorFallbackEntries.isEmpty else {
-            return nil
-        }
-
-        let vidPidKey = formatKey(vendorID: vendorID, productID: productID)
-        if let record = cache.exactEntries[vidPidKey] {
+    func lookup(vendorID: Int, productID: Int) -> Match? {
+        let vidPidKey = Self.formatKey(vendorID: vendorID, productID: productID)
+        if let record = exactEntries[vidPidKey] {
             return Match(record: record)
         }
 
-        let vidKey = formatVIDKey(vendorID: vendorID)
-        if let record = cache.vendorFallbackEntries[vidKey] {
-            return Match(record: record)
-        }
-
-        return nil
+        let vidKey = Self.formatVIDKey(vendorID: vendorID)
+        return vendorFallbackEntries[vidKey].map { Match(record: $0) }
     }
 
     static func formatKey(vendorID: Int, productID: Int) -> String {
@@ -111,28 +88,10 @@ enum KeyboardDetectionIndex {
         String(format: "%04X", vendorID)
     }
 
-    private static func loadCache() -> Cache {
-        cacheLock.lock()
-        defer { cacheLock.unlock() }
-
-        if let cached { return cached }
-
-        #if DEBUG
-            if let seededExactEntries {
-                let cache = Cache(
-                    exactEntries: Dictionary(uniqueKeysWithValues: seededExactEntries.map { ($0.matchKey, $0) }),
-                    vendorFallbackEntries: Dictionary(uniqueKeysWithValues: (seededVendorFallbackEntries ?? []).map { ($0.matchKey, $0) })
-                )
-                cached = cache
-                return cache
-            }
-        #endif
-
+    private static func loadBundledIndex() -> Self {
         guard let url = KeyPathAppKitResources.url(forResource: "keyboard-detection-index", withExtension: "json") else {
             AppLogger.shared.warn("⚠️ [KeyboardDetectionIndex] keyboard-detection-index.json not found in bundle")
-            let empty = Cache(exactEntries: [:], vendorFallbackEntries: [:])
-            cached = empty
-            return empty
+            return Self(exactEntries: [])
         }
 
         do {
@@ -143,20 +102,17 @@ enum KeyboardDetectionIndex {
             for overrideEntry in overrideEntries {
                 exactEntries[overrideEntry.matchKey] = overrideEntry
             }
-            let cache = Cache(
+            let index = Self(
                 exactEntries: exactEntries,
                 vendorFallbackEntries: Dictionary(uniqueKeysWithValues: file.vendorFallbackEntries.map { ($0.matchKey, $0) })
             )
-            cached = cache
             AppLogger.shared.log(
                 "🔌 [KeyboardDetectionIndex] Loaded \(exactEntries.count) exact and \(file.vendorFallbackEntries.count) vendor fallback entries (v\(file.version))"
             )
-            return cache
+            return index
         } catch {
             AppLogger.shared.warn("⚠️ [KeyboardDetectionIndex] Failed to load keyboard-detection-index.json: \(error)")
-            let empty = Cache(exactEntries: [:], vendorFallbackEntries: [:])
-            cached = empty
-            return empty
+            return Self(exactEntries: [])
         }
     }
 

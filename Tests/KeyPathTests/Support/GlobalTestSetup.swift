@@ -30,11 +30,6 @@ enum TestSingletonReset {
 
         // Device detection caches
         DeviceSelectionCache.shared.reset()
-        KeyboardDetectionIndex.resetCache()
-
-        #if DEBUG
-            WizardSystemPaths.setBundledKanataPathOverride(nil)
-        #endif
 
         // Feature flags — in tests these live in FeatureFlags' in-memory
         // override store, never UserDefaults (#896); clear to compiled defaults.

@@ -19,6 +19,19 @@ final class KanataEventListenerRefusalTests: XCTestCase {
         XCTAssertFalse(once?.resume(with: .success(8)) ?? true)
     }
 
+    func testCompetingNetworkCallbacksHaveOneCompletionWinner() async {
+        let flag = CompletionFlag()
+        let winners = await withTaskGroup(of: Bool.self) { group in
+            for _ in 0 ..< 32 {
+                group.addTask { flag.markCompleted() }
+            }
+            return await group.reduce(0) { $0 + ($1 ? 1 : 0) }
+        }
+
+        XCTAssertEqual(winners, 1)
+        XCTAssertFalse(flag.markCompleted())
+    }
+
     /// An engine socket that refuses every peer the way the peer check does:
     /// accept, then shut the connection down before sending a byte. The
     /// listener must keep retrying, not crash.

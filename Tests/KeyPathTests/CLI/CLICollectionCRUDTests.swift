@@ -1,19 +1,21 @@
-@testable import KeyPathAppKit
 import KeyPathRulesCore
 @preconcurrency import XCTest
 
 @MainActor
 final class CLICollectionCRUDTests: XCTestCase {
-    private let facade = CollectionsFacade()
-    private var originalCollections: [RuleCollection] = []
+    private var facade: CollectionsFacade!
+    private var fixture: CLIStoreFixture!
 
     override func setUp() async throws {
         try await super.setUp()
-        originalCollections = await RuleCollectionStore.shared.loadCollections()
+        fixture = try CLIStoreFixture()
+        facade = CollectionsFacade(store: fixture.collections)
     }
 
     override func tearDown() async throws {
-        try await RuleCollectionStore.shared.saveCollections(originalCollections)
+        facade = nil
+        try fixture?.remove()
+        fixture = nil
         try await super.tearDown()
     }
 
@@ -31,9 +33,27 @@ final class CLICollectionCRUDTests: XCTestCase {
         let result = try await facade.createCollection(name: "Nav Keys", category: "navigation", summary: "")
         XCTAssertEqual(result.name, "Nav Keys")
 
-        let collections = await RuleCollectionStore.shared.loadCollections()
+        let collections = await fixture.collections.loadCollections()
         let created = collections.first(where: { $0.id.uuidString == result.id })
         XCTAssertEqual(created?.category, .navigation)
+    }
+
+    func testConcurrentFacadesKeepCollectionsInTheirOwnDirectories() async throws {
+        let otherFixture = try CLIStoreFixture()
+        defer { try? otherFixture.remove() }
+        let firstFacade = try XCTUnwrap(facade)
+        let otherFacade = CollectionsFacade(store: otherFixture.collections)
+
+        async let first = firstFacade.createCollection(name: "First fixture", category: nil, summary: "")
+        async let second = otherFacade.createCollection(name: "Second fixture", category: nil, summary: "")
+        _ = try await (first, second)
+
+        let firstCollections = await firstFacade.loadRuleCollections()
+        let otherCollections = await otherFacade.loadRuleCollections()
+        XCTAssertTrue(firstCollections.contains { $0.name == "First fixture" })
+        XCTAssertFalse(firstCollections.contains { $0.name == "Second fixture" })
+        XCTAssertTrue(otherCollections.contains { $0.name == "Second fixture" })
+        XCTAssertFalse(otherCollections.contains { $0.name == "First fixture" })
     }
 
     // MARK: - renameCollection

@@ -1,6 +1,7 @@
 import Foundation
 import KeyPathCore
 import Network
+import Synchronization
 
 // MARK: - KeyPath Action URI
 
@@ -1038,21 +1039,21 @@ actor KanataEventListener {
 
 /// Resumes a continuation once and ignores any later attempt (a second resume
 /// traps). Network can report another state after the first one was handled.
-final class ResumeOnce<Value: Sendable>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var continuation: CheckedContinuation<Value, Error>?
+final class ResumeOnce<Value: Sendable>: Sendable {
+    private let continuation: Mutex<CheckedContinuation<Value, Error>?>
 
     init(_ continuation: CheckedContinuation<Value, Error>) {
-        self.continuation = continuation
+        self.continuation = Mutex(continuation)
     }
 
     /// Returns false when the continuation was already resumed.
     @discardableResult
     func resume(with result: Result<Value, Error>) -> Bool {
-        lock.lock()
-        let pending = continuation
-        continuation = nil
-        lock.unlock()
+        let pending = continuation.withLock { continuation in
+            let pending = continuation
+            continuation = nil
+            return pending
+        }
         guard let pending else { return false }
         pending.resume(with: result)
         return true

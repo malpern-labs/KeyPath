@@ -6,6 +6,12 @@ import KeyPathCore
 actor DeviceRecognitionService {
     static let shared = DeviceRecognitionService()
 
+    private let detectionIndex: KeyboardDetectionIndex?
+
+    init(detectionIndex: KeyboardDetectionIndex? = nil) {
+        self.detectionIndex = detectionIndex
+    }
+
     struct RecognitionResult: Sendable {
         let keyboardName: String
         let manufacturer: String?
@@ -24,7 +30,8 @@ actor DeviceRecognitionService {
             return appleResult
         }
 
-        guard let match = KeyboardDetectionIndex.lookup(vendorID: event.vendorID, productID: event.productID) else {
+        let index = detectionIndex ?? .bundled
+        guard let match = index.lookup(vendorID: event.vendorID, productID: event.productID) else {
             return nil
         }
 

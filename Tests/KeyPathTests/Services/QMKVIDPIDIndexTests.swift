@@ -2,18 +2,8 @@
 import XCTest
 
 final class KeyboardDetectionIndexTests: KeyPathTestCase {
-    override func setUp() {
-        super.setUp()
-        KeyboardDetectionIndex.resetCache()
-    }
-
-    override func tearDown() {
-        KeyboardDetectionIndex.resetCache()
-        super.tearDown()
-    }
-
     func testExactVIDPIDMatch() {
-        KeyboardDetectionIndex.seedIndex(
+        let index = KeyboardDetectionIndex(
             exactEntries: [
                 .init(
                     matchKey: "4653:0001",
@@ -40,7 +30,7 @@ final class KeyboardDetectionIndexTests: KeyPathTestCase {
             ]
         )
 
-        let match = KeyboardDetectionIndex.lookup(vendorID: 0x4653, productID: 0x0001)
+        let match = index.lookup(vendorID: 0x4653, productID: 0x0001)
         XCTAssertNotNil(match)
         XCTAssertEqual(match?.record.matchType, .exactVIDPID)
         XCTAssertEqual(match?.record.qmkPath, "sofle/rev1")
@@ -48,7 +38,7 @@ final class KeyboardDetectionIndexTests: KeyPathTestCase {
     }
 
     func testVIDOnlyFallback() {
-        KeyboardDetectionIndex.seedIndex(
+        let index = KeyboardDetectionIndex(
             exactEntries: [],
             vendorFallbackEntries: [
                 .init(
@@ -64,7 +54,7 @@ final class KeyboardDetectionIndexTests: KeyPathTestCase {
             ]
         )
 
-        let match = KeyboardDetectionIndex.lookup(vendorID: 0x4653, productID: 0x9999)
+        let match = index.lookup(vendorID: 0x4653, productID: 0x9999)
         XCTAssertNotNil(match)
         XCTAssertEqual(match?.record.matchType, .vendorOnly)
         XCTAssertEqual(match?.record.qmkPath, "sofle")
@@ -72,14 +62,14 @@ final class KeyboardDetectionIndexTests: KeyPathTestCase {
     }
 
     func testNoMatch() {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [])
+        let index = KeyboardDetectionIndex(exactEntries: [])
 
-        let match = KeyboardDetectionIndex.lookup(vendorID: 0x0000, productID: 0x0000)
+        let match = index.lookup(vendorID: 0x0000, productID: 0x0000)
         XCTAssertNil(match)
     }
 
     func testExactMatchTakesPriorityOverVIDOnly() {
-        KeyboardDetectionIndex.seedIndex(
+        let index = KeyboardDetectionIndex(
             exactEntries: [
                 .init(
                     matchKey: "CB10:1256",
@@ -106,7 +96,7 @@ final class KeyboardDetectionIndexTests: KeyPathTestCase {
             ]
         )
 
-        let match = KeyboardDetectionIndex.lookup(vendorID: 0xCB10, productID: 0x1256)
+        let match = index.lookup(vendorID: 0xCB10, productID: 0x1256)
         XCTAssertEqual(match?.record.matchType, .exactVIDPID)
         XCTAssertEqual(match?.record.qmkPath, "crkbd/rev4_0/standard")
     }
@@ -122,16 +112,14 @@ final class KeyboardDetectionIndexTests: KeyPathTestCase {
     }
 
     func testEmptyIndex() {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [])
+        let index = KeyboardDetectionIndex(exactEntries: [])
 
-        let match = KeyboardDetectionIndex.lookup(vendorID: 0x4653, productID: 0x0001)
+        let match = index.lookup(vendorID: 0x4653, productID: 0x0001)
         XCTAssertNil(match)
     }
 
     func testBundleOverrideAddsExactMWaveMatch() {
-        KeyboardDetectionIndex.resetCache()
-
-        let match = KeyboardDetectionIndex.lookup(vendorID: 0x29EA, productID: 0x1001)
+        let match = KeyboardDetectionIndex.bundled.lookup(vendorID: 0x29EA, productID: 0x1001)
         XCTAssertNotNil(match)
         XCTAssertEqual(match?.record.matchType, .exactVIDPID)
         XCTAssertEqual(match?.record.source, .override)

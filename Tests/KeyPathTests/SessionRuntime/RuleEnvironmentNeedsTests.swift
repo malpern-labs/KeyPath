@@ -7,11 +7,6 @@ import XCTest
 /// inferred from what each rule generates; only non-inferable ones are declared.
 @MainActor
 final class RuleEnvironmentNeedsTests: XCTestCase {
-    override func tearDown() async throws {
-        BackendCapabilityProfile.testOverride = nil
-        try await super.tearDown()
-    }
-
     private func sessionProfile() throws -> BackendCapabilityProfile {
         try SessionBridgeTestFixture.requireAvailable()
         let host = SessionBridgeTestFixture.runtimeHost

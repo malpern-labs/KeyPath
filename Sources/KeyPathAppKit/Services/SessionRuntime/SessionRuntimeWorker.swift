@@ -2,6 +2,7 @@ import AppKit
 import Carbon
 import KeyPathCore
 import KeyPathPermissions
+import Synchronization
 #if KEYPATH_TAP_TIMEOUT_EXPERIMENT
     import CryptoKit
     import Darwin
@@ -450,7 +451,7 @@ public final class SessionRuntimeWorker {
     /// keeps the admitted digest, so the next tick looks again.
     nonisolated static func profileCheck(configPath: String?, admittedDigest: String?, record: SessionCapsMappingPolicy.Record,
                                          digestOf: (String) throws -> String,
-                                         admit: (String) -> SessionCapsRuntimeSupport.Admission) -> (digest: String?, fits: Bool)
+                                         admit: (String) -> SessionConfigurationAdmission) -> (digest: String?, fits: Bool)
     {
         guard let configPath, let current = try? digestOf(configPath), current != admittedDigest else {
             return (admittedDigest, true)
@@ -458,7 +459,7 @@ public final class SessionRuntimeWorker {
         return (current, profileFitsLease(admit(configPath), record: record))
     }
 
-    nonisolated static func profileFitsLease(_ admission: SessionCapsRuntimeSupport.Admission,
+    nonisolated static func profileFitsLease(_ admission: SessionConfigurationAdmission,
                                              record: SessionCapsMappingPolicy.Record) -> Bool
     {
         guard case .valid = admission.result, admission.managedCaps else { return false }
@@ -1322,20 +1323,15 @@ public final class SessionRuntimeWorker {
 
 /// One result passes from the HID queue to its synchronously waiting caller.
 /// Every access is protected; Value and Error can cross concurrency domains.
-private final class SessionRuntimeBackgroundResult<Value: Sendable>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var result: Result<Value, Error>?
+private final class SessionRuntimeBackgroundResult<Value: Sendable>: Sendable {
+    private let result = Mutex<Result<Value, Error>?>(nil)
 
     func store(_ value: Result<Value, Error>) {
-        lock.lock()
-        defer { lock.unlock() }
-        result = value
+        result.withLock { $0 = value }
     }
 
     func load() -> Result<Value, Error> {
-        lock.lock()
-        defer { lock.unlock() }
         // The semaphore is signaled only after store returns.
-        return result!
+        result.withLock { $0! }
     }
 }
