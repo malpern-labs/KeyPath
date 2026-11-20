@@ -293,6 +293,32 @@ final class ConfigurationRuleWriteTests: KeyPathTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: RecoverableRuleWrite.journalURL(directory).path))
     }
 
+    func testCommittedDeviceSelectionUsesTheServiceConfigurationDirectory() async throws {
+        let sharedURL = await DeviceSelectionStore.shared.persistenceURL
+        guard sharedURL == AppPaths.configDirectory.appendingPathComponent("DeviceSelection.json") else {
+            XCTFail("Shared device selection must be sandboxed before testing writes")
+            return
+        }
+        let expectedURL = directory.appendingPathComponent("DeviceSelection.json")
+        let selection = DeviceSelection(hash: "local", productKey: "Keyboard", isEnabled: true, lastSeen: .distantPast)
+        let committedCollections = [collection("Local device state")]
+        let sharedBefore = try? Data(contentsOf: sharedURL)
+
+        try await service.operationGate.withOperation { @MainActor permit in
+            let write = try await self.service.stageRuleState(
+                ruleCollections: committedCollections, customRules: [],
+                collectionStore: self.collections, customStore: self.customRules,
+                mutationPermit: permit, deviceSelections: [selection]
+            )
+            try await self.service.settleRuleWrite(write, commit: true, mutationPermit: permit)
+        }
+
+        let localStore = DeviceSelectionStore.testStore(at: expectedURL, cache: DeviceSelectionCache())
+        let stored = try await localStore.loadForMutation()
+        XCTAssertEqual(stored.map(\.hash), ["local"])
+        XCTAssertEqual(try? Data(contentsOf: sharedURL), sharedBefore)
+    }
+
     func testDeviceScopedCandidateIsRejectedBeforeAnySourceStoreChanges() async throws {
         try await service.saveRuleState(
             ruleCollections: [collection("Original")], customRules: [],

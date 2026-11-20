@@ -22,6 +22,21 @@ final class CLIConfigurationOperationTests: KeyPathTestCase {
         }
     }
 
+    func testPreviewReadsDeviceSelectionFromItsOwnConfigurationDirectory() async throws {
+        try await withDirectory { directory in
+            let metadata = directory.appendingPathComponent("DeviceSelection.json")
+            let malformed = Data("invalid device selection".utf8)
+            try malformed.write(to: metadata)
+            try await CLIConfigurationOperation.run(configDirectory: directory.path) { operation in
+                do {
+                    _ = try await operation.config.applyConfiguration(dryRun: true)
+                    XCTFail("Preview should refuse the unreadable device selection in its own directory")
+                } catch is DecodingError {}
+            }
+            XCTAssertEqual(try Data(contentsOf: metadata), malformed)
+        }
+    }
+
     func testEscapedCommandCannotWriteOrApplyAfterOwnershipEnds() async throws {
         try await withDirectory { directory in
             let escaped = try await CLIConfigurationOperation.run(configDirectory: directory.path) { $0 }
