@@ -72,6 +72,8 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 ### Open follow-ups
 
+- B7: make the published install path match the release it downloads. The homepage still offers 1.0.1, while the install guide describes the macOS 27 session runtime and shows its real permission screen. Label the build each guide applies to. Put macOS 27+ and Apple Silicon alongside the new build's download when its release artifact is live. Link one versioned 1.0.1 cleanup guide from setup and uninstall, and qualify that path on a Mac with the legacy components installed. Keep cleanup manual under [ADR-047](../adr/adr-047-pre-release-cleanup.md). Revisit automatic migration if tester evidence shows the manual path is a recurring barrier.
+
 - O7b: retain packs and their existing features. See the [CLI compile-boundary evaluation](#cli-compile-boundary-evaluation) for the extraction decision and verification criteria.
 - O8c: replace remaining implicit test-mode behavior with scoped dependencies where appropriate, retaining safeguards against real system operations in tests.
 - P6: finish the ownership audit and owner-lifetime checks. BuildInfo #1493, watcher/HID session and biometric ownership #1494, diagnostic callback synchronization #1495, and checked preference ownership #1497 have merged. Remaining framework and timer boundaries still need audit.
