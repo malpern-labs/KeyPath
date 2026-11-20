@@ -60,6 +60,7 @@ let package = Package(
             name: "KeyPathRulesCore",
             dependencies: ["KeyPathCore"],
             path: "Sources/KeyPathRulesCore",
+            resources: [.copy("Resources/rule-collection-catalog.json")],
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]

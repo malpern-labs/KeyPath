@@ -1,6 +1,7 @@
 import Foundation
 @testable import KeyPathAppKit
 @testable import KeyPathCore
+import KeyPathRulesCore
 import XCTest
 
 /// Regression coverage for the concurrency root cause behind the CLIPackCRUDTests

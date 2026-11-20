@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathRulesCore
 
 struct CollectionList: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -12,8 +12,7 @@ struct CollectionList: AsyncParsableCommand {
 
     mutating func run() async throws {
         let ctx = globals.outputContext
-        let facade = CollectionsFacade()
-        let collections = await facade.loadRuleCollections()
+        let collections = await RuleCollectionStore.shared.listCollections()
 
         CLIOutput.write(collections, context: ctx) {
             if collections.isEmpty {

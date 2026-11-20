@@ -1,4 +1,5 @@
 import Foundation
+import KeyPathCore
 
 private final class KeyPathAppKitBundleSentinel {}
 
@@ -7,29 +8,11 @@ private final class KeyPathAppKitBundleSentinel {}
 /// target bundles live in `Contents/Resources` rather than beside the app root
 /// where SwiftPM's generated accessor searches.
 enum KeyPathAppKitResources {
-    static let bundle = resolveBundle(
+    static let bundle = KeyPathResourceBundle.resolve(
+        named: "KeyPath_KeyPathAppKit.bundle",
         mainBundle: .main,
         codeBundle: Bundle(for: KeyPathAppKitBundleSentinel.self)
     )
-
-    static func resolveBundle(mainBundle: Bundle, codeBundle: Bundle) -> Bundle {
-        let candidates = [
-            mainBundle.resourceURL?.appendingPathComponent("KeyPath_KeyPathAppKit.bundle"),
-            codeBundle.resourceURL?.appendingPathComponent("KeyPath_KeyPathAppKit.bundle"),
-            mainBundle.bundleURL.deletingLastPathComponent().appendingPathComponent("KeyPath_KeyPathAppKit.bundle"),
-            codeBundle.bundleURL.deletingLastPathComponent().appendingPathComponent("KeyPath_KeyPathAppKit.bundle"),
-            mainBundle.resourceURL,
-            codeBundle.resourceURL,
-        ].compactMap { $0 }
-
-        for candidate in candidates {
-            if let bundle = Bundle(url: candidate) {
-                return bundle
-            }
-        }
-
-        return mainBundle
-    }
 
     static var resourceURL: URL? {
         bundle.resourceURL ?? Bundle.main.resourceURL

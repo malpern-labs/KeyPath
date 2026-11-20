@@ -1,12 +1,11 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
 /// Lightweight persistence layer for rule collections.
 /// Stores user-defined collections alongside the Kanata config inside the ~/.config/keypath directory.
-actor RuleCollectionStore {
-    static let shared = RuleCollectionStore()
-    static let currentSchemaVersion = 1
+package actor RuleCollectionStore {
+    package static let shared = RuleCollectionStore()
+    package static let currentSchemaVersion = 1
 
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
@@ -14,11 +13,11 @@ actor RuleCollectionStore {
     private let fileManager: FileManager
     private let catalog: RuleCollectionCatalog
 
-    struct LoadResult: Sendable {
-        var collections: [RuleCollection]
-        var failedCollectionNames: [String]
-        var wasFullReset: Bool
-        var backupPath: String?
+    package struct LoadResult: Sendable {
+        package var collections: [RuleCollection]
+        package var failedCollectionNames: [String]
+        package var wasFullReset: Bool
+        package var backupPath: String?
     }
 
     private struct VersionedCollections: Codable {
@@ -46,7 +45,7 @@ actor RuleCollectionStore {
         var collections: [FailableDecodable<RuleCollection>]
     }
 
-    init(
+    package init(
         fileURL: URL? = nil,
         fileManager: FileManager = Foundation.FileManager(),
         catalog: RuleCollectionCatalog = RuleCollectionCatalog()
@@ -72,19 +71,35 @@ actor RuleCollectionStore {
     }
 
     /// Test-only compatibility alias for sandbox assertions.
-    var debugFileURL: URL {
+    package var debugFileURL: URL {
         persistenceURL
     }
 
-    func loadCollections() -> [RuleCollection] {
+    package func loadCollections() -> [RuleCollection] {
         loadCollectionsDetailed().collections
+    }
+
+    package func listCollections() -> [CLIRuleCollection] {
+        loadCollections().map(CLIRuleCollection.init(from:))
+    }
+
+    package func showCollection(nameOrId: String) throws -> CLIRuleCollection? {
+        let collections = loadCollections()
+        guard let index = try RuleCollectionLookup.index(nameOrId: nameOrId, in: collections) else { return nil }
+        return CLIRuleCollection(from: collections[index])
+    }
+
+    package func showCollectionDetail(nameOrId: String) throws -> CLIRuleCollectionDetail? {
+        let collections = loadCollections()
+        guard let index = try RuleCollectionLookup.index(nameOrId: nameOrId, in: collections) else { return nil }
+        return CLIRuleCollectionDetail(from: collections[index])
     }
 
     /// Mutation owners need the persisted revision itself, without catalog
     /// defaults merged in. Falling back to defaults here could overwrite a
     /// configuration that was generated from an intentionally minimal source
     /// revision.
-    func loadForMutation() throws -> [RuleCollection] {
+    package func loadForMutation() throws -> [RuleCollection] {
         let data: Data
         do { data = try Data(contentsOf: fileURL) }
         catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError { return [] }
@@ -94,7 +109,7 @@ actor RuleCollectionStore {
         return try decoder.decode([RuleCollection].self, from: data)
     }
 
-    func loadCollectionsDetailed() -> LoadResult {
+    package func loadCollectionsDetailed() -> LoadResult {
         guard fileManager.fileExists(atPath: fileURL.path) else {
             return LoadResult(collections: catalog.defaultCollections(), failedCollectionNames: [], wasFullReset: false)
         }
@@ -218,7 +233,7 @@ actor RuleCollectionStore {
     /// Make a restorable copy before a user-approved catalog update. This is a
     /// separate, explicit backup from corruption recovery: it records a choice,
     /// not a failed decode.
-    func backupForCatalogUpdate() throws -> String? {
+    package func backupForCatalogUpdate() throws -> String? {
         guard fileManager.fileExists(atPath: fileURL.path) else { return nil }
         let backupDir = fileURL.deletingLastPathComponent().appendingPathComponent(".backups")
         try fileManager.createDirectory(at: backupDir, withIntermediateDirectories: true)
@@ -251,17 +266,17 @@ actor RuleCollectionStore {
         }
     }
 
-    func saveCollections(_ collections: [RuleCollection]) throws {
+    package func saveCollections(_ collections: [RuleCollection]) throws {
         let directory = fileURL.deletingLastPathComponent()
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         try encodedCollections(collections).write(to: fileURL, options: .atomic)
     }
 
-    func encodedCollections(_ collections: [RuleCollection]) throws -> Data {
+    package func encodedCollections(_ collections: [RuleCollection]) throws -> Data {
         try encoder.encode(VersionedCollections(schemaVersion: Self.currentSchemaVersion, collections: collections))
     }
 
-    var persistenceURL: URL {
+    package var persistenceURL: URL {
         fileURL
     }
 
@@ -284,7 +299,7 @@ struct FailableDecodable<T: Decodable>: Decodable {
 }
 
 #if DEBUG
-    extension RuleCollectionStore {
+    package extension RuleCollectionStore {
         /// Convenience initializer used by tests so they can provide a sandboxed location.
         nonisolated static func testStore(at url: URL) -> RuleCollectionStore {
             RuleCollectionStore(fileURL: url)

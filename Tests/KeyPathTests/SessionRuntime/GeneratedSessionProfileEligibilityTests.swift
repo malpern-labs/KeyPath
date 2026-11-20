@@ -171,7 +171,7 @@ final class GeneratedSessionProfileEligibilityTests: KeyPathTestCase {
     }
 
     private func originalCatalog() throws -> [RuleCollection] {
-        let url = try XCTUnwrap(KeyPathAppKitResources.url(forResource: "rule-collection-catalog", withExtension: "json"))
+        let url = try XCTUnwrap(RuleCollectionCatalog.catalogURL)
         return try JSONDecoder().decode([RuleCollection].self, from: Data(contentsOf: url))
     }
 

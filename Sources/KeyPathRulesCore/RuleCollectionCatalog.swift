@@ -1,43 +1,11 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
 /// Provides predefined rule collections that ship with the app.
-struct RuleCollectionCatalog {
-    /// Why a built-in collection cannot run on the active backend, or nil. Derived
-    /// from the keys the collection's catalog definition emits, so a collection
-    /// becomes unavailable (or available) with the backend, not a hard-coded id.
-    ///
-    /// Uses the collection as a profile receives it (the fresh-profile default),
-    /// not the raw catalog entry: macOS Function Keys is stored as its media
-    /// definition but always installed in function mode, and media mode's own
-    /// availability is `FunctionKeyMode.isSupportedInDriverlessSession`.
-    ///
-    /// The sentence is the admission engine's (phase 4d), so the gallery, the
-    /// rules list and the toggle all say the same thing. Only the backend's
-    /// own limits count here: whether a companion app is installed is a
-    /// question for install or toggle time, with the user's real files.
-    static func driverlessUnavailableReason(for id: UUID, profile: BackendCapabilityProfile = .shared) -> String? {
-        guard let collection = installedDefinitions.first(where: { $0.id == id }) else { return nil }
-        var enabled = collection
-        enabled.isEnabled = true
-        let state = AdmissionEngine.State(collections: [enabled])
-        let verdicts = AdmissionEngine.evaluate(state, profile: profile, fileExists: { _ in true })
-        guard let verdict = verdicts.first(where: { if case .unmetNeed = $0.reason { return true }; return false })
-        else { return nil }
-        return AdmissionVerdictPresenter.present(verdict) { _ in collection.name }.explanation
-    }
+package struct RuleCollectionCatalog {
+    package init() {}
 
-    private static let installedDefinitions = RuleCollectionCatalog().defaultCollections()
-
-    /// True when any key these mappings emit is outside the backend's profile.
-    static func emitsUnsupportedOutput(_ mappings: [KeyMapping],
-                                       profile: BackendCapabilityProfile = .shared) -> Bool
-    {
-        !RuleCollectionNeedsExtractor.unmet(RuleCollectionNeedsExtractor.needs(for: mappings), profile: profile).isEmpty
-    }
-
-    func defaultCollections() -> [RuleCollection] {
+    package func defaultCollections() -> [RuleCollection] {
         // Fresh profiles use conservative keyboard behavior. Keep every built-in
         // definition available without silently changing persisted enable states.
         Self.builtInList.map { collection in
@@ -52,12 +20,12 @@ struct RuleCollectionCatalog {
     }
 
     /// The catalog's own definitions, before fresh-profile adjustments.
-    func originalCollections() -> [RuleCollection] {
+    package func originalCollections() -> [RuleCollection] {
         Self.builtInList
     }
 
     /// Returns the launcher collection (managed separately via overlay drawer)
-    func launcherCollection() -> RuleCollection {
+    package func launcherCollection() -> RuleCollection {
         Self.builtInList.first { $0.id == RuleCollectionIdentifier.launcher }
             ?? RuleCollection(
                 id: RuleCollectionIdentifier.launcher,
@@ -70,7 +38,7 @@ struct RuleCollectionCatalog {
             )
     }
 
-    func upgradedCollection(from existing: RuleCollection) -> RuleCollection {
+    package func upgradedCollection(from existing: RuleCollection) -> RuleCollection {
         guard let updated = builtInCollections[existing.id] else { return existing }
         var merged = updated
         merged.isEnabled = existing.isEnabled
@@ -125,8 +93,19 @@ struct RuleCollectionCatalog {
 
     // MARK: - Catalog Data (loaded from JSON)
 
+    package static var catalogURL: URL? {
+        catalogBundle.url(forResource: "rule-collection-catalog", withExtension: "json")
+            ?? Bundle.main.url(forResource: "rule-collection-catalog", withExtension: "json")
+    }
+
+    private static let catalogBundle = KeyPathResourceBundle.resolve(
+        named: "KeyPath_KeyPathRulesCore.bundle",
+        mainBundle: .main,
+        codeBundle: Bundle(for: RuleCollectionCatalogBundleSentinel.self)
+    )
+
     private static let builtInList: [RuleCollection] = {
-        guard let url = KeyPathAppKitResources.url(forResource: "rule-collection-catalog", withExtension: "json"),
+        guard let url = catalogURL,
               let data = try? Data(contentsOf: url),
               let collections = try? JSONDecoder().decode([RuleCollection].self, from: data)
         else {
@@ -148,7 +127,7 @@ struct RuleCollectionCatalog {
     /// Regenerated mappings take the ids of the saved mappings they replace.
     /// Fresh ids made an unchanged collection compare unequal, so it was offered
     /// as a catalog update again after every apply.
-    static func preservingIdentity(of existing: [KeyMapping], in regenerated: [KeyMapping]) -> [KeyMapping] {
+    package static func preservingIdentity(of existing: [KeyMapping], in regenerated: [KeyMapping]) -> [KeyMapping] {
         let ids = Dictionary(existing.map { ($0.input, $0.id) }, uniquingKeysWith: { first, _ in first })
         return regenerated.map { mapping in
             guard let id = ids[mapping.input] else { return mapping }
@@ -162,7 +141,7 @@ struct RuleCollectionCatalog {
         }
     }
 
-    static func windowMappings(for convention: WindowKeyConvention) -> [KeyMapping] {
+    package static func windowMappings(for convention: WindowKeyConvention) -> [KeyMapping] {
         switch convention {
         case .standard:
             [
@@ -200,7 +179,7 @@ struct RuleCollectionCatalog {
     }
 
     /// Generate function key mappings for a given mode
-    static func functionKeyMappings(for mode: FunctionKeyMode) -> [KeyMapping] {
+    package static func functionKeyMappings(for mode: FunctionKeyMode) -> [KeyMapping] {
         switch mode {
         case .media:
             [
@@ -236,10 +215,4 @@ struct RuleCollectionCatalog {
     }
 }
 
-public extension FunctionKeyMode {
-    /// Whether the active backend can emit every key this mode maps F1–F12 to.
-    /// Media mode needs consumer-page output, which the driverless session lacks.
-    var isSupportedInDriverlessSession: Bool {
-        !RuleCollectionCatalog.emitsUnsupportedOutput(RuleCollectionCatalog.functionKeyMappings(for: self))
-    }
-}
+private final class RuleCollectionCatalogBundleSentinel {}

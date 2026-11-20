@@ -3,6 +3,7 @@ import KeyPathCLISupport
 import KeyPathCore
 @testable import KeyPathInstallationWizard
 import KeyPathPermissions
+import KeyPathRulesCore
 import KeyPathWizardCore
 import XCTest
 

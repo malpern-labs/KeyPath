@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import KeyPathAppKit
+import KeyPathRulesCore
 
 struct CollectionDelete: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

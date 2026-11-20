@@ -1,21 +1,21 @@
 import Foundation
-@testable import KeyPathAppKit
+import KeyPathCore
 import XCTest
 
 final class KeyPathAppKitResourcesTests: XCTestCase {
     func testResolverFindsResourcesInPackagedAppLayout() throws {
-        let fixture = try PackagedResourceBundleFixture()
-        defer { fixture.remove() }
+        for bundleName in ["KeyPath_KeyPathAppKit.bundle", "KeyPath_KeyPathRulesCore.bundle"] {
+            let fixture = try PackagedResourceBundleFixture(bundleName: bundleName)
+            defer { fixture.remove() }
 
-        let appKitBundle = KeyPathAppKitResources.resolveBundle(
-            mainBundle: fixture.appBundle,
-            codeBundle: fixture.appBundle
-        )
-        XCTAssertEqual(
-            appKitBundle.bundleURL.standardizedFileURL,
-            fixture.resourceBundleURL.standardizedFileURL
-        )
-        XCTAssertNotNil(appKitBundle.url(forResource: "packaged-probe", withExtension: "txt"))
+            let resolved = KeyPathResourceBundle.resolve(
+                named: bundleName,
+                mainBundle: fixture.appBundle,
+                codeBundle: fixture.appBundle
+            )
+            XCTAssertEqual(resolved.bundleURL.standardizedFileURL, fixture.resourceBundleURL.standardizedFileURL)
+            XCTAssertNotNil(resolved.url(forResource: "packaged-probe", withExtension: "txt"))
+        }
     }
 }
 
@@ -24,14 +24,14 @@ private struct PackagedResourceBundleFixture {
     let appBundle: Bundle
     let resourceBundleURL: URL
 
-    init() throws {
+    init(bundleName: String) throws {
         let fileManager = FileManager.default
         rootURL = fileManager.temporaryDirectory
             .appendingPathComponent("keypath-packaged-resources-\(UUID().uuidString)", isDirectory: true)
         let appURL = rootURL.appendingPathComponent("KeyPath.app", isDirectory: true)
         let contentsURL = appURL.appendingPathComponent("Contents", isDirectory: true)
         let resourcesURL = contentsURL.appendingPathComponent("Resources", isDirectory: true)
-        resourceBundleURL = resourcesURL.appendingPathComponent("KeyPath_KeyPathAppKit.bundle", isDirectory: true)
+        resourceBundleURL = resourcesURL.appendingPathComponent(bundleName, isDirectory: true)
         try fileManager.createDirectory(at: resourcesURL, withIntermediateDirectories: true)
         try Self.writeInfoPlist(
             to: contentsURL.appendingPathComponent("Info.plist"),
