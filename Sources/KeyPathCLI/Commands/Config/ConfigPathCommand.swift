@@ -1,8 +1,7 @@
 import ArgumentParser
-import Foundation
-import KeyPathAppKit
+import KeyPathCore
 
-struct ConfigPath: AsyncParsableCommand {
+struct ConfigPath: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "path",
         abstract: "Print the configuration file path"
@@ -10,9 +9,9 @@ struct ConfigPath: AsyncParsableCommand {
 
     @OptionGroup var globals: GlobalOptions
 
-    mutating func run() async throws {
+    func run() {
         let ctx = globals.outputContext
-        let path = await MainActor.run { ConfigFacade().configPath() }
+        let path = KeyPathConstants.Config.mainConfigPath
 
         CLIOutput.write(["path": path], context: ctx) {
             path

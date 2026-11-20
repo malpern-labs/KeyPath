@@ -61,11 +61,6 @@ public struct ConfigFacade: Sendable {
     }
 
     @MainActor
-    public func configPath() -> String {
-        ConfigurationService(configDirectory: configDirectory).configurationPath
-    }
-
-    @MainActor
     public func validateConfig() async -> CLIValidationResult {
         let service = ConfigurationService(configDirectory: configDirectory)
         let config = await service.current()
