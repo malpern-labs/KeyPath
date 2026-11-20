@@ -172,6 +172,12 @@ Experiment freely.
 
 ---
 
+### Edit a different layer
+
+Open the overlay Mapper and choose a layer in the header. With the Mapper focused, press **Shift–Command–[** for the previous layer or **Shift–Command–]** for the next. The layer in the header is the one you’re editing. Your keyboard still uses its normal active layer in other apps.
+
+When a single-key remap takes effect, the edited key briefly gets a green outline. With the overlay focused, use **Edit → Undo Remap** to restore the previous assignment, including a rule or collection the save disabled. If a newer edit conflicts with that restoration, KeyPath keeps the current rules.
+
 ## What's next?
 
 You've seen two kinds of remapping — a simple key swap (Caps Lock → Escape) and a hold-activated layer (Home Row Arrows). That second one is the gateway to much more.
