@@ -56,7 +56,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **B7** Docs | 🟡 | Public docs republished, archive removed, and runtime architecture page rewritten and published (#1394, #1399, #1402, #1437). The macOS 27 Accessibility screenshot remains. |
 | **P1** Sparkle | ✅ | See row 5. |
 | **P2** Apple Events usage string | ✅ | #1404. Verify the consent prompt on a clean VM. |
-| **P3** Blocking subprocesses | ✅ | `SecCodeCopySelf` replaces the signing shell-out and pipes are drained before waiting (#1404). Migration discovery is async and bounded, with retryable unknown states and tested stop routing (#1480). The separate system-probe pipe-drain follow-up is still under validation. |
+| **P3** Blocking subprocesses | ✅ | `SecCodeCopySelf` replaces the signing shell-out and pipes are drained before waiting (#1404). Migration discovery is async and bounded, with retryable unknown states and tested stop routing (#1480). System probes also drain both output pipes concurrently (#1483); the serialized full gate passed 5,534 tests. Latest-master deployment and live verification remain separate release checks. |
 | **P4** Shell-outs with API replacements | ✅ | Hidden flags, editor launch, function key preference writes, and signals use direct APIs. Spotlight search keeps a cancellable subprocess (#1426). |
 | **P5** `os.Logger` in `AppLogger` | ✅ | Unified log output added (#1427). File logger state is synchronized and queued writes flush (#1445). |
 | **P6** Concurrency leftovers | 🟡 | Feature flags and the app icon cache were synchronized (#1439). Three main-actor service conformances are compiler checked (#1481). Broader lock, timer, and actor-isolation work remains. |
