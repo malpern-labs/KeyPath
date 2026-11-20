@@ -531,13 +531,10 @@ public final class SessionRuntimeWorker {
             keyCode: UInt16(event.getIntegerValueField(.keyboardEventKeycode)),
             isFlagsChanged: type == .flagsChanged, flags: event.flags.rawValue
         )
-        for modifier: UInt32 in 224 ... 231 {
-            if runtime?.isInputMapped(usagePage: 7, usage: modifier) == false,
-               event.flags.rawValue & SessionKeyMap.deviceModifierFlag(for: modifier) != 0
-            {
-                physicalPassthroughFlags |= SessionKeyMap.modifierFlags(for: modifier)
-            }
-        }
+        let nativeModifiers = physicalModifiers.updateKeyboardModifiers(
+            flags: event.flags.rawValue, engineInputs: inputs
+        ) { runtime?.isInputMapped(usagePage: 7, usage: $0) != false }
+        physicalPassthroughFlags |= nativeModifiers.flags
         guard let capturedUsage = SessionKeyMap.keyCodeToUsage[UInt16(event.getIntegerValueField(.keyboardEventKeycode))] else {
             return original
         }
@@ -575,9 +572,16 @@ public final class SessionRuntimeWorker {
             guard let logical = capsInput.logicalUsage(capturedUsage: capturedUsage, value: value) else { return original }
             usage = logical
         }
-        guard runtime?.isInputMapped(usagePage: 7, usage: usage) == true else {
-            event.flags = CGEventFlags(rawValue: outputs.modifierFlags | physicalPassthroughFlags
-                | event.flags.intersection(Self.keyIntrinsicFlags.union(.maskAlphaShift)).rawValue)
+        let nativeModifierEvent = type == .flagsChanged
+            && nativeModifiers.nativeEventSides & SessionKeyMap.deviceModifierFlag(for: usage) != 0
+        let mapped = runtime?.isInputMapped(usagePage: 7, usage: usage) == true
+        let heldEngineModifier = type == .flagsChanged && inputs.contains(usage)
+        if nativeModifierEvent || (!mapped && !heldEngineModifier) {
+            let flags = Self.inputPassthroughFlags(
+                original: event.flags, modifiers: outputs.modifierFlags | physicalPassthroughFlags,
+                preserveEventMetadata: nativeModifierEvent
+            )
+            if flags != event.flags { event.flags = flags }
             return original
         }
         // Do not consume a release/repeat for a press that preceded this tap.
@@ -1076,6 +1080,20 @@ public final class SessionRuntimeWorker {
     /// Mission Control Ctrl+arrow Space switches (Control + Fn in
     /// `com.apple.symbolichotkeys`), which then silently never fire.
     nonisolated static let keyIntrinsicFlags: CGEventFlags = [.maskSecondaryFn, .maskNumericPad]
+
+    private nonisolated static let standardModifierMask = (UInt32(224) ... 231).reduce(UInt64(0)) {
+        $0 | SessionKeyMap.modifierFlags(for: $1)
+    }
+
+    nonisolated static func inputPassthroughFlags(
+        original: CGEventFlags, modifiers: UInt64, preserveEventMetadata: Bool
+    ) -> CGEventFlags {
+        // Keep non-modifier metadata on the original hardware transition.
+        let carried = preserveEventMetadata
+            ? original.rawValue & ~standardModifierMask
+            : original.intersection(keyIntrinsicFlags.union(.maskAlphaShift)).rawValue
+        return CGEventFlags(rawValue: modifiers | carried)
+    }
 
     /// The flags a posted output carries: Kanata's modifiers, physical
     /// modifiers Kanata does not handle, the live Caps Lock state, and the

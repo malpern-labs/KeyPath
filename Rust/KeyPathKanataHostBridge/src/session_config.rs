@@ -151,6 +151,57 @@ fn action_supported(
     }
 }
 
+/// Leave implicitly mapped identity modifiers on macOS's native event path.
+/// A stateful layout can observe a modifier even when it does not remap it.
+#[cfg(any(feature = "passthru-output-spike", test))]
+pub(crate) fn preserve_native_modifiers(cfg: &mut Cfg) {
+    use kanata_parser::cfg::Overrides;
+
+    let layout = cfg.layout.b();
+    let [layer] = layout.layers else {
+        return;
+    };
+    if !cfg.options.process_unmapped_keys
+        || cfg.options.block_unmapped_keys
+        || cfg.options.sequence_always_on
+        || cfg.options.start_alias.is_some()
+        || cfg.options.mouse_movement_key.is_some()
+        || !cfg.sequences.is_empty()
+        || cfg.layout.b().chords_v2.is_some()
+        || cfg.overrides != Overrides::new(&[])
+        || cfg.zippy.is_some()
+        || cfg.input_devices.is_some()
+        || !cfg.fake_keys.is_empty()
+    {
+        return;
+    }
+
+    // In a single stateless layer, transparency resolves at the same
+    // physical position in the parser's source fallback.
+    let physical = &layer[0];
+    let resolved = |position| match physical[position] {
+        Action::Trans => layout.src_keys[position],
+        action => action,
+    };
+    if !(0..physical.len())
+        .all(|position| matches!(resolved(position), Action::KeyCode(_) | Action::NoOp))
+    {
+        return;
+    }
+
+    cfg.mapped_keys.retain(|input| {
+        if !input.is_modifier() || cfg.source_keys.contains(input) {
+            return true;
+        }
+        let position = *input as usize;
+        let identity = Action::KeyCode(KeyCode::from(*input));
+        // If another key emits the same modifier, keep both presses in the
+        // engine so it continues to arbitrate their shared output state.
+        resolved(position) != identity
+            || (0..physical.len()).any(|index| index != position && resolved(index) == identity)
+    });
+}
+
 pub(crate) fn supported(cfg: &Cfg, usages: &[u32]) -> bool {
     use kanata_parser::cfg::Overrides;
     if cfg.input_devices.is_some()
@@ -338,6 +389,57 @@ mod tests {
     /// Keyboard-page usages the Swift host passes (SessionKeyMap minus Caps):
     /// letters, F1, F12, Home, Delete Forward. Enough to pin the rule.
     const HOST: &[u32] = &[4, 58, 69, 74, 76];
+
+    #[test]
+    fn function_key_collection_keeps_native_modifiers() {
+        let source =
+            include_str!("../../../Tests/KeyPathTests/Integration/GoldenConfigs/default.kbd");
+        let mut cfg = kanata_parser::cfg::new_from_str(source, Default::default()).unwrap();
+        let original = cfg.mapped_keys.clone();
+        assert!(original.contains(&OsCode::KEY_LEFTCTRL));
+        assert!(original.contains(&OsCode::KEY_LEFTSHIFT));
+
+        preserve_native_modifiers(&mut cfg);
+
+        assert!(!cfg.mapped_keys.iter().any(|key| key.is_modifier()));
+        assert_eq!(
+            cfg.mapped_keys,
+            original
+                .into_iter()
+                .filter(|key| !key.is_modifier())
+                .collect()
+        );
+    }
+
+    #[test]
+    fn native_modifier_policy_preserves_engine_dependencies() {
+        for (source, expected_control, expected_shift) in [
+            ("(defsrc lctl)(deflayer base a)", true, false),
+            ("(defsrc a)(deflayer base lctl)", true, false),
+            (
+                "(defsrc a)(deflayer base (tap-hold-press 200 200 a b))",
+                true,
+                true,
+            ),
+            ("(defsrc a)(deflayer base a)(deflayer nav b)", true, true),
+        ] {
+            let source = format!("(defcfg process-unmapped-keys yes){source}");
+            let mut cfg = kanata_parser::cfg::new_from_str(&source, Default::default()).unwrap();
+
+            preserve_native_modifiers(&mut cfg);
+
+            assert_eq!(
+                cfg.mapped_keys.contains(&OsCode::KEY_LEFTCTRL),
+                expected_control,
+                "{source}"
+            );
+            assert_eq!(
+                cfg.mapped_keys.contains(&OsCode::KEY_LEFTSHIFT),
+                expected_shift,
+                "{source}"
+            );
+        }
+    }
 
     #[test]
     fn output_key_names_follow_the_session_output_rule() {

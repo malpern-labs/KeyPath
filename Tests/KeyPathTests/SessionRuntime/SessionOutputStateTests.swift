@@ -16,6 +16,34 @@ final class SessionOutputStateTests: XCTestCase {
         XCTAssertEqual(state.passthroughFlags(keyCode: 79, isFlagsChanged: false, flags: function), 0)
     }
 
+    func testNativeControlReleaseStaysNativeAfterReloadMapsIt() {
+        var state = SessionPhysicalModifierState()
+        let control: UInt32 = 224
+        let controlFlags = SessionKeyMap.modifierFlags(for: control)
+        let controlSide = SessionKeyMap.deviceModifierFlag(for: control)
+
+        XCTAssertEqual(state.updateKeyboardModifiers(flags: controlFlags, engineInputs: []) { _ in false }.flags, controlFlags)
+        XCTAssertEqual(state.updateKeyboardModifiers(flags: controlFlags, engineInputs: []) { _ in true }.flags, controlFlags)
+
+        let release = state.updateKeyboardModifiers(flags: 0, engineInputs: []) { _ in true }
+        XCTAssertEqual(release.flags, 0)
+        XCTAssertEqual(release.nativeEventSides, controlSide)
+
+        let nextPress = state.updateKeyboardModifiers(flags: controlFlags, engineInputs: []) { _ in true }
+        XCTAssertEqual(nextPress.flags, 0)
+        XCTAssertEqual(nextPress.nativeEventSides, 0)
+    }
+
+    func testUnmappingHeldEngineControlDoesNotMakeItNative() {
+        var state = SessionPhysicalModifierState()
+        let control: UInt32 = 224
+        let flags = SessionKeyMap.modifierFlags(for: control)
+
+        let afterReload = state.updateKeyboardModifiers(flags: flags, engineInputs: [control]) { _ in false }
+        XCTAssertEqual(afterReload.flags, 0)
+        XCTAssertEqual(afterReload.nativeEventSides, 0)
+    }
+
     private func event(_ usage: UInt32, _ value: UInt64, page: UInt32 = 7) -> KanataHostBridgePassthruOutputEvent {
         .init(value: value, usagePage: page, usage: usage)
     }
