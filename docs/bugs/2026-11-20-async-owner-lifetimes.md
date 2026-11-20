@@ -66,3 +66,7 @@ then reached the unchanged snapshot target before its shared 240-second test
 budget expired. This is a timeout, not a passing full gate. The snapshot class
 was subsequently checked separately with rendering explicitly enabled; see the
 PR validation record for its result. CI remains required before merge.
+
+The rendered ScenarioSnapshotTests rerun passed all 39 cases in 26 seconds,
+with zero skips and zero Swift warnings. The initial focused invocation omitted
+KEYPATH_SNAPSHOTS=1 and skipped all 39; it is not counted as validation.
