@@ -19,15 +19,10 @@ public class KeyboardCapture {
     @ObservationIgnored var sequenceCallback: ((KeySequence) -> Void)?
     @ObservationIgnored var isCapturing = false
     @ObservationIgnored var isContinuous = false
-    @ObservationIgnored private(set) var suppressEvents = true // default: suppress during raw capture (exposed for tests)
     @ObservationIgnored var pauseTimer: Timer?
     @ObservationIgnored let pauseDuration: TimeInterval = 2.0 // 2 seconds pause to auto-stop
     @ObservationIgnored var noKeyBreadcrumbTimer: Timer?
     @ObservationIgnored var anyEventSeen = false
-
-    // TCP-based capture for when Kanata is running
-    @ObservationIgnored var tcpKeyInputObserver: NotificationCenter.ObservationToken?
-    @ObservationIgnored var isTcpCaptureMode = false
 
     // Enhanced sequence capture properties
     @ObservationIgnored var captureMode: CaptureMode = .single
@@ -42,14 +37,7 @@ public class KeyboardCapture {
     @ObservationIgnored var lastCapturedKey: KeyPress?
     @ObservationIgnored var lastCaptureAt: Date?
     @ObservationIgnored let dedupWindow: TimeInterval = 0.04 // 40ms
-    @ObservationIgnored var currentTapLocation: CGEventTapLocation = .cgSessionEventTap
     @ObservationIgnored var pressedModifierKeyCodes: Set<Int64> = []
-
-    /// Non-blocking check for whether Kanata is running, using cached service state.
-    /// Replaces the old blocking `pgrep` call that could stall the main actor.
-    func fastProbeKanataRunning(timeout _: TimeInterval = 0.25) -> Bool {
-        false
-    }
 
     // Emergency stop sequence detection
     @ObservationIgnored var emergencyObserver: ObservingEventTap?
@@ -92,13 +80,7 @@ public class KeyboardCapture {
             return
         }
 
-        // Use TCP-based capture when Kanata is running, otherwise CGEvent
-        if fastProbeKanataRunning() {
-            setupTcpCapture()
-        } else {
-            currentTapLocation = .cgSessionEventTap
-            setupEventTap(at: currentTapLocation)
-        }
+        setupEventTap()
     }
 
     func startContinuousCapture(callback: @escaping (String) -> Void) {
@@ -136,12 +118,7 @@ public class KeyboardCapture {
             return
         }
 
-        // Use TCP-based capture when Kanata is running, otherwise CGEvent
-        if fastProbeKanataRunning() {
-            setupTcpCapture()
-        } else {
-            setupEventTap()
-        }
+        setupEventTap()
     }
 
     /// Enhanced capture method that supports different capture modes
@@ -156,13 +133,8 @@ public class KeyboardCapture {
         isContinuous = (mode == .sequence)
 
         // Trust the caller to have validated permissions before calling this method
-        // Determine capture mode. Use TCP when Kanata is running to avoid tap conflicts.
-        let kanataRunning = fastProbeKanataRunning()
-        suppressEvents = !kanataRunning // Only suppress when not using TCP mode
         anyEventSeen = false
-        AppLogger.shared.log(
-            "🎹 [KeyboardCapture] Starting \(mode) capture (mode=\(kanataRunning ? "TCP" : "CGEvent"), kanataRunning=\(kanataRunning))"
-        )
+        AppLogger.shared.log("🎹 [KeyboardCapture] Starting \(mode) capture")
 
         // Install a local keyDown monitor to (a) prevent the audible beep in this app
         // and (b) guarantee immediate UI feedback even if the global tap is delayed.
@@ -188,27 +160,23 @@ public class KeyboardCapture {
                 }
             }
         }
-        // Breadcrumb if no events arrive within 1s
+        // These timers are scheduled on the main run loop. Handle expiry there
+        // so invalidating a timer also prevents a queued callback on the next capture.
         noKeyBreadcrumbTimer?.invalidate()
         noKeyBreadcrumbTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) {
             [weak self] _ in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 guard let self else { return }
                 if self.isCapturing, !self.anyEventSeen {
                     AppLogger.shared
                         .log(
-                            "⏱️ [KeyboardCapture] No key events received after 1.0s (mode=\(self.captureMode), captureMode=\(self.isTcpCaptureMode ? "TCP" : "CGEvent"))"
+                            "⏱️ [KeyboardCapture] No key events received after 1.0s (mode=\(self.captureMode), captureMode=CGEvent)"
                         )
                 }
             }
         }
 
-        // Use TCP when Kanata is running to avoid tap conflicts
-        if kanataRunning {
-            setupTcpCapture()
-        } else {
-            setupEventTap()
-        }
+        setupEventTap()
     }
 
     func stopCapture() {
@@ -216,7 +184,6 @@ public class KeyboardCapture {
 
         isCapturing = false
         isContinuous = false
-        suppressEvents = true
         captureCallback = nil
         sequenceCallback = nil
         capturedKeys = []
@@ -231,13 +198,6 @@ public class KeyboardCapture {
         sequenceTimer = nil
         noKeyBreadcrumbTimer?.invalidate()
         noKeyBreadcrumbTimer = nil
-
-        // Clean up TCP capture mode
-        if let observer = tcpKeyInputObserver {
-            NotificationCenter.default.removeObserver(observer)
-            tcpKeyInputObserver = nil
-        }
-        isTcpCaptureMode = false
 
         // Clean up CGEvent tap
         if let eventTap {
@@ -265,7 +225,7 @@ public class KeyboardCapture {
         pressedModifierKeyCodes.removeAll()
     }
 
-    private func setupEventTap(at location: CGEventTapLocation = .cgSessionEventTap) {
+    private func setupEventTap() {
         // In tests (including CI), avoid creating CGEvent taps to prevent hangs and permission prompts
         if TestEnvironment.isRunningTests {
             AppLogger.shared.debug(
@@ -285,68 +245,38 @@ public class KeyboardCapture {
             }
 
             capture.handleKeyEvent(event, type: event.type)
-            // Pass the event on unless this capture suppresses it.
-            return capture.suppressEvents ? nil : Unmanaged.passUnretained(event)
+            return nil
         }
         let userInfo = Unmanaged.passUnretained(self).toOpaque()
-
-        if suppressEvents {
-            eventTap = CGEvent.tapCreate(
-                tap: location, place: .headInsertEventTap, options: .defaultTap,
-                eventsOfInterest: CGEventMask(eventMask), callback: callback, userInfo: userInfo
-            )
-        } else {
-            // Observing only. Recording is short-lived, so this tap stays on the
-            // main run loop; listen-only when allowed, so it cannot delay typing.
-            for options in ObservingEventTap.preferredOptions(listenAllowed: SystemStateProvider.shared.keyPathCanCreateListenOnlyTap()) {
-                eventTap = CGEvent.tapCreate(
-                    tap: location, place: .headInsertEventTap, options: options,
-                    eventsOfInterest: CGEventMask(eventMask), callback: callback, userInfo: userInfo
-                )
-                if eventTap != nil { break }
-            }
-        }
+        eventTap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
+            eventsOfInterest: CGEventMask(eventMask), callback: callback, userInfo: userInfo
+        )
 
         guard let eventTap else {
-            AppLogger.shared.error(
-                "❌ [KeyboardCapture] Failed to create event tap (suppress=\(suppressEvents))"
-            )
-
-            // Cleanly end capture state so UI doesn't appear stuck
-            isCapturing = false
-            isContinuous = false
-
-            // Cancel timers
-            pauseTimer?.invalidate()
-            pauseTimer = nil
-            chordTimer?.invalidate()
-            chordTimer = nil
-            sequenceTimer?.invalidate()
-            sequenceTimer = nil
-
-            // Send a user-facing message via sequence callback if available
-            // Already on @MainActor; call callbacks directly
-            if let cb = sequenceCallback {
-                let kp = KeyPress(
-                    baseKey: String(localized: "⚠️ Couldn't start recording"), modifiers: [], timestamp: Date(), keyCode: -1
-                )
-                let seq = KeySequence(keys: [kp], captureMode: .single)
-                cb(seq)
-                sequenceCallback = nil
-            } else if let cb = captureCallback {
-                cb(String(localized: "⚠️ Couldn't start recording"))
-                captureCallback = nil
-            }
+            handleEventTapCreationFailure()
             return
         }
 
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
         CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: eventTap, enable: true)
-        let tapDesc = suppressEvents ? "defaultTap/suppress" : "listenOnly"
-        AppLogger.shared.info(
-            "✅ [KeyboardCapture] Event tap created (location=\(location), options=\(tapDesc))"
-        )
+        AppLogger.shared.info("✅ [KeyboardCapture] Session event tap created")
+    }
+
+    func handleEventTapCreationFailure() {
+        AppLogger.shared.error("❌ [KeyboardCapture] Failed to create session event tap")
+        let sequence = sequenceCallback
+        let capture = captureCallback
+        stopCapture()
+
+        let message = String(localized: "⚠️ Couldn't start recording")
+        if let sequence {
+            let key = KeyPress(baseKey: message, modifiers: [], timestamp: Date(), keyCode: -1)
+            sequence(KeySequence(keys: [key], captureMode: .single))
+        } else {
+            capture?(message)
+        }
     }
 
     private func handleKeyEvent(_ event: CGEvent, type: CGEventType) {
@@ -368,7 +298,7 @@ public class KeyboardCapture {
         let now = Date()
 
         AppLogger.shared.pressedKey(
-            "🎹 [KeyboardCapture] keyDown: \(keyName) code=\(keyCode) suppress=\(suppressEvents)"
+            "🎹 [KeyboardCapture] keyDown: \(keyName) code=\(keyCode)"
         )
         anyEventSeen = true
         noKeyBreadcrumbTimer?.invalidate()
@@ -429,7 +359,7 @@ public class KeyboardCapture {
         let now = Date()
 
         AppLogger.shared.pressedKey(
-            "🎹 [KeyboardCapture] flagsChanged: \(keyName) code=\(keyCode) suppress=\(suppressEvents)"
+            "🎹 [KeyboardCapture] flagsChanged: \(keyName) code=\(keyCode)"
         )
         anyEventSeen = true
         noKeyBreadcrumbTimer?.invalidate()
@@ -576,8 +506,8 @@ public class KeyboardCapture {
 
             // Reset chord timer
             chordTimer?.invalidate()
-            chordTimer = Timer.scheduledTimer(withTimeInterval: chordWindow, repeats: false) { _ in
-                Task { @MainActor in self.completeChord() }
+            chordTimer = Timer.scheduledTimer(withTimeInterval: chordWindow, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.completeChord() }
             }
 
         case .sequence:
@@ -591,8 +521,8 @@ public class KeyboardCapture {
 
             // Reset sequence timer
             sequenceTimer?.invalidate()
-            sequenceTimer = Timer.scheduledTimer(withTimeInterval: sequenceTimeout, repeats: false) { _ in
-                Task { @MainActor in self.completeSequence() }
+            sequenceTimer = Timer.scheduledTimer(withTimeInterval: sequenceTimeout, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.completeSequence() }
             }
         }
     }
@@ -663,9 +593,7 @@ public class KeyboardCapture {
         // Start new timer for auto-stop after pause
         pauseTimer = Timer.scheduledTimer(withTimeInterval: pauseDuration, repeats: false) {
             [weak self] _ in
-            Task { @MainActor in
-                self?.stopCapture()
-            }
+            MainActor.assumeIsolated { self?.stopCapture() }
         }
     }
 

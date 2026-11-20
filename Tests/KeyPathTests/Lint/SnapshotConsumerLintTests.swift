@@ -9,7 +9,7 @@ import Foundation
 final class SnapshotConsumerLintTests: XCTestCase {
     func testCanonicalCaptureTimeoutIsOwnedBySystemValidator() throws {
         let validatorURL = LintScanner.path(
-            "Sources/KeyPathAppKit/Services/System/SystemValidator.swift"
+            "Sources/KeyPathWizardCore/SystemValidator.swift"
         )
         let validator = try String(contentsOf: validatorURL, encoding: .utf8)
         XCTAssertTrue(validator.contains("canonicalCaptureTimeout"))
@@ -36,7 +36,7 @@ final class SnapshotConsumerLintTests: XCTestCase {
     func testValidatorDelegatesPermissionFreshnessToProvider() throws {
         let capture = try LintScanner.functionBody(
             named: "captureSessionSnapshot",
-            in: LintScanner.path("Sources/KeyPathAppKit/Services/System/SystemValidator.swift")
+            in: LintScanner.path("Sources/KeyPathWizardCore/SystemValidator.swift")
         )
 
         XCTAssertTrue(capture.contains("case .cached: await systemStateProvider.currentPermissionSnapshot()"))
@@ -135,7 +135,7 @@ final class SnapshotConsumerLintTests: XCTestCase {
     }
 
     func testCLIInstallerConsumesEngineOwnedFinalSnapshot() throws {
-        let fileURL = LintScanner.path("Sources/KeyPathAppKit/CLI/SystemFacade.swift")
+        let fileURL = LintScanner.path("Sources/KeyPathCLISupport/SystemFacade.swift")
         let source = try String(contentsOf: fileURL, encoding: .utf8)
 
         XCTAssertEqual(

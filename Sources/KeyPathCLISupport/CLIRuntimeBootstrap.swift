@@ -21,13 +21,17 @@ enum CLIRuntimeBootstrap {
         // The session runtime lives in KeyPath.app, out of this process's
         // sight. Ask the running app, the way `keypath doctor` does, so local
         // inspection agrees with it instead of always reading "not running".
-        let validator = SystemValidator(kanataManager: nil, appSessionReady: { AppSessionProbe.current().runtimeRunning })
+        let validator = SystemValidator(runtimeEvidence: {
+            let running = AppSessionProbe.current().runtimeRunning
+            let responding = await running ? (try? RuntimeControl.requestEngine(.layer))?.layer != nil : false
+            return (running, responding)
+        })
         await SystemStateProvider.shared.configureRuntimeKeyAccessProvider {
             guard AppSessionProbe.current().runtimeKeyAccess else { return nil }
             return .init(status: .granted, source: "keypath-app.doctor", confidence: .high, timestamp: Date())
         }
 
-        configureCLIInstallerServices(systemValidator: validator)
+        InstallerServices.current = InstallerServices(systemValidator: validator)
     }
 }
 
