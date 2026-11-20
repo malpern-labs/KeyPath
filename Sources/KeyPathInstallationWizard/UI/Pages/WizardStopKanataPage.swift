@@ -52,7 +52,11 @@ public struct WizardStopKanataPage: View {
         }
         .task(id: detectionAttempt) {
             do {
-                let info = try await wizardHost.externalKanata?.info()
+                guard let operations = wizardHost.externalKanata else {
+                    stopError = String(localized: "External Kanata service not configured")
+                    return
+                }
+                let info = try await operations.prepareStop(onNoProcess: onComplete)
                 guard !Task.isCancelled else { return }
                 runningInfo = info
                 stopError = nil

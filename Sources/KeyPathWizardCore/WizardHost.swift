@@ -46,6 +46,15 @@ public struct ExternalKanataOperations: Sendable {
         self.stop = stop
         self.isRunning = isRunning
     }
+
+    /// Verified absence satisfies the stop page; a failed read never does.
+    @MainActor
+    public func prepareStop(onNoProcess: () -> Void) async throws -> WizardSystemPaths.RunningKanataInfo? {
+        let process = try await info()
+        try Task.checkCancellation()
+        if process == nil { onNoProcess() }
+        return process
+    }
 }
 
 private struct WizardHostKey: EnvironmentKey {

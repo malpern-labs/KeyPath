@@ -16,3 +16,8 @@ external-process priority and config-path parsing are retained.
 Regression tests inject subprocess results without spawning real processes or
 sleeping. They cover the timeout contract, failed execution, config parsing,
 external-process priority and unrelated process rejection.
+
+The stop page completes when its own successful discovery proves no external
+process remains. A failed discovery instead keeps Retry available. Three
+wizard-operation tests cover verified absence, failed discovery and a live
+external process, in addition to the five probe/parser tests.
