@@ -1,6 +1,4 @@
-import AppKit
 import Foundation
-import KeyPathCLISupport
 import KeyPathCore
 import KeyPathInstallationWizard
 import KeyPathPermissions
@@ -174,17 +172,7 @@ public struct SystemFacade: Sendable {
         )
     }
 
-    @MainActor
-    public func openFirstRemediationURL(in issues: [CLISystemIssue]) -> Bool {
-        guard let rawURL = issues.compactMap(\.remediationURL).first,
-              let url = URL(string: rawURL)
-        else {
-            return false
-        }
-        return NSWorkspace.shared.open(url)
-    }
-
-    static func isOperational(_ context: SystemContext) -> Bool {
+    package static func isOperational(_ context: SystemContext) -> Bool {
         context.isReady
     }
 
@@ -208,7 +196,7 @@ public struct SystemFacade: Sendable {
         return ["\(bundlePath)/Contents/MacOS/keypath-cli", host.bridgeLibraryPath, host.bundledCorePath]
     }
 
-    static func issues(from context: SystemContext, accessibility: AccessibilityPermissionPresentation = .current) -> [CLISystemIssue] {
+    package static func issues(from context: SystemContext, accessibility: AccessibilityPermissionPresentation = .current) -> [CLISystemIssue] {
         var issues: [CLISystemIssue] = []
         appendSinglePermissionIssues(from: context, accessibility: accessibility, to: &issues)
         for conflict in context.conflicts.conflicts {
