@@ -291,12 +291,12 @@ final class UnmappedLayerKeyStyleTests: KeyPathTestCase {
 
     // MARK: - Persistence
 
-    func testPreference_persistsAcrossReload() {
-        let writer = PreferencesService()
+    func testPreference_persistsAcrossReload() throws {
+        let fixture = try IsolatedPreferenceDefaults()
+        let writer = PreferencesService(leaderDefaults: fixture.defaults, defaults: fixture.defaults)
         writer.unmappedLayerKeyStyle = .dimmed
         // A fresh instance hydrates from UserDefaults in init().
-        let reloaded = PreferencesService()
+        let reloaded = PreferencesService(leaderDefaults: fixture.defaults, defaults: fixture.defaults)
         XCTAssertEqual(reloaded.unmappedLayerKeyStyle, .dimmed, "Value should survive a UserDefaults round-trip")
-        writer.unmappedLayerKeyStyle = .baseLayer // restore default-backed state
     }
 }
