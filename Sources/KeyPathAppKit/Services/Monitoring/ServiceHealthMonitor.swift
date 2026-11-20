@@ -71,6 +71,7 @@ final class ServiceHealthMonitor {
 
     /// FIX #2: Shared TCP client for health checks to avoid creating new connections repeatedly
     private var healthCheckClient: KanataTCPClient?
+    private let engineHealthProbe: (@MainActor () async -> Bool)?
 
     /// Track EventListener heartbeat to avoid redundant TCP connections
     private var lastHeartbeatTime: Date?
@@ -79,8 +80,12 @@ final class ServiceHealthMonitor {
 
     // MARK: - Initialization
 
-    init() {
-        heartbeatObserver = NotificationCenter.default.addObserver(for: KanataHeartbeat.self) { [weak self] _ in
+    init(
+        notificationCenter: NotificationCenter = .default,
+        engineHealthProbe: (@MainActor () async -> Bool)? = nil
+    ) {
+        self.engineHealthProbe = engineHealthProbe
+        heartbeatObserver = notificationCenter.addObserver(for: KanataHeartbeat.self) { [weak self] _ in
             self?.lastHeartbeatTime = Date()
         }
         AppLogger.shared.info("[HealthMonitor] Initialized")
@@ -114,12 +119,6 @@ final class ServiceHealthMonitor {
 
     /// Perform TCP health check with retry logic
     private func performTCPHealthCheck() async -> Bool {
-        // Skip real TCP checks in test environment to avoid timeouts
-        guard !TestEnvironment.isRunningTests else {
-            AppLogger.shared.debug("[HealthMonitor] TCP health check skipped in test environment")
-            return true // Assume healthy in tests
-        }
-
         // Fast path: if EventListener recently received data, TCP is healthy.
         // This avoids opening a redundant TCP connection that can disrupt EventListener's stream.
         if let lastBeat = lastHeartbeatTime,
@@ -128,6 +127,8 @@ final class ServiceHealthMonitor {
             AppLogger.shared.debug("[HealthMonitor] TCP healthy (recent EventListener heartbeat)")
             return true
         }
+
+        if let engineHealthProbe { return await engineHealthProbe() }
 
         // Slow path: no recent heartbeat, fall back to direct TCP check
         // (e.g., during startup before EventListener connects)
