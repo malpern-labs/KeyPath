@@ -712,3 +712,19 @@ extraction is worth revisiting only if a measured workflow needs true build
 isolation; the current `cli` lane already gives a stable selection path.
 Installer/wizard splits should follow only after lane timings justify the extra
 dependency work.
+
+
+## Login Keychain coverage
+
+Routine `KeychainStringSetTests` inject Security operations backed by isolated
+memory. They verify round-trip approval storage, caching, and failed-read and
+failed-write behavior without touching the host login Keychain. Production
+continues to use the same Security framework queries and accessibility policy.
+
+Real Keychain round trips live in `KeychainStringSetIntegrationTests` and run
+only with `KEYPATH_KEYCHAIN_INTEGRATION=1` on a disposable, unlocked test
+machine. Invoke that named class explicitly. Do not enable it for ordinary
+headless CI: a login-Keychain request can wait for UI instead of immediately
+returning a denial. The full safe gate on November 19 stalled in
+`testInsertRemoveAndReloadFromKeychain` and reached its 240-second watchdog;
+that timeout is preserved as a failed gate, not reported as a pass.
