@@ -11,13 +11,11 @@ import KeyPathCore
 /// - Provides comprehensive error logging and recovery
 /// - Uses proper file descriptor management with cleanup
 ///
-/// Thread safety: All public API is called from `@MainActor` coordinators, and all
-/// DispatchSource event handlers hop back to MainActor via `DispatchQueue.main.async`.
-/// The class is intentionally NOT `@MainActor`-isolated because DispatchSource event
-/// handlers fire on a background queue. We use `DispatchQueue.main.async` (not
-/// `Task { @MainActor in }`) to avoid Swift 6's runtime dispatch_assert_queue_fail
-/// crash that occurs when Task inherits the background executor context.
-class ConfigFileWatcher: @unchecked Sendable {
+/// All mutable watcher state is MainActor-owned. Explicitly Sendable source
+/// handlers read only their source data, then hop through the main queue.
+/// Retry/rebind work is cancelled when the owning watch ends.
+@MainActor
+final class ConfigFileWatcher: Sendable {
     // MARK: - Properties
 
     private var fileMonitorSource: DispatchSourceFileSystemObject?
@@ -39,26 +37,29 @@ class ConfigFileWatcher: @unchecked Sendable {
     private var pendingInternalFingerprint: String?
     private var inFlightProcessing = false
     private var rebindTask: Task<Void, Never>?
+    private var retryTask: Task<Void, Never>?
+    private var watchGeneration = UUID()
+    private let delay: @MainActor @Sendable (Duration) async throws -> Void
 
     /// Dedicated queue for file system events (avoid main thread contention)
-    /// The DispatchSource fires events on this queue, but handlers immediately
-    /// hop to MainActor via Task.detached { @MainActor in ... }
+    /// The DispatchSource fires events on this queue; handlers explicitly hop
+    /// through the main queue before touching actor-owned watcher state.
     private let queue = DispatchQueue(label: "com.keypath.configwatcher", qos: .utility)
 
     /// Callback for when file changes are detected
     private var onFileChanged: (@MainActor () async -> Void)?
 
-    init() {
+    init(delay: @escaping @MainActor @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
+        self.delay = delay
         AppLogger.shared.log("📁 [FileWatcher] ConfigFileWatcher initialized with robust monitoring")
     }
 
-    deinit {
-        // deinit cannot be @MainActor, so we capture what we need and clean up directly.
-        // DispatchSource.cancel() is thread-safe and can be called from any thread.
+    isolated deinit {
         fileMonitorSource?.cancel()
         directoryMonitorSource?.cancel()
         debounceTask?.cancel()
         rebindTask?.cancel()
+        retryTask?.cancel()
         AppLogger.shared.log("📁 [FileWatcher] ConfigFileWatcher deinitialized")
     }
 
@@ -84,6 +85,7 @@ class ConfigFileWatcher: @unchecked Sendable {
             stopWatching()
         }
 
+        watchGeneration = UUID()
         watchedFilePath = path
         watchedDirectoryPath = (path as NSString).deletingLastPathComponent
         onFileChanged = onChange
@@ -138,7 +140,9 @@ class ConfigFileWatcher: @unchecked Sendable {
         )
 
         guard let source = fileMonitorSource else { return }
-        source.setEventHandler { [weak self] in
+        let generation = watchGeneration
+        source.setEventHandler { @Sendable [weak self, weak source] in
+            guard let source else { return }
             let flags = DispatchSource.FileSystemEvent(rawValue: source.data)
             AppLogger.shared.log("📁 [FileWatcher] File system event received - flags: \(flags)")
             // Hop to main thread via GCD first, then create Task.
@@ -146,14 +150,15 @@ class ConfigFileWatcher: @unchecked Sendable {
             // Task { @MainActor in } is created on a non-main dispatch queue.
             nonisolated(unsafe) let capturedFlags = flags
             DispatchQueue.main.async { [weak self] in
-                Task { [weak self] in
-                    await self?.handleFileEvent(flags: capturedFlags)
+                Task { @MainActor [weak self] in
+                    guard let self, watchGeneration == generation else { return }
+                    await handleFileEvent(flags: capturedFlags)
                 }
             }
         }
 
         // Set up cancellation handler to close file descriptor
-        fileMonitorSource?.setCancelHandler {
+        fileMonitorSource?.setCancelHandler { @Sendable in
             AppLogger.shared.log("📁 [FileWatcher] Closing file descriptor \(fileDescriptor)")
             close(fileDescriptor)
         }
@@ -200,19 +205,21 @@ class ConfigFileWatcher: @unchecked Sendable {
             queue: queue
         )
 
-        directoryMonitorSource?.setEventHandler { [weak self] in
+        let generation = watchGeneration
+        directoryMonitorSource?.setEventHandler { @Sendable [weak self] in
             AppLogger.shared.log(
                 "📁 [FileWatcher] Directory event received - checking if target file was created"
             )
             DispatchQueue.main.async { [weak self] in
-                Task { [weak self] in
-                    await self?.handleDirectoryChangeEvent()
+                Task { @MainActor [weak self] in
+                    guard let self, watchGeneration == generation else { return }
+                    await handleDirectoryChangeEvent()
                 }
             }
         }
 
         // Set up cancellation handler
-        directoryMonitorSource?.setCancelHandler {
+        directoryMonitorSource?.setCancelHandler { @Sendable in
             AppLogger.shared.log("📁 [FileWatcher] Closing directory descriptor \(dirDescriptor)")
             close(dirDescriptor)
         }
@@ -231,7 +238,10 @@ class ConfigFileWatcher: @unchecked Sendable {
     func stopWatching() {
         AppLogger.shared.log("📁 [FileWatcher] Stopping all monitoring...")
 
-        // Stop debounce and rebind timers
+        watchGeneration = UUID()
+        // Stop all work owned by the old watch.
+        retryTask?.cancel()
+        retryTask = nil
         debounceTask?.cancel()
         debounceTask = nil
         rebindTask?.cancel()
@@ -258,6 +268,8 @@ class ConfigFileWatcher: @unchecked Sendable {
         watchedDirectoryPath = nil
         onFileChanged = nil
         lastContentFingerprint = nil
+        pendingInternalFingerprint = nil
+        inFlightProcessing = false
         retryCount = 0
 
         AppLogger.shared.log("✅ [FileWatcher] All monitoring stopped and state cleared")
@@ -293,8 +305,11 @@ class ConfigFileWatcher: @unchecked Sendable {
             return
         }
 
+        let generation = watchGeneration
         inFlightProcessing = true
-        defer { inFlightProcessing = false }
+        defer {
+            if watchGeneration == generation { inFlightProcessing = false }
+        }
 
         // Process the change event
         await handleFileChangeEvent()
@@ -335,9 +350,11 @@ class ConfigFileWatcher: @unchecked Sendable {
         isWatching = false
 
         // Wait a brief moment for atomic write to complete, then re-setup
+        let generation = watchGeneration
+        let delay = delay
         rebindTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(50)) // 50ms
-            guard !Task.isCancelled, let self else { return }
+            try? await delay(.milliseconds(50))
+            guard !Task.isCancelled, let self, watchGeneration == generation else { return }
             setupFileMonitoring(keepBaseline: true)
 
             // An event can land in the rebind blind spot, so look at the content.
@@ -378,6 +395,7 @@ class ConfigFileWatcher: @unchecked Sendable {
 
     /// Handle file system events with comprehensive logging
     private func handleFileChangeEvent() async {
+        let generation = watchGeneration
         guard let path = watchedFilePath else {
             AppLogger.shared.log("⚠️ [FileWatcher] File change event but no watched file path")
             return
@@ -393,7 +411,8 @@ class ConfigFileWatcher: @unchecked Sendable {
 
             // For atomic writes, the file might be temporarily gone
             // Wait a brief moment and check again
-            try? await Task.sleep(for: .milliseconds(100)) // 100ms
+            try? await delay(.milliseconds(100))
+            guard !Task.isCancelled, watchGeneration == generation else { return }
 
             if Foundation.FileManager().fileExists(atPath: path) {
                 AppLogger.shared.log("📁 [FileWatcher] File reappeared - atomic write completed")
@@ -416,10 +435,11 @@ class ConfigFileWatcher: @unchecked Sendable {
         debounceTask?.cancel()
 
         // Schedule debounce task to handle rapid file changes
+        let delay = delay
+        let debounceDelay = debounceDelay
         debounceTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            try? await Task.sleep(for: .seconds(debounceDelay))
-            guard !Task.isCancelled else { return }
+            try? await delay(.seconds(debounceDelay))
+            guard !Task.isCancelled, let self, watchGeneration == generation else { return }
             await processFileChange()
         }
     }
@@ -435,11 +455,14 @@ class ConfigFileWatcher: @unchecked Sendable {
                 "🔄 [FileWatcher] Retrying file monitoring setup (attempt \(retryCount)/\(maxRetries))"
             )
 
-            // Retry after a brief delay
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(1)) // 1s
+            retryTask?.cancel()
+            let generation = watchGeneration
+            let delay = delay
+            retryTask = Task { @MainActor [weak self] in
+                try? await delay(.seconds(1))
+                guard !Task.isCancelled, let self, watchGeneration == generation else { return }
                 // A retry reattaches like a rebind, so an existing baseline stays.
-                self?.setupFileMonitoring(keepBaseline: self?.lastContentFingerprint != nil)
+                setupFileMonitoring(keepBaseline: lastContentFingerprint != nil)
             }
         } else {
             AppLogger.shared.log(
@@ -458,10 +481,13 @@ class ConfigFileWatcher: @unchecked Sendable {
                 "🔄 [FileWatcher] Retrying directory monitoring setup (attempt \(retryCount)/\(maxRetries))"
             )
 
-            // Retry after a brief delay
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(2)) // 2s
-                self?.setupDirectoryMonitoring()
+            retryTask?.cancel()
+            let generation = watchGeneration
+            let delay = delay
+            retryTask = Task { @MainActor [weak self] in
+                try? await delay(.seconds(2))
+                guard !Task.isCancelled, let self, watchGeneration == generation else { return }
+                setupDirectoryMonitoring()
             }
         } else {
             AppLogger.shared.log(
