@@ -9,7 +9,6 @@ import XCTest
 final class PressedKeyLoggingLintTests: XCTestCase {
     private static let files = [
         "Sources/KeyPathAppKit/Services/KeyboardCapture/KeyboardCapture.swift",
-        "Sources/KeyPathAppKit/Services/KeyboardCapture/KeyboardCapture+TCP.swift",
         "Sources/KeyPathAppKit/Services/Monitoring/KanataEventListener.swift",
         "Sources/KeyPathAppKit/UI/KeyboardVisualization/KeyboardVisualizationViewModel+TCP.swift",
     ]

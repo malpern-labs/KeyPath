@@ -1,5 +1,4 @@
 import Foundation
-import KeyPathRulesCore
 
 // MARK: - Row-Based Position Mapping
 
@@ -21,23 +20,30 @@ import KeyPathRulesCore
 /// **What it flags as low-quality:** Split, ortho, and exotic layouts
 extension ANSIPositionTable {
     /// Key position data passed to the mapper
-    struct QMKKeyPosition {
-        let x: Double
-        let y: Double
-        let width: Double
-        let index: Int
+    package struct QMKKeyPosition {
+        package let x: Double
+        package let y: Double
+        package let width: Double
+        package let index: Int
+
+        package init(x: Double, y: Double, width: Double, index: Int) {
+            self.x = x
+            self.y = y
+            self.width = width
+            self.index = index
+        }
     }
 
     /// Result of mapping a single key
-    struct KeyMapping {
-        let index: Int
-        let keyCode: UInt16
-        let label: String
+    package struct KeyMapping {
+        package let index: Int
+        package let keyCode: UInt16
+        package let label: String
     }
 
     /// Map all QMK keys to macOS keyCodes using row-based ordering.
     /// Returns one KeyMapping per input key, in arbitrary order.
-    static func mapKeysByRow(qmkKeys: [QMKKeyPosition]) -> [KeyMapping] {
+    package static func mapKeysByRow(qmkKeys: [QMKKeyPosition]) -> [KeyMapping] {
         guard !qmkKeys.isEmpty else { return [] }
 
         // Step 1: Group keys into rows by y-coordinate

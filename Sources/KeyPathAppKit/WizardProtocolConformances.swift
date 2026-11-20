@@ -17,10 +17,6 @@ extension RuntimeCoordinator: RuntimeCoordinating {
     }
 }
 
-// MARK: - SystemValidator + WizardSystemValidating
-
-extension SystemValidator: WizardSystemValidating {}
-
 // MARK: - PermissionRequestService + WizardPermissionRequesting
 
 extension PermissionRequestService: WizardPermissionRequesting {}
@@ -30,7 +26,14 @@ extension PermissionRequestService: WizardPermissionRequesting {}
 /// Sets the installer's services at app launch.
 @MainActor
 public func configureInstallerServices(runtimeCoordinator: RuntimeCoordinator) {
-    let sharedValidator = SystemValidator(kanataManager: runtimeCoordinator)
+    let sharedValidator = SystemValidator(runtimeEvidence: { [weak runtimeCoordinator] in
+        let report = runtimeCoordinator?.serviceLifecycleCoordinator.currentSessionReport()
+        let running = report?.state == .running && report?.tapActive == true
+        let responding = running
+            ? await SystemStateProvider.shared.isEngineSocketResponding(path: report?.controlSocketPath, timeoutMs: 300)
+            : false
+        return (running, responding)
+    })
     // Both the main app and wizard use the same capture path.
     MainAppStateController.shared.setValidator(sharedValidator)
 
@@ -59,14 +62,6 @@ public func configureInstallerServices(runtimeCoordinator: RuntimeCoordinator) {
             })
         }
     )
-}
-
-/// Sets the installer's services for the app-bundled CLI's repair and inspect commands.
-/// The CLI has no runtime of its own and cannot uninstall: both belong to the running app.
-@MainActor
-func configureCLIInstallerServices(systemValidator: SystemValidator) {
-    MainAppStateController.shared.setValidator(systemValidator)
-    InstallerServices.current = InstallerServices(systemValidator: systemValidator)
 }
 
 public extension WizardHost {

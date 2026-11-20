@@ -1,6 +1,7 @@
 import AppKit
 import KeyPathCore
 import KeyPathInstallationWizard
+import KeyPathRulesCore
 import SwiftUI
 
 // MARK: - Overlay State Groups

@@ -60,7 +60,7 @@ let package = Package(
             name: "KeyPathRulesCore",
             dependencies: ["KeyPathCore"],
             path: "Sources/KeyPathRulesCore",
-            resources: [.copy("Resources/rule-collection-catalog.json")],
+            resources: [.copy("Resources/rule-collection-catalog.json"), .copy("Resources/Keyboards")],
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
@@ -84,7 +84,7 @@ let package = Package(
         ),
         .target(
             name: "KeyPathCLISupport",
-            dependencies: ["KeyPathInstallationWizard"],
+            dependencies: ["KeyPathCore", "KeyPathInstallationWizard", "KeyPathPermissions", "KeyPathWizardCore"],
             path: "Sources/KeyPathCLISupport",
             swiftSettings: [
                 .swiftLanguageMode(.v6)

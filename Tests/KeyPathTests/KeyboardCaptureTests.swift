@@ -1,3 +1,4 @@
+import AppKit
 import Carbon
 import Foundation
 @testable import KeyPathAppKit
@@ -30,6 +31,38 @@ final class KeyboardCaptureTests: KeyPathTestCase {
 
     @objc private func notificationReceived(_ notification: Notification) {
         receivedNotifications.append(notification)
+    }
+
+    func testFailedTapClearsLocalMonitorBeforeReportingError() throws {
+        capture.isCapturing = true
+        capture.isContinuous = true
+        capture.localMonitor = try XCTUnwrap(NSEvent.addLocalMonitorForEvents(matching: .keyDown) { $0 })
+        defer { capture.stopCapture() }
+
+        var reportedError = false
+        capture.captureCallback = { _ in
+            XCTAssertNil(self.capture.localMonitor)
+            XCTAssertFalse(self.capture.isCapturing)
+            reportedError = true
+        }
+        capture.handleEventTapCreationFailure()
+
+        XCTAssertTrue(reportedError)
+        XCTAssertNil(capture.captureCallback)
+        XCTAssertFalse(capture.isContinuous)
+    }
+
+    func testPauseExpiryEndsCaptureBeforeTheTimerReturns() throws {
+        capture.isCapturing = true
+        capture.isContinuous = true
+        defer { capture.stopCapture() }
+
+        capture.resetPauseTimer()
+        let timer = try XCTUnwrap(capture.pauseTimer)
+        timer.fire()
+
+        XCTAssertFalse(capture.isCapturing)
+        XCTAssertNil(capture.pauseTimer)
     }
 
     // MARK: - Initialization Tests
