@@ -4,16 +4,19 @@ import KeyPathRulesCore
 
 @MainActor
 final class CLILayerCRUDTests: XCTestCase {
-    private let facade = CollectionsFacade()
-    private var originalCollections: [RuleCollection] = []
+    private var facade: CollectionsFacade!
+    private var fixture: CLIStoreFixture!
 
     override func setUp() async throws {
         try await super.setUp()
-        originalCollections = await RuleCollectionStore.shared.loadCollections()
+        fixture = try CLIStoreFixture()
+        facade = CollectionsFacade(store: fixture.collections)
     }
 
     override func tearDown() async throws {
-        try await RuleCollectionStore.shared.saveCollections(originalCollections)
+        facade = nil
+        try fixture?.remove()
+        fixture = nil
         try await super.tearDown()
     }
 
@@ -37,7 +40,7 @@ final class CLILayerCRUDTests: XCTestCase {
         XCTAssertEqual(collection.name, "vim Layer")
         XCTAssertTrue(collection.isEnabled)
 
-        let collections = await RuleCollectionStore.shared.loadCollections()
+        let collections = await fixture.collections.loadCollections()
         let created = collections.first(where: { $0.id.uuidString == collection.id })
         XCTAssertNotNil(created)
         XCTAssertEqual(created?.targetLayer.kanataName, "vim")

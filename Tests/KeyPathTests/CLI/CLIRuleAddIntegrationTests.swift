@@ -4,15 +4,19 @@ import KeyPathRulesCore
 
 @MainActor
 final class CLIRuleAddIntegrationTests: XCTestCase {
-    private let facade = RulesFacade()
+    private var facade: RulesFacade!
+    private var fixture: CLIStoreFixture!
 
     override func setUp() async throws {
         try await super.setUp()
-        try await CustomRulesStore.shared.saveRules([])
+        fixture = try CLIStoreFixture()
+        facade = RulesFacade(store: fixture.rules)
     }
 
     override func tearDown() async throws {
-        try await CustomRulesStore.shared.saveRules([])
+        facade = nil
+        try fixture?.remove()
+        fixture = nil
         try await super.tearDown()
     }
 

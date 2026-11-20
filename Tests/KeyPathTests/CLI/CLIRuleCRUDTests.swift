@@ -4,18 +4,19 @@ import KeyPathRulesCore
 
 @MainActor
 final class CLIRuleCRUDTests: XCTestCase {
-    private let facade = RulesFacade()
+    private var facade: RulesFacade!
+    private var fixture: CLIStoreFixture!
 
     override func setUp() async throws {
         try await super.setUp()
-        let rules = await CustomRulesStore.shared.loadRules()
-        if !rules.isEmpty {
-            try await CustomRulesStore.shared.saveRules([])
-        }
+        fixture = try CLIStoreFixture()
+        facade = RulesFacade(store: fixture.rules)
     }
 
     override func tearDown() async throws {
-        try await CustomRulesStore.shared.saveRules([])
+        facade = nil
+        try fixture?.remove()
+        fixture = nil
         try await super.tearDown()
     }
 
@@ -193,9 +194,9 @@ final class CLIRuleCRUDTests: XCTestCase {
         _ = try await facade.addRule(input: "lalt", action: .keystroke(key: "lctl"))
 
         // Disable one rule directly in the store
-        var raw = await CustomRulesStore.shared.loadRules()
+        var raw = await fixture.rules.loadRules()
         raw[0].isEnabled = false
-        try await CustomRulesStore.shared.saveRules(raw)
+        try await fixture.rules.saveRules(raw)
 
         let enabled = await facade.listRules(enabledOnly: true)
         XCTAssertEqual(enabled.count, 1)
