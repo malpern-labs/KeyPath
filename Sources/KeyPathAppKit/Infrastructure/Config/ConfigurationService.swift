@@ -76,12 +76,16 @@ public final class ConfigurationService: FileConfigurationProviding {
     // MARK: - Initialization
 
     public convenience init(configDirectory: String? = nil) {
-        self.init(
-            configDirectory: configDirectory,
-            ruleCollectionStore: .shared,
-            customRulesStore: .shared,
-            deviceSelectionStore: .shared
-        )
+        if let configDirectory, configDirectory != KeyPathConstants.Config.directory {
+            let directory = URL(fileURLWithPath: configDirectory, isDirectory: true)
+            self.init(
+                configDirectory: configDirectory,
+                ruleCollectionStore: RuleCollectionStore(fileURL: directory.appendingPathComponent("RuleCollections.json")),
+                customRulesStore: CustomRulesStore(fileURL: directory.appendingPathComponent("CustomRules.json"))
+            )
+        } else {
+            self.init(configDirectory: configDirectory, ruleCollectionStore: .shared, customRulesStore: .shared)
+        }
     }
 
     /// Injectable stores keep tests hermetic: the shared stores read the real user
@@ -90,22 +94,28 @@ public final class ConfigurationService: FileConfigurationProviding {
         configDirectory: String?,
         ruleCollectionStore: RuleCollectionStore,
         customRulesStore: CustomRulesStore,
-        deviceSelectionStore: DeviceSelectionStore = .shared,
+        deviceSelectionStore: DeviceSelectionStore? = nil,
         sessionValidationRuntimeHost: KanataRuntimeHost? = nil,
         synchronizePreferences: @escaping @Sendable (RecoverableRuleWrite.PreferenceDefaults) -> Bool = { $0.value.synchronize() }
     ) {
         self.ruleCollectionStore = ruleCollectionStore
         self.customRulesStore = customRulesStore
-        self.deviceSelectionStore = deviceSelectionStore
         self.sessionValidationRuntimeHost = sessionValidationRuntimeHost ?? Self.defaultSessionValidationRuntimeHost()
         self.synchronizePreferences = synchronizePreferences
-        if let customDirectory = configDirectory {
-            self.configDirectory = customDirectory
-        } else {
-            self.configDirectory = KeyPathConstants.Config.directory
-        }
+        self.configDirectory = configDirectory ?? KeyPathConstants.Config.directory
+        let directory = URL(fileURLWithPath: self.configDirectory, isDirectory: true)
         configurationPath = "\(self.configDirectory)/\(configFileName)"
-        operationGate = ConfigurationOperationGate(configurationDirectory: URL(fileURLWithPath: self.configDirectory, isDirectory: true))
+        operationGate = ConfigurationOperationGate(configurationDirectory: directory)
+        if let deviceSelectionStore {
+            self.deviceSelectionStore = deviceSelectionStore
+        } else if self.configDirectory == KeyPathConstants.Config.directory {
+            self.deviceSelectionStore = .shared
+        } else {
+            self.deviceSelectionStore = DeviceSelectionStore(
+                fileURL: directory.appendingPathComponent("DeviceSelection.json"),
+                cache: DeviceSelectionCache()
+            )
+        }
     }
 
     // MARK: - ConfigurationProviding Protocol
