@@ -804,3 +804,19 @@ for unrestricted parallel execution.
 The November 20 batch passed the serialized full safe gate: 5,525 tests, zero
 Swift warnings, build 171 s and tests 210 s (384 s total). Evidence:
 `/private/tmp/keypath-preference-fixtures-full.log`.
+
+### November 20: pack-ownership test fixtures
+
+PackOwnershipTests now owns its collection store and installed-pack tracker per
+test, and removes only its own fixture directory. It no longer snapshots and
+restores the process-shared test registry. The shared tracker was already
+redirected away from user data in test hosts; the defect was interference among
+tests within that host. CollectionsFacade accepts the tracker paired with its
+store while preserving shared defaults and operation-bound production behavior.
+
+The cache/pack batch passed 14 pack-ownership tests and eight BuildInfo checks,
+then the serialized full safe gate: 5,530 tests, zero Swift warnings, 198 s build
+and 221 s tests (421 s total). Logs: /private/tmp/keypath-cache-pack-focused.log,
+/private/tmp/keypath-cache-version-focused.log and
+/private/tmp/keypath-cache-pack-full.log. Global notifications and other pack
+suites remain outside this batch's isolation claim.

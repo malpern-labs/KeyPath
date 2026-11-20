@@ -5,9 +5,11 @@ import KeyPathRulesCore
 public struct CollectionsFacade: Sendable {
     private let store: RuleCollectionStore
     private let operation: CLIConfigurationOperation?
+    private let installedPackTracker: InstalledPackTracker
 
     public init() {
         store = .shared
+        installedPackTracker = .shared
         operation = nil
     }
 
@@ -15,10 +17,12 @@ public struct CollectionsFacade: Sendable {
         store = RuleCollectionStore(fileURL: URL(fileURLWithPath: operation.directory)
             .appendingPathComponent("RuleCollections.json"))
         self.operation = operation
+        installedPackTracker = operation.installedPackTracker
     }
 
-    init(store: RuleCollectionStore) {
+    init(store: RuleCollectionStore, installedPackTracker: InstalledPackTracker = .shared) {
         self.store = store
+        self.installedPackTracker = installedPackTracker
         operation = nil
     }
 
@@ -48,7 +52,7 @@ public struct CollectionsFacade: Sendable {
             guard let index = try resolveCollectionIndex(nameOrId: nameOrId, in: collections) else {
                 return nil
             }
-            let tracker = operation?.installedPackTracker ?? InstalledPackTracker.shared
+            let tracker = installedPackTracker
             try await tracker.validateForMutation()
             if let owner = await tracker.packManagingCollection(collections[index].id) {
                 throw PackManagedCollectionError(
@@ -69,7 +73,7 @@ public struct CollectionsFacade: Sendable {
             guard let index = try resolveCollectionIndex(nameOrId: nameOrId, in: collections) else {
                 return nil
             }
-            let tracker = operation?.installedPackTracker ?? InstalledPackTracker.shared
+            let tracker = installedPackTracker
             try await tracker.validateForMutation()
             if let owner = await tracker.packManagingCollection(collections[index].id) {
                 throw PackManagedCollectionError(

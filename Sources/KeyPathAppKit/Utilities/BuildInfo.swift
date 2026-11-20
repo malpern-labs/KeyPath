@@ -1,5 +1,6 @@
 import Foundation
 import KeyPathCore
+import Synchronization
 
 struct BuildInfo {
     let version: String
@@ -9,8 +10,16 @@ struct BuildInfo {
     let kanataVersion: String?
 
     /// Cached Kanata version (fetched once at startup)
-    private nonisolated(unsafe) static var cachedKanataVersion: String?
-    private nonisolated(unsafe) static var kanataVersionFetched = false
+    private struct VersionState: Sendable {
+        var version: String?
+        var fetchStarted = false
+    }
+
+    private static let versionState = Mutex(VersionState())
+
+    private static var cachedKanataVersion: String? {
+        versionState.withLock { $0.version }
+    }
 
     static func current(bundlePath: String = Bundle.main.bundlePath) -> BuildInfo {
         let appBundlePath = KanataRuntimeHost.appBundlePath(containing: bundlePath)
@@ -60,8 +69,14 @@ struct BuildInfo {
     /// Fetch and cache the Kanata version from the installed binary.
     /// Call this once at app startup to populate the cached version.
     static func fetchKanataVersion() async {
-        guard !kanataVersionFetched else { return }
-        kanataVersionFetched = true
+        // Reserve the once-only fetch atomically; never hold the mutex across
+        // process execution. Metadata readers can safely read the last result.
+        let shouldFetch = versionState.withLock { state in
+            guard !state.fetchStarted else { return false }
+            state.fetchStarted = true
+            return true
+        }
+        guard shouldFetch else { return }
 
         let paths = [
             WizardSystemPaths.bundledKanataPath
@@ -83,7 +98,7 @@ struct BuildInfo {
                     let version = output
                         .replacingOccurrences(of: "kanata ", with: "")
                         .trimmingCharacters(in: .whitespacesAndNewlines)
-                    cachedKanataVersion = version
+                    versionState.withLock { $0.version = version }
                     AppLogger.shared.log("📦 [BuildInfo] Kanata version: \(version) (from \(path))")
                     return
                 }
