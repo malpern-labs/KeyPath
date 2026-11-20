@@ -96,7 +96,10 @@ extension LiveKeyboardOverlayView {
                 inspectorSection: inspectorSection
             )
         }
-        .focusedSceneValue(\.selectedAssignmentCommands, isEditingLayer ? selectedAssignmentCommands() : nil)
+        .background {
+            OverlayAssignmentMenuBridge { isEditingLayer ? selectedAssignmentCommands() : nil }
+                .allowsHitTesting(false)
+        }
         .environment(\.overlayAssignmentCommands, isEditingLayer ? assignmentCommands(layer: RuleCollectionLayer(kanataName: viewModel.currentLayerName)) : nil)
         .overlay(alignment: .topLeading) {
             if isEditingLayer, let message = assignmentFeedback ?? assignmentSwapSource.map({

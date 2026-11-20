@@ -22,8 +22,90 @@ struct SelectedAssignmentCommands {
     let swap: (() -> Void)?
 }
 
-extension FocusedValues {
-    @Entry var selectedAssignmentCommands: SelectedAssignmentCommands?
+/// The overlay is hosted in its own AppKit window, outside SwiftUI's scene focus.
+struct OverlayAssignmentMenuBridge: NSViewRepresentable {
+    let commands: () -> SelectedAssignmentCommands?
+
+    func makeNSView(context _: Context) -> MenuSource {
+        MenuSource()
+    }
+
+    func updateNSView(_ view: MenuSource, context _: Context) {
+        view.commands = commands
+    }
+
+    final class MenuSource: NSView {
+        var commands: () -> SelectedAssignmentCommands? = { nil }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            (window as? OverlayWindow)?.assignmentMenuSource = self
+        }
+    }
+}
+
+extension OverlayWindow {
+    enum AssignmentMenuAction: CaseIterable {
+        case copy, paste, swap
+
+        var selector: Selector {
+            switch self {
+            case .copy: #selector(OverlayWindow.copyOverlayAssignment(_:))
+            case .paste: #selector(OverlayWindow.pasteOverlayAssignment(_:))
+            case .swap: #selector(OverlayWindow.swapOverlayAssignment(_:))
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .copy: String(localized: "Copy Assignment")
+            case .paste: String(localized: "Paste Assignment")
+            case .swap: String(localized: "Swap Assignment…")
+            }
+        }
+
+        var identifier: NSUserInterfaceItemIdentifier {
+            switch self {
+            case .copy: NSUserInterfaceItemIdentifier("edit-copy-assignment")
+            case .paste: NSUserInterfaceItemIdentifier("edit-paste-assignment")
+            case .swap: NSUserInterfaceItemIdentifier("edit-swap-assignment")
+            }
+        }
+    }
+
+    static func installAssignmentMenuItems(in mainMenu: NSMenu?) {
+        // Locate the system Edit menu by its standard Paste item, independent of locale.
+        guard let edit = mainMenu?.items.compactMap(\.submenu).first(where: {
+            $0.items.contains { $0.action == #selector(NSText.paste(_:)) }
+        }), let selectAllIndex = edit.items.lastIndex(where: { $0.action == #selector(NSText.selectAll(_:)) }) else { return }
+        for (offset, action) in AssignmentMenuAction.allCases.enumerated() where !edit.items.contains(where: { $0.identifier == action.identifier }) {
+            let item = NSMenuItem(title: action.title, action: action.selector, keyEquivalent: "")
+            item.identifier = action.identifier
+            edit.insertItem(item, at: selectAllIndex + 1 + offset)
+        }
+    }
+
+    func assignmentMenuHandler(_ action: AssignmentMenuAction) -> (() -> Void)? {
+        guard isKeyWindow, let source = assignmentMenuSource, source.window === self,
+              let commands = source.commands() else { return nil }
+        switch action {
+        case .copy: return commands.copy
+        case .paste: return commands.paste
+        case .swap: return commands.swap
+        }
+    }
+
+    @objc func copyOverlayAssignment(_: Any?) {
+        assignmentMenuHandler(.copy)?()
+    }
+
+    @objc func pasteOverlayAssignment(_: Any?) {
+        assignmentMenuHandler(.paste)?()
+    }
+
+    @objc func swapOverlayAssignment(_: Any?) {
+        assignmentMenuHandler(.swap)?()
+    }
 }
 
 extension LiveKeyboardOverlayView {

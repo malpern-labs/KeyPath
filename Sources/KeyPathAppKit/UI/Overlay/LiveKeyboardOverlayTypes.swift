@@ -164,6 +164,7 @@ final class OverlayWindow: NSWindow {
     /// Borderless overlay windows need an explicit responder for the native Edit
     /// menu. Text controls earlier in the responder chain still own their Undo.
     let remapUndoManager = UndoManager()
+    weak var assignmentMenuSource: OverlayAssignmentMenuBridge.MenuSource?
 
     @objc(undo:)
     func undoOverlayRemap(_: Any?) {
@@ -177,6 +178,9 @@ final class OverlayWindow: NSWindow {
                 menuItem.title = remapUndoManager.undoMenuItemTitle
             }
             return isKeyWindow && remapUndoManager.canUndo
+        }
+        if let action = AssignmentMenuAction.allCases.first(where: { $0.selector == item.action }) {
+            return assignmentMenuHandler(action) != nil
         }
         return super.validateUserInterfaceItem(item)
     }

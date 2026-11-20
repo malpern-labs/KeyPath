@@ -10,21 +10,7 @@ import SwiftUI
 struct AppMenuCommands: Commands {
     let viewModel: KanataViewModel
     let appDelegate: AppDelegate
-    @FocusedValue(\.selectedAssignmentCommands) private var assignmentCommands
-
     var body: some Commands {
-        CommandGroup(after: .pasteboard) {
-            Button("Copy Assignment") { assignmentCommands?.copy?() }
-                .disabled(assignmentCommands?.copy == nil)
-                .accessibilityIdentifier("edit-copy-assignment")
-            Button("Paste Assignment") { assignmentCommands?.paste?() }
-                .disabled(assignmentCommands?.paste == nil)
-                .accessibilityIdentifier("edit-paste-assignment")
-            Button("Swap Assignment…") { assignmentCommands?.swap?() }
-                .disabled(assignmentCommands?.swap == nil)
-                .accessibilityIdentifier("edit-swap-assignment")
-        }
-
         // Replace default "AppName" menu with "KeyPath" menu
         CommandGroup(replacing: .appInfo) {
             Button("About KeyPath") {

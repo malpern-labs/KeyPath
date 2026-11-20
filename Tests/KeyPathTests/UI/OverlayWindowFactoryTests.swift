@@ -36,6 +36,29 @@ final class OverlayWindowFactoryTests: XCTestCase {
         XCTAssertTrue(window.remapUndoManager.canUndo)
     }
 
+    func testAssignmentCommandsJoinTheNativeEditMenuWithoutTakingTextShortcuts() {
+        let main = NSMenu()
+        let rootItem = NSMenuItem(title: "Localized menu", action: nil, keyEquivalent: "")
+        main.addItem(rootItem)
+        let edit = NSMenu()
+        rootItem.submenu = edit
+        let paste = NSMenuItem(title: "Text Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(paste)
+        edit.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+
+        OverlayWindow.installAssignmentMenuItems(in: main)
+        OverlayWindow.installAssignmentMenuItems(in: main)
+        XCTAssertEqual(edit.items.count, 5)
+        XCTAssertEqual(paste.keyEquivalent, "v")
+        let window = OverlayWindow(contentRect: .zero, styleMask: .borderless, backing: .buffered, defer: true)
+        for (item, action) in zip(edit.items.suffix(3), OverlayWindow.AssignmentMenuAction.allCases) {
+            XCTAssertEqual(item.action, action.selector)
+            XCTAssertNil(item.target)
+            XCTAssertTrue(item.keyEquivalent.isEmpty)
+            XCTAssertFalse(window.validateUserInterfaceItem(item))
+        }
+    }
+
     func testDefaultOriginUsesBottomRightMargin() {
         let visibleFrame = CGRect(x: 0, y: 0, width: 1000, height: 800)
         let windowSize = CGSize(width: 200, height: 100)
