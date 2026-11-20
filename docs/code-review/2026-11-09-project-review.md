@@ -575,22 +575,48 @@ Remaining work:
   not a demonstrated correctness requirement. Check the current toolchain and
   a leaf target before adopting it across UI targets.
 
-### P7. SwiftUI and AppKit idioms — opportunistic
+### P7. SwiftUI and AppKit idioms
 
-- `.foregroundColor`: 758 uses against 867 `.foregroundStyle`. Half migrated;
-  one codemod PR checked by snapshots.
-- No Liquid Glass in the main app. `AppGlass.swift` imitates it with
-  `NSVisualEffectView` and hand-drawn gradients. Since every surface routes
-  through `AppGlassBackground` and the floor is macOS 27, swapping the
-  implementation is contained. At minimum, merge the three duplicate
-  `VisualEffectBlur` wrappers.
-- Deprecated since macOS 14, likely compiler warnings today:
-  `NSApp.activate(ignoringOtherApps:)` (22 uses; the replacement behaves
-  differently, test first), `NSImage.lockFocus()` (3), `Process.launchPath` (1).
-- About a third of the 21 `NSViewRepresentable` wrappers have SwiftUI
-  replacements (`@FocusState`, `.onContinuousHover`, `WindowDragGesture`).
-- Help, Simulator, Recent Keypresses and About windows could be plain `Window`
-  scenes.
+The main glass surface uses system glass (#1408), and the deprecated image
+drawing was replaced (#1460). The source scan found no assignment to
+`Process.launchPath`. Cooperative activation is in #1508. Live foreground
+checks remain for requests that arrive while another app is active.
+
+| Surface | Current behavior and decision |
+|---|---|
+| Help | Keep the controller. It restores the overlay on close only when it was previously visible by choice, and it can position Help beside an overlay that stays visible. A scene migration needs to preserve both paths and help-topic selection. |
+| Simulator | This is the simplest candidate for a scene. Its controller keeps the simulator alive across close and reopen, restores the saved frame, and opens from Settings. A conversion should preserve those behaviors and show a clear reduction in lifecycle code. |
+| Recent Keypresses | Keep the floating AppKit window with all-Spaces and full-screen auxiliary behavior. Verify both Spaces behaviors before considering a scene conversion. |
+| About | Keep the platform's standard About panel, which already supports the build information KeyPath displays. |
+
+SwiftUI provides singleton [Window scenes](https://developer.apple.com/documentation/swiftui/window)
+and controls for [window interactions](https://developer.apple.com/documentation/swiftui/windowinteractionbehavior).
+KeyPath's main window and overlay are AppKit-owned, and its SwiftUI app declares
+a Settings scene. Evaluate scene changes through the actual menu, overlay and
+Settings entry points.
+
+Of the 14 AppKit view and view-controller bridges inspected in KeyPathAppKit,
+the private icon segmented control had no callers and was removed. Function
+Keys already uses SwiftUI settings cards. The remaining bridges serve these
+roles:
+
+- The keyboard stage uses an MTKView and two probes for native first-frame
+  evidence and window coordinate mapping. Retain the Metal onboarding path.
+- Web Help owns WKWebView navigation and its offline content store.
+- The overlay uses a hosted inspector mask, first-click window dragging,
+  mouse and scroll activity tracking, and first-responder focus for the
+  separate popover host. A SwiftUI replacement needs to preserve those
+  behaviors. Hover entry and exit alone would miss scroll activity.
+- The integer and search fields supply AppKit editing behavior. The integer
+  field also handles accessibility value updates. The remaining visual-effects
+  bridge and onboarding window-background bridge control window materials
+  and colors outside the reusable glass background.
+- The plugin settings card hosts the view controller supplied by a plugin.
+
+The source scan found 660 `foregroundColor` uses and 855 `foregroundStyle`
+uses. Convert these during surface work and compare snapshots in light and
+dark appearances. A bulk rewrite across these views solely to reduce the count
+would make regressions harder to isolate.
 
 ### P8. Localization needs a decision
 
