@@ -1743,7 +1743,7 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testFirstSuccessRealCapsAndLauncherProfilesAreSessionCompatible() async throws {
-        let defaults = PreferencesService.canonicalDefaults
+        let defaults = RecoverableRuleWrite.PreferenceDefaults.canonical
         let preferenceKey = PreferencesService.leaderKeyPreferenceKey
         let previousPreference = defaults.object(forKey: preferenceKey)
         defer {

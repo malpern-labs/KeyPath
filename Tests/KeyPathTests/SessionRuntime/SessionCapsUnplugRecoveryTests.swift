@@ -100,7 +100,7 @@ final class SessionCapsUnplugRecoveryTests: XCTestCase {
                                                    bootSessionUUID: "A7B944DF-471A-4C22-B9F3-A4EE5522F775")
         let lease = try SessionCapsMappingPolicy.acquire(original: [], device: device, devices: [device], owner: owner,
                                                          effectiveConfigSHA256: String(repeating: "a", count: 64))
-        typealias Admission = SessionCapsRuntimeSupport.Admission
+        typealias Admission = SessionConfigurationAdmission
         enum Unreadable: Error { case file }
         var admissions = 0
         func check(_ digest: () throws -> String, admission: Admission = Admission(result: .valid, managedCaps: true, intermediateUsage: 109))

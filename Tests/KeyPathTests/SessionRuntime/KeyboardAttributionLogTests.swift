@@ -185,11 +185,11 @@ final class KeyboardAttributionLogTests: XCTestCase {
     }
 
     func testSwitchIsOffByDefault() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "KeyboardAttributionLogTests"))
-        defaults.removePersistentDomain(forName: "KeyboardAttributionLogTests")
+        let fixture = try IsolatedPreferenceDefaults()
+        let defaults = fixture.defaults
         XCTAssertFalse(KeyboardAttributionMonitor.isEnabled(defaults: defaults))
         defaults.set(true, forKey: KeyboardAttributionMonitor.enabledKey)
         XCTAssertTrue(KeyboardAttributionMonitor.isEnabled(defaults: defaults))
-        defaults.removePersistentDomain(forName: "KeyboardAttributionLogTests")
+        withExtendedLifetime(fixture) {}
     }
 }
