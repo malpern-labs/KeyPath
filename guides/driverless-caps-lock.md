@@ -72,6 +72,11 @@ from **System Settings → Keyboard → Modifier Keys** or another app such as
 Raycast. Remove that conflicting mapping if you want KeyPath to control Caps
 Lock on that keyboard, then choose **Check Again**.
 
+If KeyPath reports Caps Lock mapped to F20 and you use Raycast's Hyper Key,
+check **Raycast → Settings → Keyboard → Hyper Key**. Set it to **None** or
+choose a different trigger, then choose **Check Again** in KeyPath. The
+keyboard mapping shows which key is in use. Raycast is one possible source.
+
 Some keyboards expose several interfaces, including one labeled as a mouse for
 N-key rollover. KeyPath covers every interface it can verify may send keys.
 If it cannot determine the covered interfaces safely, that keyboard is left

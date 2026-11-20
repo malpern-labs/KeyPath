@@ -289,19 +289,9 @@ enum SessionCapsRuntimeSupport {
         return codes
     }
 
-    /// Raycast's Hyper Key preference, when Raycast has one.
-    static func raycastHyperKey() -> SessionCapsConflict.RaycastHyperKey? {
-        guard let state = CFPreferencesCopyAppValue("raycast_hyperKey_state" as CFString,
-                                                    "com.raycast.macos" as CFString) as? [String: Any] else { return nil }
-        return .init(enabled: (state["enabled"] as? NSNumber)?.boolValue == true,
-                     keyCode: (state["keyCode"] as? NSNumber)?.intValue)
-    }
-
-    /// Who already maps Caps Lock on this keyboard, if anyone. Synchronous;
-    /// call off the main actor.
+    /// Read any existing Caps Lock mapping on the keyboard. Call off the main actor.
     static func capsConflict(on device: Policy.DeviceIdentity,
-                             backend: SessionCapsMappingLease.Backend = SessionCapsHIDUtilTransport.backend(),
-                             raycast: SessionCapsConflict.RaycastHyperKey? = raycastHyperKey()) throws -> SessionCapsConflict?
+                             backend: SessionCapsMappingLease.Backend = SessionCapsHIDUtilTransport.backend()) throws -> SessionCapsConflict?
     {
         // Another tool may have mapped Caps on only one covered interface of
         // the board. Other interfaces (consumer, raw HID) are not read.
@@ -312,7 +302,7 @@ enum SessionCapsRuntimeSupport {
             rows += members.sorted().filter { $0 != device.registryEntryID }.compactMap { group[$0] }
         }
         for mappings in rows {
-            if let conflict = SessionCapsConflict.identify(mappings, raycast: raycast) { return conflict }
+            if let conflict = SessionCapsConflict.identify(mappings) { return conflict }
         }
         return nil
     }

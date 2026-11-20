@@ -6781,6 +6781,16 @@
         }
       }
     },
+    "Caps Lock is already mapped to F20 on this keyboard. If you use Raycast’s Hyper Key, open Raycast → Settings → Keyboard → Hyper Key, set it to None, then click Check Again." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このキーボードでは、Caps LockがすでにF20にリマップされています。RaycastのHyper Keyを使っている場合は、Raycastの「Settings」→「Keyboard」→「Hyper Key」で「None」を選び、KeyPathの「再確認」をクリックしてください。"
+          }
+        }
+      }
+    },
     "Caps Lock\ntap + hold" : {
       "localizations" : {
         "ja" : {
@@ -26407,16 +26417,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "生の値モード"
-          }
-        }
-      }
-    },
-    "Raycast’s Hyper Key is using Caps Lock. Turn it off in Raycast, or use another trigger for Hyper Key." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "RaycastのHyper KeyがCaps Lockを使用しています。Raycastでオフにするか、Hyper Keyに別のトリガーを使用してください。"
           }
         }
       }
