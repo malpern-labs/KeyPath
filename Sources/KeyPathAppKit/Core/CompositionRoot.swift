@@ -49,7 +49,7 @@ enum CompositionRoot {
         )
 
         // Phase 4: MVVM - Initialize services and RuntimeCoordinator via composition root
-        let configurationService = ConfigurationService(
+        let configurationService = ConfigurationService.forApp(
             configDirectory: KeyPathConstants.Config.directory
         )
         let manager = RuntimeCoordinator(injectedConfigurationService: configurationService)

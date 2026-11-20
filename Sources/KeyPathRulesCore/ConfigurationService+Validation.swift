@@ -50,3 +50,7 @@ extension ConfigurationService {
         )
     }
 }
+
+package extension Notification.Name {
+    static let configValidationFailed = Notification.Name("KeyPath.Config.ValidationFailed")
+}

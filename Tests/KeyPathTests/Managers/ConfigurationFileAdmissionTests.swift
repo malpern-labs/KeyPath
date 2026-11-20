@@ -2,6 +2,7 @@ import Darwin
 import Foundation
 @testable import KeyPathAppKit
 import KeyPathCore
+import KeyPathRulesCore
 @preconcurrency import XCTest
 
 @MainActor

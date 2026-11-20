@@ -1,7 +1,7 @@
 import Foundation
 @testable import KeyPathAppKit
 import KeyPathCore
-import KeyPathRulesCore
+@testable import KeyPathRulesCore
 import XCTest
 
 /// Exercises generated profiles through Kanata's parsed action-tree validator.

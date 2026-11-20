@@ -260,7 +260,7 @@ public struct PacksFacade: Sendable {
                 configurationService: operation.service, installedPackTracker: installedPackTracker
             )
         }
-        let configService = ConfigurationService()
+        let configService = ConfigurationService.forApp()
         return RuleCollectionsManager(
             ruleCollectionStore: .shared,
             customRulesStore: .shared,

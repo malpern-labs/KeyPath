@@ -98,7 +98,6 @@ public struct ConfigFacade: Sendable {
                 reloadHandler: { await reloadResult() }
             )
         }
-        await refreshSharedLeaderPreference()
         let collections = await ruleCollectionLoader()
         let customRules = await customRuleLoader()
         let enabledCount = collections.filter(\.isEnabled).count
@@ -130,7 +129,7 @@ public struct ConfigFacade: Sendable {
             let previewConfig = try await service.generateConfiguration(
                 ruleCollections: reconciledCollections,
                 customRules: customRules,
-                leaderKeyPreference: reconcile ?? (preferenceDefaultsOverride == nil ? nil : current),
+                leaderKeyPreference: reconcile ?? current,
                 preferenceDefaults: preferenceDefaultsOverride?.value
             )
             try await validateDryRunConfig(previewConfig.content)
@@ -158,7 +157,6 @@ public struct ConfigFacade: Sendable {
                 preferenceChanges: [preferenceChange],
                 mutationPermit: permit
             )
-            await refreshSharedLeaderPreference()
         } else {
             try await service.saveConfiguration(
                 ruleCollections: reconciledCollections,
@@ -195,13 +193,6 @@ public struct ConfigFacade: Sendable {
 
     private var preferenceDefaults: UserDefaults {
         preferenceDefaultsOverride?.value ?? RecoverableRuleWrite.PreferenceDefaults.canonical
-    }
-
-    @MainActor
-    private func refreshSharedLeaderPreference() {
-        if preferenceDefaultsOverride == nil {
-            PreferencesService.shared.reloadLeaderKeyPreference()
-        }
     }
 
     // MARK: - Engine
