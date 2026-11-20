@@ -15,11 +15,6 @@ enum DuplicateAppDetector {
     // It stays a subprocess on purpose, rather than NSMetadataQuery: a stalled
     // `mdfind` child can be timed out and killed, while a query needs a run loop
     // and cannot be abandoned cleanly.
-    #if DEBUG
-        nonisolated(unsafe) static var testDuplicateAppPathsOverride: (() -> [String]?)?
-        nonisolated(unsafe) static var testDuplicateScanRunner: (any SubprocessRunning)?
-        nonisolated(unsafe) static var testReadOnlyVolumeOverride: ((String) -> Bool)?
-    #endif
     static let duplicateScanTimeout: TimeInterval = 2
     static let duplicateScanExcludedPathFragments = [
         "/dist/", "/.build/", "/build/", "/DerivedData/", "/Sparkle_generate_appcast/"
@@ -27,25 +22,26 @@ enum DuplicateAppDetector {
 
     /// All KeyPath.app copies visible to Spotlight, with `/Applications/KeyPath.app`
     /// first when present. Build and Sparkle staging directories are excluded.
-    static func detectDuplicateAppCopies() async -> [String] {
-        var paths: [String]
-        #if DEBUG
-            if let override = testDuplicateAppPathsOverride?() {
-                paths = override
-            } else {
-                paths = await spotlightAppCopies()
-            }
-        #else
-            paths = await spotlightAppCopies()
-        #endif
+    static func detectDuplicateAppCopies(
+        runner: any SubprocessRunning = SubprocessRunner.shared,
+        fallbackPaths: @Sendable () -> [String] = canonicalAppCandidates
+    ) async -> [String] {
+        let paths = await spotlightAppCopies(runner: runner, fallbackPaths: fallbackPaths)
+        return filteredCopies(paths)
+    }
 
+    static func filteredCopies(
+        _ candidates: [String],
+        isReadOnly: (String) -> Bool = isOnReadOnlyVolume
+    ) -> [String] {
+        var paths = candidates
         // Filter out build/staging directories to avoid flagging artifacts as duplicates
         paths = paths.filter { path in
             !duplicateScanExcludedPathFragments.contains { path.contains($0) }
         }
 
         // A mounted installer image is not an installation and cannot be trashed.
-        paths = paths.filter { !isOnReadOnlyVolume($0) }
+        paths = paths.filter { !isReadOnly($0) }
 
         paths = Array(Set(paths)) // unique
         paths.sort { lhs, rhs in
@@ -60,13 +56,10 @@ enum DuplicateAppDetector {
         return paths
     }
 
-    private static func spotlightAppCopies() async -> [String] {
-        var runner: any SubprocessRunning = SubprocessRunner.shared
-        #if DEBUG
-            if let override = testDuplicateScanRunner {
-                runner = override
-            }
-        #endif
+    private static func spotlightAppCopies(
+        runner: any SubprocessRunning,
+        fallbackPaths: @Sendable () -> [String]
+    ) async -> [String] {
         do {
             let result = try await runner.run(
                 "/usr/bin/mdfind",
@@ -85,13 +78,11 @@ enum DuplicateAppDetector {
                 "⚠️ [DuplicateAppDetector] Spotlight scan failed; using canonical locations: \(error)"
             )
         }
-        return canonicalAppCandidates()
+        // Fallback paths may be absent. Report only installed copies.
+        return fallbackPaths().filter { Foundation.FileManager().fileExists(atPath: $0) }
     }
 
-    static func isOnReadOnlyVolume(_ path: String) -> Bool {
-        #if DEBUG
-            if let override = testReadOnlyVolumeOverride { return override(path) }
-        #endif
+    private static func isOnReadOnlyVolume(_ path: String) -> Bool {
         let values = try? URL(fileURLWithPath: path).resourceValues(forKeys: [.volumeIsReadOnlyKey])
         return values?.volumeIsReadOnly ?? false
     }
@@ -110,13 +101,10 @@ enum DuplicateAppDetector {
     }
 
     private static func canonicalAppCandidates() -> [String] {
-        let defaults = [
+        [
             "/Applications/KeyPath.app",
             NSHomeDirectory() + "/Applications/KeyPath.app",
             NSHomeDirectory() + "/Downloads/KeyPath.app"
         ]
-        // Only locations that exist: returning the hardcoded defaults when none do
-        // reported phantom "multiple copies" whenever the Spotlight scan fell back.
-        return defaults.filter { Foundation.FileManager().fileExists(atPath: $0) }
     }
 }
