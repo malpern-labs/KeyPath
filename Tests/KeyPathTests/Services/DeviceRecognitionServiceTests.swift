@@ -2,18 +2,8 @@
 import XCTest
 
 final class DeviceRecognitionServiceTests: KeyPathTestCase {
-    override func setUp() {
-        super.setUp()
-        KeyboardDetectionIndex.resetCache()
-    }
-
-    override func tearDown() {
-        KeyboardDetectionIndex.resetCache()
-        super.tearDown()
-    }
-
     func testRecognizeBuiltInKeyboardFromVIAExactMatch() async {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [
+        let index = KeyboardDetectionIndex(exactEntries: [
             .init(
                 matchKey: "CB10:1256",
                 matchType: .exactVIDPID,
@@ -33,7 +23,7 @@ final class DeviceRecognitionServiceTests: KeyPathTestCase {
             isConnected: true
         )
 
-        let service = DeviceRecognitionService()
+        let service = DeviceRecognitionService(detectionIndex: index)
         let result = await service.recognize(event: event)
 
         XCTAssertNotNil(result)
@@ -45,7 +35,7 @@ final class DeviceRecognitionServiceTests: KeyPathTestCase {
     }
 
     func testRecognizeNonBuiltInKeyboardFallsBackToQMK() async {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [
+        let index = KeyboardDetectionIndex(exactEntries: [
             .init(
                 matchKey: "1209:A1E5",
                 matchType: .exactVIDPID,
@@ -65,7 +55,7 @@ final class DeviceRecognitionServiceTests: KeyPathTestCase {
             isConnected: true
         )
 
-        let service = DeviceRecognitionService()
+        let service = DeviceRecognitionService(detectionIndex: index)
         let result = await service.recognize(event: event)
 
         XCTAssertNotNil(result)
@@ -77,7 +67,7 @@ final class DeviceRecognitionServiceTests: KeyPathTestCase {
     }
 
     func testNoMatchReturnsNil() async {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [])
+        let index = KeyboardDetectionIndex(exactEntries: [])
 
         let event = HIDDeviceMonitor.HIDKeyboardEvent(
             vendorID: 0x1337,
@@ -86,14 +76,34 @@ final class DeviceRecognitionServiceTests: KeyPathTestCase {
             isConnected: true
         )
 
-        let service = DeviceRecognitionService()
+        let service = DeviceRecognitionService(detectionIndex: index)
         let result = await service.recognize(event: event)
 
         XCTAssertNil(result)
     }
 
+    func testConcurrentRecognitionUsesEachServicesOwnIndex() async {
+        let record = KeyboardDetectionIndex.Record(
+            matchKey: "CB10:1256", matchType: .exactVIDPID, source: .via, confidence: .high,
+            displayName: "Corne Keyboard", manufacturer: "Corne",
+            qmkPath: nil, builtInLayoutId: "corne"
+        )
+        let knownService = DeviceRecognitionService(detectionIndex: KeyboardDetectionIndex(exactEntries: [record]))
+        let emptyService = DeviceRecognitionService(detectionIndex: KeyboardDetectionIndex(exactEntries: []))
+        let event = HIDDeviceMonitor.HIDKeyboardEvent(
+            vendorID: 0xCB10, productID: 0x1256, productName: "Corne Keyboard", isConnected: true
+        )
+
+        async let known = knownService.recognize(event: event)
+        async let unknown = emptyService.recognize(event: event)
+        let (knownResult, unknownResult) = await (known, unknown)
+
+        XCTAssertEqual(knownResult?.layoutId, "corne")
+        XCTAssertNil(unknownResult)
+    }
+
     func testRecognizeAppleInternalKeyboardAsBuiltInMacBook() async {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [])
+        let index = KeyboardDetectionIndex(exactEntries: [])
 
         let event = HIDDeviceMonitor.HIDKeyboardEvent(
             vendorID: 0x05AC,
@@ -102,7 +112,7 @@ final class DeviceRecognitionServiceTests: KeyPathTestCase {
             isConnected: true
         )
 
-        let service = DeviceRecognitionService()
+        let service = DeviceRecognitionService(detectionIndex: index)
         let result = await service.recognize(event: event)
 
         XCTAssertNotNil(result)
@@ -115,7 +125,7 @@ final class DeviceRecognitionServiceTests: KeyPathTestCase {
     }
 
     func testRecognizeZeroIdentityAppleInternalKeyboardAsBuiltInMacBook() async {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [])
+        let index = KeyboardDetectionIndex(exactEntries: [])
 
         let event = HIDDeviceMonitor.HIDKeyboardEvent(
             vendorID: 0x0000,
@@ -124,7 +134,7 @@ final class DeviceRecognitionServiceTests: KeyPathTestCase {
             isConnected: true
         )
 
-        let service = DeviceRecognitionService()
+        let service = DeviceRecognitionService(detectionIndex: index)
         let result = await service.recognize(event: event)
 
         XCTAssertNotNil(result)
@@ -134,7 +144,7 @@ final class DeviceRecognitionServiceTests: KeyPathTestCase {
     }
 
     func testRecognizeAppleMagicKeyboardWithNumericKeypad() async {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [])
+        let index = KeyboardDetectionIndex(exactEntries: [])
 
         let event = HIDDeviceMonitor.HIDKeyboardEvent(
             vendorID: 0x05AC,
@@ -143,7 +153,7 @@ final class DeviceRecognitionServiceTests: KeyPathTestCase {
             isConnected: true
         )
 
-        let service = DeviceRecognitionService()
+        let service = DeviceRecognitionService(detectionIndex: index)
         let result = await service.recognize(event: event)
 
         XCTAssertNotNil(result)
@@ -154,7 +164,7 @@ final class DeviceRecognitionServiceTests: KeyPathTestCase {
     }
 
     func testVendorFallbackStillWorksWhenItCollapsesToSingleBuiltInLayout() async {
-        KeyboardDetectionIndex.seedIndex(
+        let index = KeyboardDetectionIndex(
             exactEntries: [],
             vendorFallbackEntries: [
                 .init(
@@ -177,7 +187,7 @@ final class DeviceRecognitionServiceTests: KeyPathTestCase {
             isConnected: true
         )
 
-        let service = DeviceRecognitionService()
+        let service = DeviceRecognitionService(detectionIndex: index)
         let result = await service.recognize(event: event)
 
         XCTAssertNotNil(result)
