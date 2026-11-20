@@ -23,7 +23,7 @@ final class WizardRunningKanataTests: XCTestCase {
         } catch {}
     }
 
-    func testProbeFailureReturnsNoProcess() async {
+    func testProbeFailureRemainsUnknown() async {
         let runner = ProbeRunner(output: "", fails: true)
         do {
             _ = try await WizardSystemPaths.detectRunningKanataProcess(runner: runner)

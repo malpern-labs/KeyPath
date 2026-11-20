@@ -11,6 +11,8 @@ import SwiftUI
 /// Shows when existing Kanata config is detected (from running process or config files)
 struct WizardKanataMigrationPage: View {
     @State private var isDetecting = true
+    @State private var detectionError: String?
+    @State private var detectionAttempt = 0
     @State private var detectedConfig: DetectedConfig?
     @State private var runningKanataInfo: WizardSystemPaths.RunningKanataInfo?
     @State private var isMigrating = false
@@ -59,7 +61,13 @@ struct WizardKanataMigrationPage: View {
                 .scaleEffect(heroScale)
                 .opacity(heroOpacity)
 
-                if let config = detectedConfig {
+                if let error = detectionError {
+                    VStack {
+                        Text(error)
+                        Button("Retry") { detectionAttempt += 1 }
+                            .accessibilityIdentifier("migration-retry-detection")
+                    }
+                } else if let config = detectedConfig {
                     configDetectedView(config: config)
                 } else {
                     noConfigView()
@@ -91,7 +99,7 @@ struct WizardKanataMigrationPage: View {
             animateEntrance()
         }
         .disabled(isDetecting)
-        .task { await detectConfig() }
+        .task(id: detectionAttempt) { await detectConfig() }
         .fileImporter(
             isPresented: $showFilePicker,
             allowedContentTypes: [.plainText],
@@ -253,9 +261,18 @@ struct WizardKanataMigrationPage: View {
     // MARK: - Detection
 
     private func detectConfig() async {
+        isDetecting = true
+        detectionError = nil
         defer { isDetecting = false }
         // Priority 1: Running Kanata process (get config from args)
-        let detectedProcess = try? await WizardSystemPaths.detectRunningKanataProcess()
+        let detectedProcess: WizardSystemPaths.RunningKanataInfo?
+        do {
+            detectedProcess = try await WizardSystemPaths.detectRunningKanataProcess()
+        } catch {
+            guard !Task.isCancelled else { return }
+            detectionError = error.localizedDescription
+            return
+        }
         guard !Task.isCancelled, detectedConfig == nil else { return }
         if let runningInfo = detectedProcess,
            !runningInfo.isKeyPathManaged

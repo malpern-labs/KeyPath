@@ -82,7 +82,7 @@ public extension WizardHost {
                 AnyView(WizardKarabinerImportPage(onImportComplete: onImportComplete, onSkip: onSkip))
             },
             externalKanata: ExternalKanataOperations(
-                info: { await ExternalKanataService.getExternalKanataInfo() },
+                info: { try await ExternalKanataService.getExternalKanataInfo() },
                 stop: { info in
                     switch await ExternalKanataService.stopExternalKanata(info) {
                     case .success, .processNotFound:

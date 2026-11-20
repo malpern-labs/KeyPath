@@ -33,12 +33,12 @@ public struct WizardHost: Sendable {
 
 /// Finding and stopping a Kanata that KeyPath did not start.
 public struct ExternalKanataOperations: Sendable {
-    public var info: @Sendable () async -> WizardSystemPaths.RunningKanataInfo?
+    public var info: @Sendable () async throws -> WizardSystemPaths.RunningKanataInfo?
     public var stop: @Sendable (WizardSystemPaths.RunningKanataInfo) async -> Result<Void, Error>
     public var isRunning: @Sendable () async -> Bool?
 
     public init(
-        info: @escaping @Sendable () async -> WizardSystemPaths.RunningKanataInfo?,
+        info: @escaping @Sendable () async throws -> WizardSystemPaths.RunningKanataInfo?,
         stop: @escaping @Sendable (WizardSystemPaths.RunningKanataInfo) async -> Result<Void, Error>,
         isRunning: @escaping @Sendable () async -> Bool?
     ) {

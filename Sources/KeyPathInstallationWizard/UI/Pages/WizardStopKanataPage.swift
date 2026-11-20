@@ -9,6 +9,7 @@ public struct WizardStopKanataPage: View {
     @Environment(\.wizardHost) private var wizardHost
     @State private var isStopping = false
     @State private var stopError: String?
+    @State private var detectionAttempt = 0
     @State private var runningInfo: WizardSystemPaths.RunningKanataInfo?
 
     // Animation states
@@ -49,10 +50,16 @@ public struct WizardStopKanataPage: View {
         .onAppear {
             animateEntrance()
         }
-        .task {
-            let info = await wizardHost.externalKanata?.info()
-            guard !Task.isCancelled else { return }
-            runningInfo = info
+        .task(id: detectionAttempt) {
+            do {
+                let info = try await wizardHost.externalKanata?.info()
+                guard !Task.isCancelled else { return }
+                runningInfo = info
+                stopError = nil
+            } catch {
+                guard !Task.isCancelled else { return }
+                stopError = error.localizedDescription
+            }
         }
     }
 
@@ -138,6 +145,11 @@ public struct WizardStopKanataPage: View {
                 .padding(WizardDesign.Spacing.cardPadding)
                 .background(Color.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
                 .padding(.horizontal, WizardDesign.Spacing.pageVertical)
+            }
+
+            if runningInfo == nil, stopError != nil {
+                Button("Retry") { detectionAttempt += 1 }
+                    .accessibilityIdentifier("stop-kanata-retry-detection")
             }
 
             // Action buttons
