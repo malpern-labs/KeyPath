@@ -5,6 +5,7 @@ import KeyPathRulesCore
 
 @MainActor
 final class SystemPackTransactionTests: KeyPathTestCase {
+    private var preferences: IsolatedPreferenceDefaults!
     private var directory: URL!
     private var manager: RuleCollectionsManager!
     private var tracker: InstalledPackTracker!
@@ -38,19 +39,23 @@ final class SystemPackTransactionTests: KeyPathTestCase {
 
     override func setUp() async throws {
         try await super.setUp()
+        preferences = try IsolatedPreferenceDefaults()
         directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let collections = RuleCollectionStore.testStore(at: directory.appendingPathComponent("RuleCollections.json"))
         let rules = CustomRulesStore.testStore(at: directory.appendingPathComponent("CustomRules.json"))
         let service = ConfigurationService.sessionTestService(configDirectory: directory.path, ruleCollectionStore: collections, customRulesStore: rules)
-        manager = RuleCollectionsManager(ruleCollectionStore: collections, customRulesStore: rules, configurationService: service)
+        tracker = InstalledPackTracker(fileURL: directory.appendingPathComponent("installed-packs.json"))
+        manager = RuleCollectionsManager(ruleCollectionStore: collections, customRulesStore: rules, configurationService: service,
+                                         keymapPreferences: preferences.defaults,
+                                         preferencesService: PreferencesService(leaderDefaults: preferences.defaults, defaults: preferences.defaults),
+                                         installedPackTracker: tracker)
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections().map { collection in
             var value = collection
             value.isEnabled = false
             return value
         }
         try await service.saveRuleState(ruleCollections: manager.ruleCollections, customRules: [], collectionStore: collections, customStore: rules)
-        tracker = InstalledPackTracker(fileURL: directory.appendingPathComponent("installed-packs.json"))
         try await tracker.upsert(InstalledPackRecord(packID: "unrelated", version: "1", installedAt: Date(timeIntervalSince1970: 42)))
     }
 
@@ -58,6 +63,7 @@ final class SystemPackTransactionTests: KeyPathTestCase {
         try? FileManager.default.removeItem(at: directory)
         try? FileManager.default.removeItem(at: ConfigurationOperationGate.lockFileURL(for: directory))
         manager = nil
+        preferences = nil
         tracker = nil
         directory = nil
         try await super.tearDown()
@@ -222,7 +228,7 @@ final class SystemPackTransactionTests: KeyPathTestCase {
     }
 
     private func withLegacySnapshot(_ data: Data, operation: () async throws -> Void) async throws {
-        let url = PackCollectionSnapshot.snapshotURL(for: pack.id)
+        let url = PackCollectionSnapshot.snapshotURL(for: pack.id, configDirectory: directory)
         let previous = FileManager.default.fileExists(atPath: url.path) ? try Data(contentsOf: url) : nil
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)

@@ -205,7 +205,7 @@ extension RuleCollectionsManager {
                 try await recoverRuleState(mutationPermit: permit)
                 let snapshot = snapshotRuleState()
                 if !bypassOwnershipCheck {
-                    if let owner = await InstalledPackTracker.shared.packManagingCollection(id) {
+                    if let owner = await installedPackTracker.packManagingCollection(id) {
                         AppLogger.shared.log(
                             "🔒 [RuleCollections] Toggle blocked: collection \(id) is managed by pack '\(owner.packName)'"
                         )

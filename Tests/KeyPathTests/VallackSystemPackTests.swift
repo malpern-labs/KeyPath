@@ -3,35 +3,33 @@ import KeyPathCore
 import KeyPathRulesCore
 import XCTest
 
+@MainActor
 final class VallackSystemPackTests: XCTestCase {
-    func testSnapshotWritesStayInsideTestSandbox() throws {
+    func testSnapshotWritesStayInsideOwnedDirectory() throws {
         let id = "sandbox-\(UUID().uuidString)"
-        let url = PackCollectionSnapshot.snapshotURL(for: id)
-        XCTAssertTrue(url.path.hasPrefix(AppPaths.testSandboxDirectory.path + "/"))
-        defer { PackCollectionSnapshot.remove(for: id) }
-        try PackCollectionSnapshot.save(PackCollectionSnapshot(packID: id, entries: []))
-        XCTAssertNotNil(PackCollectionSnapshot.load(for: id))
+        let url = PackCollectionSnapshot.snapshotURL(for: id, configDirectory: fixture.directory)
+        XCTAssertTrue(url.path.hasPrefix(fixture.directory.path + "/"))
+        defer { PackCollectionSnapshot.remove(for: id, configDirectory: fixture.directory) }
+        try PackCollectionSnapshot.save(PackCollectionSnapshot(packID: id, entries: []), configDirectory: fixture.directory)
+        XCTAssertNotNil(PackCollectionSnapshot.load(for: id, configDirectory: fixture.directory))
     }
 
-    private var originalInstalledPacks: [InstalledPackRecord] = []
+    private var preferences: IsolatedPreferenceDefaults!
+    private var fixture: CLIStoreFixture!
+    private var tracker: InstalledPackTracker!
 
     override func setUp() async throws {
         try await super.setUp()
-        originalInstalledPacks = await InstalledPackTracker.shared.allInstalled()
+        preferences = try IsolatedPreferenceDefaults()
+        fixture = try CLIStoreFixture()
+        tracker = InstalledPackTracker(fileURL: fixture.directory.appendingPathComponent("installed-packs.json"))
     }
 
     override func tearDown() async throws {
-        let current = await InstalledPackTracker.shared.allInstalled()
-        for record in current {
-            if !originalInstalledPacks.contains(where: { $0.packID == record.packID }) {
-                try await InstalledPackTracker.shared.remove(packID: record.packID)
-            }
-        }
-        for record in originalInstalledPacks {
-            if await !(InstalledPackTracker.shared.isInstalled(packID: record.packID)) {
-                try await InstalledPackTracker.shared.upsert(record)
-            }
-        }
+        tracker = nil
+        preferences = nil
+        if FileManager.default.fileExists(atPath: fixture.directory.path) { try fixture.remove() }
+        fixture = nil
         try await super.tearDown()
     }
 
@@ -199,7 +197,7 @@ final class VallackSystemPackTests: XCTestCase {
 
         let record = try await PackInstaller.shared.install(
             PackRegistry.vallackSystem,
-            manager: manager
+            manager: manager, installedPackTracker: tracker
         )
         XCTAssertEqual(record.packID, PackRegistry.vallackSystem.id)
 
@@ -251,7 +249,7 @@ final class VallackSystemPackTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: tempDir) }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
 
-        _ = try await PackInstaller.shared.install(PackRegistry.vallackSystem, manager: manager)
+        _ = try await PackInstaller.shared.install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
 
         XCTAssertFalse(
             manager.ruleCollections.first { $0.id == RuleCollectionIdentifier.homeRowArrows }?.isEnabled ?? true,
@@ -279,7 +277,7 @@ final class VallackSystemPackTests: XCTestCase {
 
         let installed = try await PackInstaller.shared.install(
             PackRegistry.vallackSystem,
-            manager: manager
+            manager: manager, installedPackTracker: tracker
         )
 
         let snapshot = try XCTUnwrap(installed.managedCollectionSnapshot)
@@ -296,7 +294,7 @@ final class VallackSystemPackTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: tempDir) }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
 
-        let snapshotURL = PackCollectionSnapshot.snapshotURL(for: PackRegistry.vallackSystem.id)
+        let snapshotURL = PackCollectionSnapshot.snapshotURL(for: PackRegistry.vallackSystem.id, configDirectory: fixture.directory)
         defer { try? FileManager.default.removeItem(at: snapshotURL) }
 
         // Capture pre-install state
@@ -309,8 +307,8 @@ final class VallackSystemPackTests: XCTestCase {
         }
 
         // Install then uninstall
-        _ = try await PackInstaller.shared.install(PackRegistry.vallackSystem, manager: manager)
-        try await PackInstaller.shared.uninstall(packID: PackRegistry.vallackSystem.id, manager: manager)
+        _ = try await PackInstaller.shared.install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
+        try await PackInstaller.shared.uninstall(packID: PackRegistry.vallackSystem.id, manager: manager, installedPackTracker: tracker)
 
         let collections = manager.ruleCollections
 
@@ -357,7 +355,7 @@ final class VallackSystemPackTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: tempDir) }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
 
-        let snapshotURL = PackCollectionSnapshot.snapshotURL(for: PackRegistry.vallackSystem.id)
+        let snapshotURL = PackCollectionSnapshot.snapshotURL(for: PackRegistry.vallackSystem.id, configDirectory: fixture.directory)
         defer { try? FileManager.default.removeItem(at: snapshotURL) }
 
         guard let modsIndex = manager.ruleCollections.firstIndex(where: { $0.id == RuleCollectionIdentifier.homeRowMods }),
@@ -374,8 +372,8 @@ final class VallackSystemPackTests: XCTestCase {
         manager.ruleCollections[modsIndex].isEnabled = true
         manager.ruleCollections[arrowsIndex].isEnabled = true
 
-        _ = try await PackInstaller.shared.install(PackRegistry.vallackSystem, manager: manager)
-        try await PackInstaller.shared.uninstall(packID: PackRegistry.vallackSystem.id, manager: manager)
+        _ = try await PackInstaller.shared.install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
+        try await PackInstaller.shared.uninstall(packID: PackRegistry.vallackSystem.id, manager: manager, installedPackTracker: tracker)
 
         let restoredMods = try XCTUnwrap(
             manager.ruleCollections
@@ -391,9 +389,9 @@ final class VallackSystemPackTests: XCTestCase {
             "Home Row Arrows should stay disabled when restoring it would conflict with restored HRM"
         )
 
-        let isInstalled = await InstalledPackTracker.shared.isInstalled(packID: PackRegistry.vallackSystem.id)
+        let isInstalled = await tracker.isInstalled(packID: PackRegistry.vallackSystem.id)
         XCTAssertFalse(isInstalled, "Vallack install record should be removed after successful uninstall")
-        XCTAssertNil(PackCollectionSnapshot.load(for: PackRegistry.vallackSystem.id))
+        XCTAssertNil(PackCollectionSnapshot.load(for: PackRegistry.vallackSystem.id, configDirectory: fixture.directory))
     }
 
     @MainActor
@@ -401,15 +399,15 @@ final class VallackSystemPackTests: XCTestCase {
         TestEnvironment.forceTestMode = true
         defer { TestEnvironment.forceTestMode = false }
 
-        try? await InstalledPackTracker.shared.remove(packID: PackRegistry.vallackSystem.id)
-        PackCollectionSnapshot.remove(for: PackRegistry.vallackSystem.id)
+        try? await tracker.remove(packID: PackRegistry.vallackSystem.id)
+        PackCollectionSnapshot.remove(for: PackRegistry.vallackSystem.id, configDirectory: fixture.directory)
 
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("vallack-apply-fail-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer {
             try? FileManager.default.removeItem(at: tempDir)
-            PackCollectionSnapshot.remove(for: PackRegistry.vallackSystem.id)
+            PackCollectionSnapshot.remove(for: PackRegistry.vallackSystem.id, configDirectory: fixture.directory)
         }
 
         let collections = RuleCollectionStore.testStore(at: tempDir.appendingPathComponent("RuleCollections.json"))
@@ -419,7 +417,10 @@ final class VallackSystemPackTests: XCTestCase {
             ruleCollectionStore: collections,
             customRulesStore: rules,
             configurationService: service,
-            eventListener: KanataEventListener()
+            eventListener: KanataEventListener(),
+            keymapPreferences: preferences.defaults,
+            preferencesService: PreferencesService(leaderDefaults: preferences.defaults, defaults: preferences.defaults),
+            installedPackTracker: tracker
         )
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
         try await service.saveRuleState(
@@ -467,7 +468,7 @@ final class VallackSystemPackTests: XCTestCase {
             "A rejected source revision should restore in-memory collections"
         )
         XCTAssertNil(
-            PackCollectionSnapshot.load(for: PackRegistry.vallackSystem.id),
+            PackCollectionSnapshot.load(for: PackRegistry.vallackSystem.id, configDirectory: fixture.directory),
             "A rejected source revision should not leave an uninstall snapshot behind"
         )
     }
@@ -478,8 +479,8 @@ final class VallackSystemPackTests: XCTestCase {
         defer { TestEnvironment.forceTestMode = false }
 
         let packID = PackRegistry.vallackSystem.id
-        let modernSnapshotURL = PackCollectionSnapshot.snapshotURL(for: packID)
-        let legacySnapshotURL = AppPaths.configDirectory.appendingPathComponent("vallack-system-snapshot.json")
+        let modernSnapshotURL = PackCollectionSnapshot.snapshotURL(for: packID, configDirectory: fixture.directory)
+        let legacySnapshotURL = fixture.directory.appendingPathComponent("vallack-system-snapshot.json")
         let originalModernSnapshotData = try? Data(contentsOf: modernSnapshotURL)
         let originalLegacySnapshotData = try? Data(contentsOf: legacySnapshotURL)
         defer {
@@ -517,7 +518,7 @@ final class VallackSystemPackTests: XCTestCase {
                 ),
             ]
         )
-        try PackCollectionSnapshot.save(previousSnapshot)
+        try PackCollectionSnapshot.save(previousSnapshot, configDirectory: fixture.directory)
 
         try FileManager.default.createDirectory(
             at: legacySnapshotURL.deletingLastPathComponent(),
@@ -547,7 +548,10 @@ final class VallackSystemPackTests: XCTestCase {
                 fileURL: tempDir.appendingPathComponent("CustomRules.json")
             ),
             configurationService: ConfigurationService(configDirectory: tempDir.path),
-            eventListener: KanataEventListener()
+            eventListener: KanataEventListener(),
+            keymapPreferences: preferences.defaults,
+            preferencesService: PreferencesService(leaderDefaults: preferences.defaults, defaults: preferences.defaults),
+            installedPackTracker: tracker
         )
         manager.ruleCollections = catalog
         let originalRuleState = manager.snapshotRuleState()
@@ -573,7 +577,7 @@ final class VallackSystemPackTests: XCTestCase {
             "A rejected installation must preserve the legacy restore data"
         )
 
-        let restoredSnapshot = try XCTUnwrap(PackCollectionSnapshot.load(for: packID))
+        let restoredSnapshot = try XCTUnwrap(PackCollectionSnapshot.load(for: packID, configDirectory: fixture.directory))
         XCTAssertEqual(restoredSnapshot.snapshotDate, previousSnapshot.snapshotDate)
         XCTAssertEqual(restoredSnapshot.entries.count, previousSnapshot.entries.count)
         XCTAssertEqual(
@@ -592,7 +596,7 @@ final class VallackSystemPackTests: XCTestCase {
 
         // Temporarily remove vallack-system from tracker so the direct
         // toggleCollection call below isn't blocked by the ownership check.
-        try? await InstalledPackTracker.shared.remove(packID: PackRegistry.vallackSystem.id)
+        try? await tracker.remove(packID: PackRegistry.vallackSystem.id)
 
         // Manually enable the nav collection without going through the installer
         // (simulates a corrupted state where snapshot file is missing)
@@ -603,19 +607,19 @@ final class VallackSystemPackTests: XCTestCase {
         )
 
         // Register as installed in the tracker (tearDown restores original state)
-        try await InstalledPackTracker.shared.upsert(InstalledPackRecord(
+        try await tracker.upsert(InstalledPackRecord(
             packID: PackRegistry.vallackSystem.id,
             version: PackRegistry.vallackSystem.version
         ))
 
         // Ensure no snapshot file exists
-        let snapshotURL = PackCollectionSnapshot.snapshotURL(for: PackRegistry.vallackSystem.id)
+        let snapshotURL = PackCollectionSnapshot.snapshotURL(for: PackRegistry.vallackSystem.id, configDirectory: fixture.directory)
         try? FileManager.default.removeItem(at: snapshotURL)
 
         // Uninstall should not crash — just skip the revert
         try await PackInstaller.shared.uninstall(
             packID: PackRegistry.vallackSystem.id,
-            manager: manager
+            manager: manager, installedPackTracker: tracker
         )
 
         let navCollection = manager.ruleCollections
@@ -627,8 +631,7 @@ final class VallackSystemPackTests: XCTestCase {
 
     @MainActor
     private func makeTestManager() throws -> (RuleCollectionsManager, URL) {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("vallack-test-\(UUID().uuidString)")
+        let tempDir = fixture.directory
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let manager = RuleCollectionsManager(
@@ -639,7 +642,10 @@ final class VallackSystemPackTests: XCTestCase {
                 fileURL: tempDir.appendingPathComponent("CustomRules.json")
             ),
             configurationService: ConfigurationService(configDirectory: tempDir.path),
-            eventListener: KanataEventListener()
+            eventListener: KanataEventListener(),
+            keymapPreferences: preferences.defaults,
+            preferencesService: PreferencesService(leaderDefaults: preferences.defaults, defaults: preferences.defaults),
+            installedPackTracker: tracker
         )
         return (manager, tempDir)
     }

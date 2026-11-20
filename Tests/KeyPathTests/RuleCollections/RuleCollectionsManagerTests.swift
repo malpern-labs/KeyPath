@@ -3,7 +3,20 @@ import KeyPathCore
 import KeyPathRulesCore
 @preconcurrency import XCTest
 
+@MainActor
 final class RuleCollectionsManagerTests: XCTestCase {
+    private var preferences: IsolatedPreferenceDefaults!
+
+    override func setUp() async throws {
+        try await super.setUp()
+        preferences = try IsolatedPreferenceDefaults()
+    }
+
+    override func tearDown() async throws {
+        preferences = nil
+        try await super.tearDown()
+    }
+
     // MARK: - Helper Methods
 
     @MainActor
@@ -25,7 +38,10 @@ final class RuleCollectionsManagerTests: XCTestCase {
             ruleCollectionStore: collectionStore,
             customRulesStore: customStore,
             configurationService: configService,
-            eventListener: KanataEventListener()
+            eventListener: KanataEventListener(),
+            keymapPreferences: preferences.defaults,
+            preferencesService: PreferencesService(leaderDefaults: preferences.defaults, defaults: preferences.defaults),
+            installedPackTracker: InstalledPackTracker(fileURL: tempDir.appendingPathComponent("installed-packs.json"))
         )
 
         return (manager, tempDir)
@@ -717,8 +733,8 @@ final class RuleCollectionsManagerTests: XCTestCase {
         let (manager, _) = try await createTestManager()
         defer { TestEnvironment.forceTestMode = false }
 
-        PreferencesService.shared.leaderKeyPreference = .default
-        defer { PreferencesService.shared.leaderKeyPreference = .default }
+        manager.preferencesService.leaderKeyPreference = .default
+        defer { manager.preferencesService.leaderKeyPreference = .default }
 
         let collections = RuleCollectionCatalog().defaultCollections().map { collection in
             var collection = collection
@@ -754,8 +770,8 @@ final class RuleCollectionsManagerTests: XCTestCase {
         defer { TestEnvironment.forceTestMode = false }
 
         // Preference starts at the default ("space"); the loaded collection asks for "tab".
-        PreferencesService.shared.leaderKeyPreference = .default
-        defer { PreferencesService.shared.leaderKeyPreference = .default }
+        manager.preferencesService.leaderKeyPreference = .default
+        defer { manager.preferencesService.leaderKeyPreference = .default }
 
         let collections = RuleCollectionCatalog().defaultCollections().map { collection -> RuleCollection in
             var collection = collection
@@ -770,11 +786,11 @@ final class RuleCollectionsManagerTests: XCTestCase {
         await manager.replaceCollections(collections)
 
         XCTAssertEqual(
-            PreferencesService.shared.leaderKeyPreference.key, "tab",
+            manager.preferencesService.leaderKeyPreference.key, "tab",
             "leaderKeyPreference should be reconciled from the collection's selectedOutput"
         )
         XCTAssertTrue(
-            PreferencesService.shared.leaderKeyPreference.enabled,
+            manager.preferencesService.leaderKeyPreference.enabled,
             "enabled leader collection should mark the preference enabled"
         )
         // The leader activator (base -> nav) adopts the reconciled key...
@@ -810,10 +826,10 @@ final class RuleCollectionsManagerTests: XCTestCase {
         defer { TestEnvironment.forceTestMode = false }
 
         // Leader key deliberately configured via the system-preference path.
-        PreferencesService.shared.leaderKeyPreference = LeaderKeyPreference(
+        manager.preferencesService.leaderKeyPreference = LeaderKeyPreference(
             key: "caps", targetLayer: .navigation, enabled: true
         )
-        defer { PreferencesService.shared.leaderKeyPreference = .default }
+        defer { manager.preferencesService.leaderKeyPreference = .default }
 
         let collections = RuleCollectionCatalog().defaultCollections().map { collection -> RuleCollection in
             var collection = collection
@@ -830,10 +846,10 @@ final class RuleCollectionsManagerTests: XCTestCase {
         await manager.replaceCollections(collections)
 
         XCTAssertEqual(
-            PreferencesService.shared.leaderKeyPreference.key, "caps",
+            manager.preferencesService.leaderKeyPreference.key, "caps",
             "nil selectedOutput must not clobber a system-preference leader key"
         )
-        XCTAssertTrue(PreferencesService.shared.leaderKeyPreference.enabled)
+        XCTAssertTrue(manager.preferencesService.leaderKeyPreference.enabled)
     }
 
     /// Issue #889: reconciliation only fires for an *enabled* Leader Key collection. A
@@ -844,10 +860,10 @@ final class RuleCollectionsManagerTests: XCTestCase {
         let (manager, _) = try await createTestManager()
         defer { TestEnvironment.forceTestMode = false }
 
-        PreferencesService.shared.leaderKeyPreference = LeaderKeyPreference(
+        manager.preferencesService.leaderKeyPreference = LeaderKeyPreference(
             key: "caps", targetLayer: .navigation, enabled: true
         )
-        defer { PreferencesService.shared.leaderKeyPreference = .default }
+        defer { manager.preferencesService.leaderKeyPreference = .default }
 
         let collections = RuleCollectionCatalog().defaultCollections().map { collection -> RuleCollection in
             var collection = collection
@@ -861,7 +877,7 @@ final class RuleCollectionsManagerTests: XCTestCase {
         await manager.replaceCollections(collections)
 
         XCTAssertEqual(
-            PreferencesService.shared.leaderKeyPreference.key, "caps",
+            manager.preferencesService.leaderKeyPreference.key, "caps",
             "a disabled Leader Key collection must not reconcile the preference"
         )
     }
@@ -884,8 +900,8 @@ final class RuleCollectionsManagerTests: XCTestCase {
         // activator (base → home-arrows). With no conflict-resolution handler registered,
         // generateConfiguration throws .mappingConflicts (#463 leader-vs-activator) and
         // regen returns false.
-        PreferencesService.shared.leaderKeyPreference = .default
-        defer { PreferencesService.shared.leaderKeyPreference = .default }
+        manager.preferencesService.leaderKeyPreference = .default
+        defer { manager.preferencesService.leaderKeyPreference = .default }
 
         var regenFailed = false
         manager.onError = { _ in regenFailed = true }
@@ -922,7 +938,7 @@ final class RuleCollectionsManagerTests: XCTestCase {
         // The preference reverts to the pre-reconcile snapshot (reconcile had mutated it
         // to "f"; the failed regen rolls it back).
         XCTAssertEqual(
-            PreferencesService.shared.leaderKeyPreference, .default,
+            manager.preferencesService.leaderKeyPreference, .default,
             "leaderKeyPreference must revert to its pre-reconcile value after a failed regen"
         )
 
@@ -1140,8 +1156,7 @@ final class RuleCollectionsManagerTests: XCTestCase {
             packID: "com.keypath.pack.caps-lock-to-escape",
             version: "1.0.0"
         )
-        try await InstalledPackTracker.shared.upsert(record)
-        defer { Task { try? await InstalledPackTracker.shared.remove(packID: record.packID) } }
+        try await manager.installedPackTracker.upsert(record)
 
         // Save all collections with everything disabled (simulates post-reset state)
         var allDisabled = RuleCollectionCatalog().defaultCollections()
@@ -1168,26 +1183,10 @@ final class RuleCollectionsManagerTests: XCTestCase {
         TestEnvironment.forceTestMode = true
         defer { TestEnvironment.forceTestMode = false }
 
-        let originalInstalledPacks = await InstalledPackTracker.shared.allInstalled()
-        for record in originalInstalledPacks {
-            try await InstalledPackTracker.shared.remove(packID: record.packID)
-        }
-        defer {
-            Task {
-                let current = await InstalledPackTracker.shared.allInstalled()
-                for record in current {
-                    try? await InstalledPackTracker.shared.remove(packID: record.packID)
-                }
-                for record in originalInstalledPacks {
-                    try? await InstalledPackTracker.shared.upsert(record)
-                }
-            }
-        }
-
         let (manager, tempDir) = try await createTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        try await InstalledPackTracker.shared.upsert(InstalledPackRecord(
+        try await manager.installedPackTracker.upsert(InstalledPackRecord(
             packID: "com.keypath.pack.home-row-mods",
             version: "1.0.0"
         ))
@@ -1224,7 +1223,7 @@ final class RuleCollectionsManagerTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         // Ensure no packs are installed for this collection
-        try? await InstalledPackTracker.shared.remove(packID: "com.keypath.pack.vim-navigation")
+        try? await manager.installedPackTracker.remove(packID: "com.keypath.pack.vim-navigation")
 
         // Save all collections disabled
         var allDisabled = RuleCollectionCatalog().defaultCollections()
