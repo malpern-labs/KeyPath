@@ -298,6 +298,30 @@ final class MapperViewModelKeyClickTests: XCTestCase {
         XCTAssertNil(viewModel.selectedSystemAction, "System action should not be set when URL present")
     }
 
+    func testPendingResetDoesNotClearNewInput() {
+        let viewModel = MapperViewModel()
+        viewModel.setInputFromKeyClick(keyCode: 0, inputLabel: "a", outputLabel: "b")
+        let reset = viewModel.resetActionForCurrentMapping()
+
+        viewModel.setInputFromKeyClick(keyCode: 2, inputLabel: "d", outputLabel: "f")
+        viewModel.selectedURL = "https://example.com"
+        reset()
+
+        XCTAssertEqual(viewModel.inputLabel, "D")
+        XCTAssertEqual(viewModel.selectedURL, "https://example.com")
+    }
+
+    func testPendingResetClearsTheUnchangedMapping() {
+        let viewModel = MapperViewModel()
+        viewModel.setInputFromKeyClick(keyCode: 0, inputLabel: "a", outputLabel: "b")
+        viewModel.selectedURL = "https://example.com"
+        let reset = viewModel.resetActionForCurrentMapping()
+
+        reset()
+
+        XCTAssertNil(viewModel.selectedURL)
+    }
+
     // MARK: - Recording State Tests
 
     @MainActor

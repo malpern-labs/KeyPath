@@ -1,17 +1,14 @@
-import AppKit
-import KeyPathCore
 import SwiftUI
 
 // MARK: - Reset Mapping Button
 
 /// Toolbar button that resets current mapping on single click, shows reset all confirmation on double click.
 struct ResetMappingButton: View {
-    let onSingleClick: () -> Void
+    let viewModel: MapperViewModel
     let onDoubleClick: () -> Void
 
-    @State private var clickCount = 0
-    @State private var clickTimer: Timer?
-    private let doubleClickDelay: TimeInterval = 0.3
+    @State private var pendingClick: Task<Void, Never>?
+    private let doubleClickDelay: Duration = .milliseconds(300)
 
     var body: some View {
         Button {
@@ -22,26 +19,28 @@ struct ResetMappingButton: View {
         .help("Click: Reset mapping. Double-click: Reset all to defaults")
         .accessibilityIdentifier("mapper-reset-button")
         .accessibilityLabel("Reset mapping")
-        .simultaneousGesture(
-            TapGesture().onEnded {
-                clickCount += 1
+        .simultaneousGesture(TapGesture().onEnded { handleClick() })
+        .onDisappear { cancelPendingClick() }
+    }
 
-                if clickCount == 1 {
-                    clickTimer = Timer.scheduledTimer(withTimeInterval: doubleClickDelay, repeats: false) { _ in
-                        Task { @MainActor in
-                            if clickCount == 1 {
-                                onSingleClick()
-                            }
-                            clickCount = 0
-                        }
-                    }
-                } else if clickCount >= 2 {
-                    clickTimer?.invalidate()
-                    clickTimer = nil
-                    clickCount = 0
-                    onDoubleClick()
-                }
-            }
-        )
+    private func handleClick() {
+        if pendingClick != nil {
+            cancelPendingClick()
+            onDoubleClick()
+            return
+        }
+
+        let reset = viewModel.resetActionForCurrentMapping()
+        pendingClick = Task {
+            try? await Task.sleep(for: doubleClickDelay)
+            guard !Task.isCancelled else { return }
+            pendingClick = nil
+            reset()
+        }
+    }
+
+    private func cancelPendingClick() {
+        pendingClick?.cancel()
+        pendingClick = nil
     }
 }
