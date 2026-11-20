@@ -107,6 +107,7 @@ final class AutoDetectKeyboardController {
     private var connectedVIDPIDs: Set<String> = []
     private var recognitionResultsByKeyboardID: [String: DeviceRecognitionService.RecognitionResult] = [:]
     private var baselineDisplayContext: BaselineDisplayContext
+    private let defaults: UserDefaults
     private let bindingStore: DeviceLayoutBindingStore
     private let displayContextStore: KeyboardDisplayContextStore
     private let recognitionService: DeviceRecognitionService
@@ -120,12 +121,12 @@ final class AutoDetectKeyboardController {
         bindingStore: DeviceLayoutBindingStore = .shared,
         displayContextStore: KeyboardDisplayContextStore = .shared,
         recognitionService: DeviceRecognitionService = .shared,
+        defaults: UserDefaults = .standard,
         initialKeyboardEventsProvider: @escaping () -> [HIDDeviceMonitor.HIDKeyboardEvent] = {
             let current = HIDDeviceMonitor.shared.connectedKeyboards
             return current.isEmpty ? HIDDeviceMonitor.currentKeyboardSnapshot() : current
         }
     ) {
-        let defaults = UserDefaults.standard
         baselineDisplayContext = BaselineDisplayContext(
             layoutId: defaults.string(forKey: Self.baselineLayoutDefaultsKey)
                 ?? defaults.string(forKey: LayoutPreferences.layoutIdKey)
@@ -137,6 +138,7 @@ final class AutoDetectKeyboardController {
                 ?? defaults.string(forKey: KeymapPreferences.includePunctuationStoreKey)
                 ?? "{}"
         )
+        self.defaults = defaults
         self.bindingStore = bindingStore
         self.displayContextStore = displayContextStore
         self.recognitionService = recognitionService
@@ -219,7 +221,7 @@ final class AutoDetectKeyboardController {
                 ),
                 makeActive: true
             )
-            UserDefaults.standard.set(binding.layoutId, forKey: LayoutPreferences.layoutIdKey)
+            defaults.set(binding.layoutId, forKey: LayoutPreferences.layoutIdKey)
             if showFeedback {
                 SoundPlayer.shared.playDeviceConnectedSound()
                 showAutoSwitchToast(keyboardName: binding.keyboardName)
@@ -284,7 +286,7 @@ final class AutoDetectKeyboardController {
         }
 
         if result.isBuiltIn, let layoutId = result.layoutId {
-            UserDefaults.standard.set(layoutId, forKey: LayoutPreferences.layoutIdKey)
+            defaults.set(layoutId, forKey: LayoutPreferences.layoutIdKey)
         }
 
         // Show confirmation toast
@@ -309,7 +311,7 @@ final class AutoDetectKeyboardController {
             let nextKeyboard = connectedKeyboards.last(where: \.canActivateOverlay)
             activeKeyboardID = nextKeyboard?.id
             if let layoutId = nextKeyboard?.layoutId {
-                UserDefaults.standard.set(layoutId, forKey: LayoutPreferences.layoutIdKey)
+                defaults.set(layoutId, forKey: LayoutPreferences.layoutIdKey)
             }
         }
         if feedbackVisible {
@@ -366,7 +368,7 @@ final class AutoDetectKeyboardController {
         activeKeyboardID = keyboardID
 
         if let layoutId = keyboard.layoutId {
-            UserDefaults.standard.set(layoutId, forKey: LayoutPreferences.layoutIdKey)
+            defaults.set(layoutId, forKey: LayoutPreferences.layoutIdKey)
         } else if keyboard.status == .importRequired,
                   let result = recognitionResultsByKeyboardID[keyboardID]
         {
@@ -401,7 +403,7 @@ final class AutoDetectKeyboardController {
     /// for the active keyboard, exactly as choosing it in keyboard search does.
     func selectLayout(_ layoutId: String) {
         guard PhysicalLayout.find(id: layoutId) != nil else { return }
-        UserDefaults.standard.set(layoutId, forKey: LayoutPreferences.layoutIdKey)
+        defaults.set(layoutId, forKey: LayoutPreferences.layoutIdKey)
         rememberCurrentLayoutSelection(layoutId: layoutId)
     }
 
@@ -657,7 +659,6 @@ final class AutoDetectKeyboardController {
         guard updatedContext != baselineDisplayContext else { return }
 
         baselineDisplayContext = updatedContext
-        let defaults = UserDefaults.standard
         defaults.set(layoutId, forKey: Self.baselineLayoutDefaultsKey)
         defaults.set(keymapId, forKey: Self.baselineKeymapDefaultsKey)
         defaults.set(includePunctuationStore, forKey: Self.baselinePunctuationDefaultsKey)
@@ -733,7 +734,7 @@ final class AutoDetectKeyboardController {
                 guard !Task.isCancelled else { return }
 
                 // Switch to the imported layout and save the binding
-                UserDefaults.standard.set(parseResult.layout.id, forKey: LayoutPreferences.layoutIdKey)
+                defaults.set(parseResult.layout.id, forKey: LayoutPreferences.layoutIdKey)
                 saveBinding(result: result, layoutId: parseResult.layout.id)
                 markKeyboardAsRemembered(eventID: result.deviceEvent.id, layoutId: parseResult.layout.id)
                 AppLogger.shared.log("🔌 [AutoDetect] Imported and selected QMK layout: \(layoutName)")
