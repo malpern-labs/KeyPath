@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 enum InvestigationActivationKind: String, Sendable, Equatable {
     case holdActivated = "hold-activated"
@@ -410,14 +411,14 @@ enum DuplicateInvestigationSupport {
         keyMap[keyCode] ?? "keycode-\(keyCode)"
     }
 
-    private nonisolated(unsafe) static let iso8601Formatter: ISO8601DateFormatter = {
+    private static let iso8601Formatter: Mutex<ISO8601DateFormatter> = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter
+        return Mutex(formatter)
     }()
 
     private static func iso8601(_ date: Date) -> String {
-        iso8601Formatter.string(from: date)
+        iso8601Formatter.withLock { $0.string(from: date) }
     }
 
     private static func sanitize(_ string: String) -> String {
