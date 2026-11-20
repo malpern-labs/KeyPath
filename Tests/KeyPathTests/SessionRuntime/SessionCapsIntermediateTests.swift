@@ -212,7 +212,7 @@ final class SessionCapsIntermediateTests: XCTestCase {
                                  bootSessionUUID: "A7B944DF-471A-4C22-B9F3-A4EE5522F775")
         let f18Lease = try Policy.acquire(original: [], device: device, devices: [device], owner: owner,
                                           effectiveConfigSHA256: String(repeating: "a", count: 64))
-        typealias Admission = SessionCapsRuntimeSupport.Admission
+        typealias Admission = SessionConfigurationAdmission
         XCTAssertTrue(SessionRuntimeWorker.profileFitsLease(Admission(result: .valid, managedCaps: true, intermediateUsage: 109), record: f18Lease))
         // The profile now uses F18: admission without re-choice refuses, or
         // (with re-choice) lands on another key. Either way the lease no longer fits.

@@ -112,8 +112,7 @@ public enum AppConfigGenerator {
 
     /// The output file for app-specific config
     public static var appConfigPath: String {
-        let configDir = WizardSystemPaths.userConfigDirectory
-        return (configDir as NSString).appendingPathComponent("keypath-apps.kbd")
+        AppKeymapStore.defaultDirectory.appendingPathComponent("keypath-apps.kbd").path
     }
 
     // MARK: - Generation

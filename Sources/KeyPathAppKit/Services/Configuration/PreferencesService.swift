@@ -1,18 +1,5 @@
 import Foundation
 import KeyPathCore
-
-/// The three shortcut-list values that affect generated Kanata configuration.
-/// A mutation captures this immutable candidate before it writes any defaults.
-struct ShortcutListGenerationInput: Sendable, Equatable {
-    let triggerMode: ContextHUDTriggerMode
-    let holdDelayPreset: ContextHUDHoldDelayPreset
-    let customHoldDelayMs: Int
-
-    var holdDelayMs: Int {
-        holdDelayPreset.milliseconds ?? customHoldDelayMs
-    }
-}
-
 import KeyPathRulesCore
 import Observation
 
@@ -97,28 +84,13 @@ public extension ContextHUDTriggerMode {
     }
 }
 
-/// Hold-duration presets for triggering the Shortcut List/navigation layer.
-public enum ContextHUDHoldDelayPreset: String, CaseIterable, Sendable {
-    case short
-    case medium
-    case long
-    case custom
-
-    public var displayName: String {
+public extension ContextHUDHoldDelayPreset {
+    var displayName: String {
         switch self {
         case .short: String(localized: "Short")
         case .medium: String(localized: "Medium")
         case .long: String(localized: "Long")
         case .custom: String(localized: "Custom")
-        }
-    }
-
-    var milliseconds: Int? {
-        switch self {
-        case .short: 150
-        case .medium: 200
-        case .long: 300
-        case .custom: nil
         }
     }
 }
@@ -158,18 +130,6 @@ final class PreferencesService: Sendable {
     // MARK: - Shared instance (backward compatible)
 
     static let shared = PreferencesService()
-
-    nonisolated static var canonicalDefaults: UserDefaults {
-        TestEnvironment.isRunningTests
-            ? .standard
-            : canonicalDefaults(using: UserDefaults(suiteName: "com.keypath.KeyPath"))
-    }
-
-    /// The suite can be unavailable during early app launch. Preferences must
-    /// still initialize so launchd does not restart the app in a crash loop.
-    nonisolated static func canonicalDefaults(using suiteDefaults: UserDefaults?) -> UserDefaults {
-        suiteDefaults ?? .standard
-    }
 
     nonisolated static let leaderKeyPreferenceKey = RecoverableRuleWrite.PreferenceRole.leader.key
     private let defaults: UserDefaults
@@ -308,10 +268,10 @@ final class PreferencesService: Sendable {
         suppressLeaderPersistence = false
     }
 
-    func reloadLeaderKeyPreference(from defaults: UserDefaults = PreferencesService.canonicalDefaults) {
-        let value = defaults.data(forKey: Self.leaderKeyPreferenceKey)
-            .flatMap { try? JSONDecoder().decode(LeaderKeyPreference.self, from: $0) } ?? .default
-        stageLeaderKeyPreference(value)
+    func reloadLeaderKeyPreference(from defaults: UserDefaults = RecoverableRuleWrite.PreferenceDefaults.canonical) {
+        stageLeaderKeyPreference(
+            LeaderKeyPreference(persistedData: defaults.data(forKey: Self.leaderKeyPreferenceKey))
+        )
     }
 
     // MARK: - Education Hints
@@ -403,14 +363,11 @@ final class PreferencesService: Sendable {
     /// retained write settles. This intentionally avoids emitting the legacy
     /// notification-driven regeneration path.
     func reloadShortcutListGenerationInput(from defaults: UserDefaults? = nil) {
-        let source = defaults ?? leaderDefaults
-        let trigger = source.string(forKey: Keys.contextHUDTriggerMode) ?? Defaults.contextHUDTriggerMode.rawValue
-        let preset = source.string(forKey: Keys.contextHUDHoldDelayPreset) ?? Defaults.contextHUDHoldDelayPreset.rawValue
-        let custom = source.object(forKey: Keys.contextHUDHoldDelayCustomMs) as? Int ?? Defaults.contextHUDHoldDelayCustomMs
+        let input = ShortcutListGenerationInput(persistedIn: defaults ?? leaderDefaults)
         stageShortcutListGenerationInput(ShortcutListGenerationInput(
-            triggerMode: ContextHUDTriggerMode(rawValue: trigger) ?? Defaults.contextHUDTriggerMode,
-            holdDelayPreset: ContextHUDHoldDelayPreset(rawValue: preset) ?? Defaults.contextHUDHoldDelayPreset,
-            customHoldDelayMs: Self.clampedContextHUDHoldDelayCustomMs(custom)
+            triggerMode: input.triggerMode,
+            holdDelayPreset: input.holdDelayPreset,
+            customHoldDelayMs: Self.clampedContextHUDHoldDelayCustomMs(input.customHoldDelayMs)
         ))
     }
 
@@ -456,9 +413,9 @@ final class PreferencesService: Sendable {
         static let accessibilityTestMode = "KeyPath.Testing.AccessibilityTestMode"
         static let leaderKeyPreference = PreferencesService.leaderKeyPreferenceKey
         static let contextHUDDisplayMode = "KeyPath.ContextHUD.DisplayMode"
-        static let contextHUDTriggerMode = "KeyPath.ContextHUD.TriggerMode"
-        static let contextHUDHoldDelayPreset = "KeyPath.ContextHUD.HoldDelayPreset"
-        static let contextHUDHoldDelayCustomMs = "KeyPath.ContextHUD.HoldDelayCustomMs"
+        static let contextHUDTriggerMode = RecoverableRuleWrite.PreferenceRole.contextHUDTriggerMode.key
+        static let contextHUDHoldDelayPreset = RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayPreset.key
+        static let contextHUDHoldDelayCustomMs = RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayCustomMs.key
         static let kindaVimLeaderHUDMode = "KeyPath.KindaVim.LeaderHUDMode"
         static let neovimReferenceTopics = "KeyPath.Neovim.ReferenceTopics"
         static let neovimReferenceTopicsVersion = "KeyPath.Neovim.ReferenceTopicsVersion"
@@ -491,9 +448,9 @@ final class PreferencesService: Sendable {
         // Nothing pops up on a layer hold unless the user picks it: holding Space to
         // type must not flash a window for people who never asked for one.
         static let contextHUDDisplayMode = ContextHUDDisplayMode.none
-        static let contextHUDTriggerMode = ContextHUDTriggerMode.holdToShow
-        static let contextHUDHoldDelayPreset = ContextHUDHoldDelayPreset.long
-        static let contextHUDHoldDelayCustomMs = 200
+        static let contextHUDTriggerMode = ShortcutListGenerationInput.defaultTriggerMode
+        static let contextHUDHoldDelayPreset = ShortcutListGenerationInput.defaultHoldDelayPreset
+        static let contextHUDHoldDelayCustomMs = ShortcutListGenerationInput.defaultCustomHoldDelayMs
         static let kindaVimLeaderHUDMode = KindaVimLeaderHUDMode.off
         static let neovimReferenceTopics = NeovimTerminalCategory.defaultRawValues
         static let neovimReferenceTopicsVersion = 2
@@ -509,7 +466,7 @@ final class PreferencesService: Sendable {
     // MARK: - Initialization
 
     init(
-        leaderDefaults: UserDefaults = PreferencesService.canonicalDefaults,
+        leaderDefaults: UserDefaults = RecoverableRuleWrite.PreferenceDefaults.canonical,
         defaults: UserDefaults = .standard
     ) {
         self.defaults = defaults
@@ -560,13 +517,9 @@ final class PreferencesService: Sendable {
                 ?? Defaults.accessibilityTestMode
 
         // Leader key preference
-        if let data = leaderDefaults.data(forKey: Keys.leaderKeyPreference),
-           let stored = try? JSONDecoder().decode(LeaderKeyPreference.self, from: data)
-        {
-            leaderKeyPreference = stored
-        } else {
-            leaderKeyPreference = .default
-        }
+        leaderKeyPreference = LeaderKeyPreference(
+            persistedData: leaderDefaults.data(forKey: Keys.leaderKeyPreference)
+        )
 
         // Education hints
         overlayHiddenHintShowCount =

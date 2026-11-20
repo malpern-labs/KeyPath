@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import KeyPathCore
 
 /// The file-persistence portion of a rule edit. Call off the main actor.
 /// Fixed caller-supplied roles resolve journal entries; journal data cannot choose
@@ -150,6 +151,17 @@ package enum RecoverableRuleWrite {
     }
 
     package struct PreferenceDefaults: @unchecked Sendable {
+        package static var canonical: UserDefaults {
+            TestEnvironment.isRunningTests
+                ? .standard
+                : canonical(using: UserDefaults(suiteName: KeyPathConstants.Bundle.bundleID))
+        }
+
+        /// Keep early launch usable if the application suite is unavailable.
+        package static func canonical(using suiteDefaults: UserDefaults?) -> UserDefaults {
+            suiteDefaults ?? .standard
+        }
+
         package let value: UserDefaults
         package init(_ value: UserDefaults) {
             self.value = value

@@ -405,7 +405,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
         // already dispatches to ActionDispatcher. Setting this would cause double dispatch.
         ruleCollectionsManager.onBeforeSave = nil
 
-        if !isOneShotProbeMode, !TestEnvironment.isTestHostProcess {
+        if !isOneShotProbeMode, !TestEnvironment.isRunningTests {
             AppLogger.shared.log(
                 "🏗️ [RuntimeCoordinator] About to call bootstrapRuleCollections and startEventMonitoring"
             )
@@ -431,8 +431,8 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
             // with fixture assertions in unit tests, causing
             // flaky failures on the self-hosted CI runner. Skip it in test-host processes;
             // explicit tests of bootstrap() call it directly on their own
-            // RuleCollectionsManager instance. isTestHostProcess (not isRunningTests) so a
-            // REAL app launched inside a CI job for smoke QA still bootstraps its rules.
+            // RuleCollectionsManager instance. Smoke tests that launch the real
+            // app inside a CI job still exercise normal rule bootstrap.
             AppLogger.shared.log("🧪 [RuntimeCoordinator] One-shot probe mode or test host - skipping bootstrap and event monitoring")
         }
 
