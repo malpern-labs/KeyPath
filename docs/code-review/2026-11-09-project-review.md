@@ -51,7 +51,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **B3** Dead Swift | ✅ | Deletion pass merged (#1398, #1406). Function-level Periphery scan remains open. |
 | **B4** Tests for removed behaviour | ✅ | Dead tests removed and two stale references refreshed (#1420). A later General Settings snapshot mismatch reproduced on the base of #1434 and remains a separate follow-up. |
 | **B5** Binary assets | 🟡 | Unused assets removed (#1397). Help asset compression and deduplication are in open PR #1422. Metal snapshot sizing remains open. |
-| **B6** Root and package stragglers | 🟡 | Root cleanup merged (#1395). Process probes moved into Core and the unused wizard screenshot and resource bundle were removed (#1440). Unused library products remain. |
+| **B6** Root and package stragglers | 🟡 | Root cleanup merged (#1395). Process probes moved into Core and the unused wizard screenshot and resource bundle were removed (#1440). Removed the nine unused library products; executable products and internal target dependencies remain unchanged. |
 | **B7** Docs | 🟡 | Public docs republished, archive removed, and runtime architecture page rewritten and published (#1394, #1399, #1402, #1437). The macOS 27 Accessibility screenshot remains. |
 | **P1** Sparkle | ✅ | See row 5. |
 | **P2** Apple Events usage string | ✅ | #1404. Verify the consent prompt on a clean VM. |
