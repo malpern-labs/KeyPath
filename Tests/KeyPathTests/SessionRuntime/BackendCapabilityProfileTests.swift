@@ -8,11 +8,6 @@ import XCTest
 /// emit comes from the bridge, and every former hard-coded list gives the same
 /// answer through it.
 final class BackendCapabilityProfileTests: XCTestCase {
-    override func tearDown() {
-        BackendCapabilityProfile.testOverride = nil
-        super.tearDown()
-    }
-
     private func bridgeProfile() throws -> BackendCapabilityProfile {
         try SessionBridgeTestFixture.requireAvailable()
         let host = SessionBridgeTestFixture.runtimeHost
@@ -36,18 +31,18 @@ final class BackendCapabilityProfileTests: XCTestCase {
     }
 
     func testFormerHardCodedListsGiveTheSameAnswersThroughTheBridge() throws {
-        BackendCapabilityProfile.testOverride = try bridgeProfile()
-
-        // SystemActionInfo: every offered action, media included (phase 6).
-        let unsupported = Set(SystemActionInfo.allActions.filter { !$0.isSupportedInDriverlessSession }.map(\.id))
-        XCTAssertEqual(unsupported, [])
-        // FunctionKeyMode: both modes emit what the worker can post.
-        XCTAssertTrue(FunctionKeyMode.media.isSupportedInDriverlessSession)
-        XCTAssertTrue(FunctionKeyMode.function.isSupportedInDriverlessSession)
-        // Catalog: nothing built in is unavailable any more.
-        let unavailable = RuleCollectionCatalog().originalCollections()
-            .filter { RuleCollectionCatalog.driverlessUnavailableReason(for: $0.id) != nil }.map(\.id)
-        XCTAssertEqual(unavailable, [])
+        try BackendCapabilityProfile.$testOverride.withValue(bridgeProfile()) {
+            // SystemActionInfo: every offered action, media included (phase 6).
+            let unsupported = Set(SystemActionInfo.allActions.filter { !$0.isSupportedInDriverlessSession }.map(\.id))
+            XCTAssertEqual(unsupported, [])
+            // FunctionKeyMode: both modes emit what the worker can post.
+            XCTAssertTrue(FunctionKeyMode.media.isSupportedInDriverlessSession)
+            XCTAssertTrue(FunctionKeyMode.function.isSupportedInDriverlessSession)
+            // Catalog: nothing built in is unavailable any more.
+            let unavailable = RuleCollectionCatalog().originalCollections()
+                .filter { RuleCollectionCatalog.driverlessUnavailableReason(for: $0.id) != nil }.map(\.id)
+            XCTAssertEqual(unavailable, [])
+        }
     }
 
     func testModifierPrefixesAreStrippedBeforeAsking() {
@@ -70,6 +65,24 @@ final class BackendCapabilityProfileTests: XCTestCase {
         _ = profile.canEmit(kanataKey: "a")
         _ = profile.canEmit(kanataKey: "C-a")
         XCTAssertEqual(calls.withLock { $0 }, 1)
+    }
+
+    func testIndependentTasksResolveTheirOwnProfile() async {
+        let original = BackendCapabilityProfile.shared
+        let accepting = BackendCapabilityProfile { _ in true }
+        let refusing = BackendCapabilityProfile { _ in false }
+        async let accepted = BackendCapabilityProfile.$testOverride.withValue(accepting) {
+            await Task.yield()
+            return BackendCapabilityProfile.shared.canEmit(kanataKey: "a")
+        }
+        async let refused = BackendCapabilityProfile.$testOverride.withValue(refusing) {
+            await Task.yield()
+            return BackendCapabilityProfile.shared.canEmit(kanataKey: "a")
+        }
+        let (first, second) = await (accepted, refused)
+        XCTAssertTrue(first)
+        XCTAssertFalse(second)
+        XCTAssertTrue(BackendCapabilityProfile.shared === original)
     }
 
     func testConcurrentQueriesKeepIndependentCaches() async {

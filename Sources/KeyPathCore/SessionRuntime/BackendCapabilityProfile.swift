@@ -17,13 +17,9 @@ public final class BackendCapabilityProfile: Sendable {
     }
 
     #if DEBUG
-        /// Tests inject a profile; production always uses the bridge.
-        private static let override = Mutex<BackendCapabilityProfile?>(nil)
-
-        public static var testOverride: BackendCapabilityProfile? {
-            get { override.withLock { $0 } }
-            set { override.withLock { $0 = newValue } }
-        }
+        /// A fixture follows the test task and its children. Other tests and
+        /// production tasks continue to use the real bridge.
+        @TaskLocal package static var testOverride: BackendCapabilityProfile?
     #endif
 
     private static let live = BackendCapabilityProfile { key in

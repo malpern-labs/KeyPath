@@ -240,26 +240,27 @@ final class SubprocessRunnerTests: XCTestCase {
         }
     }
 
-    func testRunCancellationBeforeLaunchDoesNotHang() async {
-        let longRunningTask = Task {
-            try await SubprocessRunner.shared.run(
-                "/bin/sleep",
-                args: ["5"],
-                timeout: 30
-            )
+    func testRunCancellationBeforeLaunchDoesNotStartChild() async {
+        let marker = FileManager.default.temporaryDirectory
+            .appendingPathComponent("keypath-subprocess-cancelled-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: marker) }
+
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await SubprocessRunner.shared.run("/usr/bin/touch", args: [marker.path], timeout: 5)
         }
 
-        // Cancel immediately to exercise the pre-launch cancellation race.
-        longRunningTask.cancel()
-
         do {
-            _ = try await longRunningTask.value
+            _ = try await task.value
             XCTFail("Expected cancellation to throw")
         } catch is CancellationError {
             // Expected
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
+
+        let started = await waitForFile(at: marker, timeout: 0.5)
+        XCTAssertFalse(started, "A run that reports pre-launch cancellation must never invoke the executable")
     }
 
     private func waitForFile(at url: URL, timeout: TimeInterval) async -> Bool {

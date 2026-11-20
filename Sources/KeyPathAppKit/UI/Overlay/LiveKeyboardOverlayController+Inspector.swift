@@ -133,7 +133,9 @@ extension LiveKeyboardOverlayController {
             guard let self else {
                 return
             }
-            Task { @MainActor in
+            // This timer is scheduled on the main run loop. Its work must not
+            // survive invalidation when a new reveal replaces the old one.
+            MainActor.assumeIsolated {
                 guard inspectorAnimationToken == token, inspectorAnimationTimer != nil else { return }
                 let elapsed = CACurrentMediaTime() - startTime
                 let progress = min(1.0, elapsed / inspectorAnimationDuration)

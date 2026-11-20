@@ -35,6 +35,13 @@ Rationale: older CLI/tooling may still expose `tools.web_search`, which prints a
 Use the narrowest workflow that matches the task. Do not run the full notarized
 release path for ordinary UI/code iteration.
 
+- Use the Air for interactive Swift/UI work with an incremental build.
+- Use the Mini for the full macOS CI lane and signed VM checks. Reuse a warm
+  guest for daily remapping and reserve fresh guests for onboarding, consent,
+  installer, and release qualification.
+- Use Linux for portable checks and log analysis. The verified checkout and
+  commands are in the [development workflow](docs/ITERATION_WORKFLOW.md).
+
 ### 1. Inner Loop: local development
 Use for Swift/UI changes while iterating:
 ```bash
@@ -78,9 +85,11 @@ Notes:
 - Use Poltergeist only for focused single-agent Swift/UI iteration:
   `poltergeist start`, edit, then `poltergeist wait keypath`. Stop it before
   release work, runtime/service work, broad tests, or parallel agents.
-- Near PR time, run the full safe gate once with `./Scripts/test-full.sh` (or
-  `KEYPATH_SNAPSHOTS=1 ./Scripts/run-tests-safe.sh`). Do not run the full safe
-  suite after every small edit.
+- Before opening a code PR, run the full safe gate once with
+  `./Scripts/test-full.sh` (or `KEYPATH_SNAPSHOTS=1 ./Scripts/run-tests-safe.sh`).
+  Use focused tests while iterating. For docs-only changes, check affected
+  paths and links and run the review gate. The CI docs classifier determines
+  whether the PR needs the macOS jobs.
 - Before that final broad gate and before opening/watching a PR, fetch
   `origin/master` and confirm the branch is current:
   `git rev-list --left-right --count origin/master...HEAD` should report `0` as
@@ -203,8 +212,8 @@ Notes:
 
 - Prefer targeted tests while iterating:
   `swift test --filter <TestClassOrMethod>`
-- Run full `swift test` before PR/merge, release-candidate work, or after
-  broad/shared changes.
+- Run the full Swift suite for code PRs, release candidates, and broad
+  shared-code changes.
 - Avoid running broad Swift builds/tests concurrently across worktrees. Before
   full test, release-candidate, or expensive build work, check for active Swift
   compiles:
@@ -431,9 +440,9 @@ These apply to the session runtime, with `ServiceLifecycleCoordinator` as owner.
 - **Mock Time**: Do not use `Thread.sleep`. Use `Date` overrides or mock clocks.
 - Use the narrowest meaningful test command during iteration; prefer
   `swift test --filter <TestClassOrMethod>` for focused changes.
-- Run full `swift test` before PR/merge when practical, but do not leave hung
-  suites running. If a full run times out or stalls in an unrelated test, report
-  the failing test and keep targeted validation for the current change.
+- Stop and diagnose hung suites. If a full run times out or stalls in an
+  unrelated test, report the failing test and retain targeted evidence for the
+  current change.
 
 ### Accessibility (CRITICAL)
 - **ALL interactive UI elements MUST have `.accessibilityIdentifier()`**

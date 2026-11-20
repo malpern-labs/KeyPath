@@ -1,6 +1,7 @@
 import Foundation
 import KeyPathCore
 import Network
+import Synchronization
 
 /// ServerResponse matches the Rust protocol ServerResponse enum
 /// Format: {"status":"Ok"} or {"status":"Error","msg":"..."}
@@ -35,16 +36,15 @@ struct TcpServerResponse: Codable, Sendable {
 }
 
 /// Simple completion flag for thread-safe continuation handling
-final class CompletionFlag: @unchecked Sendable {
-    private var completed = false
-    private let lock = NSLock()
+final class CompletionFlag: Sendable {
+    private let completed = Mutex(false)
 
     func markCompleted() -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        guard !completed else { return false }
-        completed = true
-        return true
+        completed.withLock { completed in
+            guard !completed else { return false }
+            completed = true
+            return true
+        }
     }
 }
 

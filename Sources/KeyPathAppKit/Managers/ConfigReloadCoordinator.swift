@@ -418,7 +418,7 @@ final class ConfigReloadCoordinator {
             return .networkError("Test environment - TCP disabled")
         }
 
-        let admission: SessionCapsRuntimeSupport.Admission? = sessionValidationOverride == nil
+        let admission: SessionConfigurationAdmission? = sessionValidationOverride == nil
             ? SessionCapsRuntimeSupport.admit(
                 // Admission must allow the first Caps rule before a selection exists.
                 // The lifecycle restart owns discovery and verifies the keyboard before

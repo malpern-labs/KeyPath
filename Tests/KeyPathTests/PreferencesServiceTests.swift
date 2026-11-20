@@ -21,7 +21,7 @@ final class PreferencesServiceTests: XCTestCase {
     }
 
     func testCanonicalDefaultsFallsBackToStandardWhenSuiteIsUnavailable() {
-        let defaults = PreferencesService.canonicalDefaults(using: nil)
+        let defaults = RecoverableRuleWrite.PreferenceDefaults.canonical(using: nil)
         XCTAssertTrue(defaults === UserDefaults.standard)
     }
 
