@@ -56,7 +56,7 @@ Release/distribution validation requires signed/notarized artifacts and Apple cr
 ## I Want To...
 
 ### Add a keyboard shortcut
-**Edit:** `Sources/KeyPathAppKit/UI/Pickers/RecordingCoordinator.swift`
+**Edit:** `Sources/KeyPathAppKit/UI/Mapper/MapperViewModel+CaptureManagement.swift`
 **What:** This handles keyboard input recording for creating mappings.
 
 ### Change the main UI

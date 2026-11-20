@@ -226,7 +226,7 @@ The mapper and launcher currently have separate editors that each support a subs
 #### Current State
 
 **Mapper** (`MapperViewModel` + `MapperView`):
-- Output captured via key recording (`RecordingCoordinator` → `KeyboardCapture`)
+- Output captured via key recording (`MapperViewModel` → `KeyboardCapture`)
 - Auto-detect output type in `finalizeCapture()`: checks `selectedApp`, `selectedURL`, `selectedSystemAction`, then falls back to keystroke
 - Supports: keystroke, app launch, URL, system action
 - Missing: folder, script, layer switch
@@ -269,7 +269,7 @@ struct KeyActionPicker: View {
 
 | Type | UI Component | Data Source |
 |------|-------------|-------------|
-| Keystroke | Key recording (existing `RecordingCoordinator`) | Keyboard capture |
+| Keystroke | Key recording (existing mapper capture) | Keyboard capture |
 | App | "Browse..." button → `NSOpenPanel` for `.app` bundles | File system |
 | URL | Text field with domain validation | User input |
 | Folder | "Browse..." button → `NSOpenPanel` for directories | File system |
@@ -283,7 +283,7 @@ struct KeyActionPicker: View {
 - Script browse: `LauncherCollectionView.swift` → `browseForScript()`
 - URL field: `LauncherCollectionView.swift` → URL text field in editor
 - System action picker: `OverlayMapperSection+SystemActionGroups.swift`
-- Key recording: `RecordingCoordinator.swift` (stays as-is, just wired to keystroke type)
+- Key recording: reuse the mapper capture flow for the keystroke editor
 
 #### Mapper Changes
 
@@ -312,7 +312,7 @@ The mapper currently auto-detects output type via side-state (`selectedApp`, `se
 | `MapperViewModel+LayerManagement.swift` | Collapse 4 save methods into 1 |
 | `MapperView.swift` | Output keycap displays `KeyAction.displayName` with type icon |
 | `OverlayMapperSection.swift` | Wire output area to `KeyActionPicker` |
-| `RecordingCoordinator.swift` | No change — still used for keystroke sub-editor |
+| `MapperViewModel+CaptureManagement.swift` | Reuse for the keystroke sub-editor |
 
 #### Launcher Changes
 
