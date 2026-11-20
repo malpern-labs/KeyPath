@@ -3,7 +3,7 @@ layout: default
 title: "Installation Wizard"
 description: "What to expect when setting up KeyPath for the first time"
 theme: parchment
-header_image: header-installation-wizard.png
+header_image: header-installation-wizard.jpg
 permalink: /guides/installation-wizard/
 ---
 
@@ -46,8 +46,9 @@ menu. Setup helps with missing permissions or a runtime that has not started.
 
 ## Updates and removal
 
-Choose **Download Update** to open the official releases page. Quit KeyPath
-before replacing the app. Your rules are stored separately and are kept.
+KeyPath checks for updates once a day and installs them when you quit; choose
+**Check for Updates…** to check now. Your rules are stored separately and are
+kept.
 
 Use **Settings → Repair/Remove → Uninstall KeyPath** to back up your settings
 to Downloads, remove your rules and preferences, disable launch at login, and
