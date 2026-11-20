@@ -429,20 +429,12 @@ if let process = kanataProcess, process.isRunning {
 ```
 
 ### Configuration Management
-```swift
-// Always validate before starting
-func validateConfigFile() -> (isValid: Bool, errors: [String]) {
-    guard FileManager.default.fileExists(atPath: configPath) else {
-        return (false, ["Config file does not exist"])
-    }
-    
-    // Use --check flag for validation
-    let task = Process()
-    task.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
-    task.arguments = ["/usr/local/bin/kanata", "--cfg", configPath, "--check"]
-    
-    // ... execute and parse result
-}
+
+To validate the saved configuration in a current session-runtime build, use
+the app's bundled CLI:
+
+```bash
+/Applications/KeyPath.app/Contents/MacOS/keypath-cli config check
 ```
 
 ### Error Recovery

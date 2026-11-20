@@ -406,10 +406,6 @@ class KanataViewModel {
         _ = await manager.autoFixDiagnostic(diagnostic)
     }
 
-    func validateConfigFile() async -> (isValid: Bool, errors: [String]) {
-        await manager.validateConfigFile()
-    }
-
     func resetToDefaultConfig() async throws {
         try await manager.resetToDefaultConfig()
     }
