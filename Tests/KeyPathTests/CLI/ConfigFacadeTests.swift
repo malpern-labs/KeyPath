@@ -1,3 +1,4 @@
+import Darwin
 @testable import KeyPathAppKit
 import KeyPathRulesCore
 import XCTest
@@ -88,6 +89,74 @@ final class ConfigFacadeTests: XCTestCase {
             "rules",
             "Mutated file should be restored to its backup contents"
         )
+    }
+
+    func testRestoreCopyFailureKeepsLiveFilesAndSkipsPrune() async throws {
+        let configDir = tempRoot.appendingPathComponent("config", isDirectory: true)
+        let backup = tempRoot.appendingPathComponent("backup", isDirectory: true)
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(at: configDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: backup, withIntermediateDirectories: true)
+
+        let configFile = configDir.appendingPathComponent("keypath.kbd")
+        let rulesFile = configDir.appendingPathComponent("CustomRules.json")
+        let extraFile = configDir.appendingPathComponent("device-selection.json")
+        try "live config".write(to: configFile, atomically: true, encoding: .utf8)
+        try "live rules".write(to: rulesFile, atomically: true, encoding: .utf8)
+        try "selection".write(to: extraFile, atomically: true, encoding: .utf8)
+        try "backup config".write(to: backup.appendingPathComponent(configFile.lastPathComponent), atomically: true, encoding: .utf8)
+        let unreadable = backup.appendingPathComponent(rulesFile.lastPathComponent)
+        try "backup rules".write(to: unreadable, atomically: true, encoding: .utf8)
+        try fileManager.setAttributes([.posixPermissions: 0o000], ofItemAtPath: unreadable.path)
+        defer { try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: unreadable.path) }
+        try XCTSkipIf(fileManager.isReadableFile(atPath: unreadable.path), "Requires an unprivileged test runner")
+
+        let archive = ConfigurationArchive(configDirectory: configDir.path)
+        do {
+            _ = try await archive.restoreConfig(from: backup.path, reload: false)
+            XCTFail("Expected restore to reject the unreadable backup item")
+        } catch {
+            XCTAssertEqual(try String(contentsOf: configFile, encoding: .utf8), "live config")
+            XCTAssertEqual(try String(contentsOf: rulesFile, encoding: .utf8), "live rules")
+            XCTAssertEqual(try String(contentsOf: extraFile, encoding: .utf8), "selection")
+            XCTAssertEqual(
+                try Set(fileManager.contentsOfDirectory(atPath: configDir.path)),
+                Set([configFile.lastPathComponent, rulesFile.lastPathComponent, extraFile.lastPathComponent])
+            )
+        }
+    }
+
+    func testRestoreRollsBackWhenLiveFileCannotBeReplaced() async throws {
+        let configDir = tempRoot.appendingPathComponent("config", isDirectory: true)
+        let backup = tempRoot.appendingPathComponent("backup", isDirectory: true)
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(at: configDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: backup, withIntermediateDirectories: true)
+
+        let newFile = configDir.appendingPathComponent("a-new.kbd")
+        let configFile = configDir.appendingPathComponent("keypath.kbd")
+        let locked = configDir.appendingPathComponent("z-locked.kbd")
+        try "live config".write(to: configFile, atomically: true, encoding: .utf8)
+        try "live locked config".write(to: locked, atomically: true, encoding: .utf8)
+        try "backup new".write(to: backup.appendingPathComponent(newFile.lastPathComponent), atomically: true, encoding: .utf8)
+        try "backup config".write(to: backup.appendingPathComponent(configFile.lastPathComponent), atomically: true, encoding: .utf8)
+        try "backup locked".write(to: backup.appendingPathComponent(locked.lastPathComponent), atomically: true, encoding: .utf8)
+        try XCTSkipUnless(chflags(locked.path, UInt32(UF_IMMUTABLE)) == 0, "Requires support for user-immutable files")
+        defer { _ = chflags(locked.path, 0) }
+
+        let archive = ConfigurationArchive(configDirectory: configDir.path)
+        do {
+            _ = try await archive.restoreConfig(from: backup.path, reload: false)
+            XCTFail("Expected the immutable entry to prevent restore")
+        } catch {
+            XCTAssertFalse(fileManager.fileExists(atPath: newFile.path))
+            XCTAssertEqual(try String(contentsOf: configFile, encoding: .utf8), "live config")
+            XCTAssertEqual(try String(contentsOf: locked, encoding: .utf8), "live locked config")
+            XCTAssertEqual(
+                try Set(fileManager.contentsOfDirectory(atPath: configDir.path)),
+                Set([configFile.lastPathComponent, locked.lastPathComponent])
+            )
+        }
     }
 
     func testRestoreConfigSucceedsDespiteTransientValidationArtifact() async throws {
