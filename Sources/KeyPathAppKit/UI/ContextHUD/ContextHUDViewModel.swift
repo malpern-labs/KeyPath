@@ -7,6 +7,12 @@ import SwiftUI
 @Observable
 @MainActor
 final class ContextHUDViewModel {
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
     /// Current layer name displayed in the HUD header
     var layerName: String = ""
     /// Content style determined by the content resolver
@@ -108,17 +114,20 @@ final class ContextHUDViewModel {
             var variant: String?
             if let collectionId = info.collectionId, vimFamily.contains(collectionId),
                let presentation = VimLayerReference.presentation(
-                   forInput: Self.vimInput(for: keyCode), style: VimKeyNameStyle.current(for: collectionId)
+                   forInput: Self.vimInput(for: keyCode), style: VimKeyNameStyle.current(for: collectionId, defaults: defaults)
                )
             {
                 // Same names as the overlay keycaps and Settings (VimLayerReference).
                 keycap = presentation.keyLabel
                 action = presentation.title
-                variant = vimMappingsByCollection[collectionId]?[Self.vimInput(for: keyCode)].map { VimLayerReference.entry(for: $0, style: VimKeyNameStyle.current(for: collectionId)) }
-                    .flatMap { entry in
-                        let lines = [entry.shift, entry.ctrl].compactMap { $0 }.map { "\($0.label) \($0.title)" }
-                        return lines.isEmpty ? nil : lines.joined(separator: " · ")
-                    }
+                variant = vimMappingsByCollection[collectionId]?[Self.vimInput(for: keyCode)].map { VimLayerReference.entry(
+                    for: $0,
+                    style: VimKeyNameStyle.current(for: collectionId, defaults: defaults)
+                ) }
+                .flatMap { entry in
+                    let lines = [entry.shift, entry.ctrl].compactMap { $0 }.map { "\($0.label) \($0.title)" }
+                    return lines.isEmpty ? nil : lines.joined(separator: " · ")
+                }
             } else if info.collectionId == RuleCollectionIdentifier.missionControl,
                       let description = missionControlMappingsByInput[Self.vimInput(for: keyCode)]?.description
             {

@@ -4,20 +4,18 @@ import XCTest
 
 @MainActor
 final class VimKeyNameStyleTests: XCTestCase {
-    private var defaults: UserDefaults!
-    private let suite = "VimKeyNameStyleTests"
-    private var savedStandard: Any?
+    private var fixture: IsolatedPreferenceDefaults!
+    private var defaults: UserDefaults {
+        fixture.defaults
+    }
 
     override func setUp() async throws {
         try await super.setUp()
-        defaults = UserDefaults(suiteName: suite)
-        defaults.removePersistentDomain(forName: suite)
-        savedStandard = UserDefaults.standard.object(forKey: VimKeyNameStyle.defaultsKey)
+        fixture = try IsolatedPreferenceDefaults()
     }
 
     override func tearDown() async throws {
-        defaults.removePersistentDomain(forName: suite)
-        UserDefaults.standard.set(savedStandard, forKey: VimKeyNameStyle.defaultsKey)
+        fixture = nil
         try await super.tearDown()
     }
 
@@ -69,13 +67,13 @@ final class VimKeyNameStyleTests: XCTestCase {
         let keyMap: [UInt16: LayerKeyInfo] = [
             16: .mapped(displayLabel: "C⌘", outputKey: "c", outputKeyCode: nil, collectionId: vim.id) // y
         ]
-        let vm = ContextHUDViewModel()
+        let vm = ContextHUDViewModel(defaults: defaults)
 
-        VimKeyNameStyle.set(.plain, for: vim.id)
+        VimKeyNameStyle.set(.plain, for: vim.id, defaults: defaults)
         vm.update(layerName: "nav", keyMap: keyMap, collections: [vim], style: .defaultList)
         XCTAssertEqual(vm.groups.flatMap(\.entries).map(\.action), ["Copy"])
 
-        VimKeyNameStyle.set(.vim, for: vim.id)
+        VimKeyNameStyle.set(.vim, for: vim.id, defaults: defaults)
         vm.update(layerName: "nav", keyMap: keyMap, collections: [vim], style: .defaultList)
         XCTAssertEqual(vm.groups.flatMap(\.entries).map(\.action), ["Yank"])
     }
