@@ -712,3 +712,36 @@ extraction is worth revisiting only if a measured workflow needs true build
 isolation; the current `cli` lane already gives a stable selection path.
 Installer/wizard splits should follow only after lane timings justify the extra
 dependency work.
+
+
+## Login Keychain coverage
+
+Routine `KeychainStringSetTests` inject Security operations backed by isolated
+memory. They verify round-trip approval storage, caching, and failed-read and
+failed-write behavior without touching the host login Keychain. Production
+continues to use the same Security framework queries and accessibility policy.
+
+Real Keychain round trips live in `KeychainStringSetIntegrationTests` and run
+only with `KEYPATH_KEYCHAIN_INTEGRATION=1` on a disposable, unlocked test
+machine. Invoke that named class explicitly. Do not enable it for ordinary
+headless CI: a login-Keychain request can wait for UI instead of immediately
+returning a denial. The full safe gate on November 19 stalled in
+`testInsertRemoveAndReloadFromKeychain` and reached its 240-second watchdog;
+that timeout is preserved as a failed gate, not reported as a pass.
+
+Script-action dispatcher tests likewise use the existing injected dispatcher,
+in-memory approval/link-grant stores, and a unique defaults domain per test.
+They do not enable scripts in the developer's shared security preferences or
+read the real script-approval Keychain item. The temporary defaults domain is
+removed when the per-test fixture is released.
+
+The November 19 full gate passed 5,523 tests and exposed one historical General
+Settings reference mismatch: its selected layer mode was Overlay, while the
+current `PreferencesService.Defaults.contextHUDDisplayMode` is `.none`. Visual
+comparison confirmed that the selected card was the difference. Refresh that
+reference to Nothing, retaining its 0.98 comparison tolerances; do not change
+the product default or loosen precision to make the test pass.
+
+Final combined validation after merging current master passed all 5,524 tests
+with `KEYPATH_SWIFT_BUILD_JOBS=4 ./Scripts/test-full.sh`, including snapshots.
+The two real-Keychain integration tests remain explicitly opt-in.
