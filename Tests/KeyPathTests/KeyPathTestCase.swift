@@ -34,7 +34,7 @@ open class KeyPathTestCase: XCTestCase {
         MainActor.assumeIsolated {
             TestSingletonReset.resetAll()
             if InstallerServices.current.systemValidator == nil {
-                InstallerServices.current.systemValidator = SystemValidator()
+                InstallerServices.current.systemValidator = SystemValidator.readyTestFixture()
             }
         }
     }
@@ -56,7 +56,7 @@ open class KeyPathAsyncTestCase: XCTestCase {
         await MainActor.run {
             TestSingletonReset.resetAll()
             if InstallerServices.current.systemValidator == nil {
-                InstallerServices.current.systemValidator = SystemValidator()
+                InstallerServices.current.systemValidator = SystemValidator.readyTestFixture()
             }
         }
     }
