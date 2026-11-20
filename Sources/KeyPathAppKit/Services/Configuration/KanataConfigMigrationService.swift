@@ -1,5 +1,6 @@
 import Foundation
 import KeyPathCore
+import KeyPathRulesCore
 
 /// Service for migrating existing Kanata configurations to KeyPath
 /// Handles safe copying, symlinking, and include line prepending without parsing configs
@@ -167,7 +168,7 @@ public final class KanataConfigMigrationService {
         // Only the KeyPath folder itself is private, not ~/.config if this created it,
         // nor a folder this service was pointed at under another name.
         if (keyPathConfigDirectory as NSString).lastPathComponent == "keypath" {
-            ConfigurationService.restrictToOwner(directory: keyPathConfigDirectory)
+            DurableRuleFile.restrictToOwner(directory: keyPathConfigDirectory)
         }
         AppLogger.shared.log("✅ [MigrationService] Created KeyPath config directory: \(keyPathConfigDirectory)")
     }

@@ -14,7 +14,7 @@ final class SmallSecurityFixesTests: XCTestCase {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true,
                                                 attributes: [.posixPermissions: 0o755])
         defer { try? FileManager.default.removeItem(at: folder) }
-        ConfigurationService.restrictToOwner(directory: folder.path)
+        DurableRuleFile.restrictToOwner(directory: folder.path)
         let mode = try XCTUnwrap(FileManager.default.attributesOfItem(atPath: folder.path)[.posixPermissions] as? Int)
         XCTAssertEqual(mode & 0o777, 0o700)
     }
@@ -111,7 +111,7 @@ final class SmallSecurityFixesTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: base) }
         let link = base.appendingPathComponent("keypath")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
-        ConfigurationService.restrictToOwner(directory: link.path)
+        DurableRuleFile.restrictToOwner(directory: link.path)
         let mode = try FileManager.default.attributesOfItem(atPath: target.path)[.posixPermissions] as? Int
         XCTAssertEqual(mode, 0o755)
     }

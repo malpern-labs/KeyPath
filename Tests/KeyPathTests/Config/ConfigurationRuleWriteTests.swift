@@ -174,7 +174,7 @@ final class ConfigurationRuleWriteTests: KeyPathTestCase {
         // Model the previous release's output: same rules, different generator text.
         let olderOutput = try String(contentsOf: configURL, encoding: .utf8) + "\n;; older generator output\n"
         try olderOutput.write(to: configURL, atomically: true, encoding: .utf8)
-        try Data(ConfigurationService.managedFingerprint(olderOutput).utf8)
+        try Data(KanataConfiguration.managedFingerprint(olderOutput).utf8)
             .write(to: service.managedConfigFingerprintURL)
 
         try await service.saveRuleState(
@@ -184,7 +184,7 @@ final class ConfigurationRuleWriteTests: KeyPathTestCase {
         let saved = try String(contentsOf: configURL, encoding: .utf8)
         XCTAssertFalse(saved.contains("older generator output"))
         XCTAssertEqual(try String(contentsOf: service.managedConfigFingerprintURL, encoding: .utf8),
-                       ConfigurationService.managedFingerprint(saved))
+                       KanataConfiguration.managedFingerprint(saved))
     }
 
     /// Upgraders have no fingerprint yet; a generated file is accepted once and fingerprinted.
