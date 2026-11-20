@@ -10,6 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 source "$SCRIPT_DIR/lib/xcode.sh"
 source "$SCRIPT_DIR/lib/build-cache.sh"
+source "$SCRIPT_DIR/lib/test-deadline.sh"
 keypath_use_selected_xcode
 source "$SCRIPT_DIR/lib/test-bridge.sh"
 keypath_prepare_test_bridge "$PROJECT_DIR"
@@ -541,22 +542,19 @@ TEST_PID=$!
 
 # Watchdog
 (
-  SECS=0
-  while kill -0 $TEST_PID 2>/dev/null; do
-    sleep 1
-    SECS=$((SECS+1))
-    if [ $SECS -ge $TIMEOUT_SECONDS ]; then
-      echo "⏰ Timeout after ${TIMEOUT_SECONDS}s. Killing tests (pid=$TEST_PID)."
-      echo "1" > "$TIMEOUT_FILE"
-      kill_process_tree "$TEST_PID"
-      cleanup_orphaned_xctest
-      echo "124" > "$EXIT_FILE"
-      break
-    fi
-  done
+  if keypath_wait_for_test_deadline "$TEST_PID" "$TIMEOUT_SECONDS" "$TEST_START_SECONDS"; then
+    echo "⏰ Timeout after ${TIMEOUT_SECONDS}s. Killing tests (pid=$TEST_PID)."
+    echo "1" > "$TIMEOUT_FILE"
+    kill_process_tree "$TEST_PID"
+    cleanup_orphaned_xctest
+    echo "124" > "$EXIT_FILE"
+  fi
 ) & WATCHDOG_PID=$!
 
 wait $TEST_PID || true
+if [ -n "$WATCHDOG_PID" ]; then
+  wait "$WATCHDOG_PID" 2>/dev/null || true
+fi
 TEST_DURATION_SECONDS=$(($(date +%s) - TEST_START_SECONDS))
 if [ -f "$TIMEOUT_FILE" ]; then
   EXIT_CODE=124
@@ -565,9 +563,6 @@ else
 fi
 rm -f "$EXIT_FILE"
 rm -f "$TIMEOUT_FILE"
-if [ -n "$WATCHDOG_PID" ]; then
-  wait "$WATCHDOG_PID" 2>/dev/null || true
-fi
 cleanup_orphaned_xctest
 TEST_PID=""
 WATCHDOG_PID=""
