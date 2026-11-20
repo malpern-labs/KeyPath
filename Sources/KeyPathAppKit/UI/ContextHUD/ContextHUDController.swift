@@ -12,6 +12,7 @@ final class ContextHUDController {
 
     var window: ContextHUDWindow?
     var hostingView: NSHostingView<ContextHUDView>?
+    let preferences: PreferencesService
     let viewModel = ContextHUDViewModel()
     let layerKeyMapper = LayerKeyMapper.shared
     let kindaVimStateAdapter = KindaVimStateAdapter.shared
@@ -50,6 +51,7 @@ final class ContextHUDController {
     var cheatSheetVisible = false
 
     private init() {
+        preferences = .shared
         setupNotificationObservers()
         Task { @MainActor in await self.refreshKindaVimPackInstalled() }
         startBacktickMonitor()
@@ -57,7 +59,8 @@ final class ContextHUDController {
     }
 
     /// Test-only initializer that skips notification observers
-    init(testMode: Bool) {
+    init(testMode: Bool, preferences: PreferencesService) {
+        self.preferences = preferences
         if !testMode {
             setupNotificationObservers()
         }
@@ -137,14 +140,14 @@ final class ContextHUDController {
 
     func handleLayerChange(_ layerName: String, source: KanataLayerChange.Source?) {
         let normalized = layerName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let triggerMode = PreferencesService.shared.contextHUDTriggerMode
+        let triggerMode = preferences.contextHUDTriggerMode
         AppLogger.shared.debug("🎯 [ContextHUD] handleLayerChange: '\(layerName)' normalized='\(normalized)' source=\(source?.rawValue ?? "nil") prev='\(previousLayer)'")
 
         // Context HUD list is an experimental feature - skip when disabled
         guard FeatureFlags.contextHUDListEnabled else { return }
 
         // Check display mode preference
-        let displayMode = PreferencesService.shared.contextHUDDisplayMode
+        let displayMode = preferences.contextHUDDisplayMode
         guard displayMode == .hudOnly || displayMode == .both else {
             return
         }
