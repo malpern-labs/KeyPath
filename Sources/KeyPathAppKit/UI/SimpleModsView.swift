@@ -66,6 +66,7 @@ struct SimpleModsView: View {
     private var tabSelector: some View {
         HStack(spacing: 0) {
             TabButton(
+                id: "installed",
                 title: String(localized: "Installed", comment: "Tab title: installed mappings"),
                 badge: service.installedMappings.count,
                 isSelected: selectedTab == .installed
@@ -74,6 +75,7 @@ struct SimpleModsView: View {
             }
 
             TabButton(
+                id: "available",
                 title: String(localized: "Available", comment: "Tab title: available presets"),
                 badge: service.availablePresets.count,
                 isSelected: selectedTab == .available
@@ -102,6 +104,7 @@ struct SimpleModsView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     CategoryButton(
+                        id: "all",
                         title: String(localized: "All", comment: "Category filter: show all categories"),
                         isSelected: selectedCategory == nil
                     ) {
@@ -110,6 +113,7 @@ struct SimpleModsView: View {
 
                     ForEach(Array(service.getPresetsByCategory().keys.sorted()), id: \.self) { category in
                         CategoryButton(
+                            id: category.lowercased().replacingOccurrences(of: " ", with: "-"),
                             title: category,
                             isSelected: selectedCategory == category
                         ) {
@@ -335,6 +339,7 @@ struct SimpleModsView: View {
 
 /// Tab button for switching between Installed and Available
 private struct TabButton: View {
+    let id: String
     let title: String
     let badge: Int
     let isSelected: Bool
@@ -361,7 +366,7 @@ private struct TabButton: View {
             .clipShape(.rect(cornerRadius: 8))
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("simple-mods-tab-button-\(title.lowercased().replacingOccurrences(of: " ", with: "-"))")
+        .accessibilityIdentifier("simple-mods-tab-button-\(id)")
         .accessibilityLabel(title)
     }
 }
@@ -391,6 +396,7 @@ private struct EmptyStateView: View {
 
 /// Category filter button
 private struct CategoryButton: View {
+    let id: String
     let title: String
     let isSelected: Bool
     let action: () -> Void
@@ -405,7 +411,7 @@ private struct CategoryButton: View {
                 .foregroundColor(isSelected ? .white : .primary)
                 .clipShape(.rect(cornerRadius: 6))
         }
-        .accessibilityIdentifier("simple-mods-category-button-\(title.lowercased().replacingOccurrences(of: " ", with: "-"))")
+        .accessibilityIdentifier("simple-mods-category-button-\(id)")
         .accessibilityLabel(title)
         .buttonStyle(.plain)
     }

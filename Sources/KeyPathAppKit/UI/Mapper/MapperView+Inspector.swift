@@ -175,6 +175,7 @@ struct MapperInspectorPanel: View {
 
             InspectorButton(
                 icon: "app.dashed",
+                identifier: "mapper-inspector-button-any-app",
                 title: String(localized: "Any App"),
                 isSelected: viewModel.selectedAppCondition == nil
             ) {
@@ -255,6 +256,7 @@ struct MapperInspectorPanel: View {
         } else {
             InspectorButton(
                 icon: "app.badge",
+                identifier: "mapper-inspector-button-only-in...",
                 title: String(localized: "Only in..."),
                 isSelected: false
             ) {
@@ -278,6 +280,7 @@ struct MapperInspectorPanel: View {
 
             InspectorButton(
                 icon: "keyboard",
+                identifier: "mapper-inspector-button-any-device",
                 title: String(localized: "Any Device"),
                 isSelected: viewModel.selectedDeviceCondition == nil
             ) {
@@ -337,6 +340,7 @@ struct MapperInspectorPanel: View {
             }) { device in
                 InspectorButton(
                     icon: device.sfSymbolName,
+                    identifier: "mapper-device-condition-\(device.hash)",
                     title: String(localized: "Only on \(device.displayName)"),
                     isSelected: false
                 ) {
@@ -346,7 +350,6 @@ struct MapperInspectorPanel: View {
                         sfSymbolName: device.sfSymbolName
                     )
                 }
-                .accessibilityIdentifier("mapper-device-condition-\(device.hash)")
             }
 
             if connectedDevices.count > 1 {
@@ -368,6 +371,7 @@ struct MapperInspectorPanel: View {
             // Key output (default)
             InspectorButton(
                 icon: "keyboard",
+                identifier: "mapper-inspector-button-send-keystroke",
                 title: String(localized: "Send Keystroke"),
                 isSelected: viewModel.selectedApp == nil && viewModel.selectedSystemAction == nil && viewModel.selectedURL == nil
             ) {
@@ -380,6 +384,7 @@ struct MapperInspectorPanel: View {
             // App launcher
             InspectorButton(
                 icon: "app.badge",
+                identifier: "mapper-inspector-button-launch-app",
                 title: String(localized: "Launch App"),
                 isSelected: viewModel.selectedApp != nil
             ) {
@@ -389,6 +394,7 @@ struct MapperInspectorPanel: View {
             // URL
             InspectorButton(
                 icon: "link",
+                identifier: "mapper-inspector-button-open-link",
                 title: String(localized: "Open Link"),
                 isSelected: viewModel.selectedURL != nil
             ) {
@@ -473,6 +479,7 @@ struct MapperInspectorPanel: View {
 /// Button style for inspector panel options.
 struct InspectorButton: View {
     let icon: String
+    let identifier: String
     let title: String
     var subtitle: String?
     let isSelected: Bool
@@ -521,7 +528,7 @@ struct InspectorButton: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .accessibilityIdentifier("mapper-inspector-button-\(title.lowercased().replacingOccurrences(of: " ", with: "-"))")
+        .accessibilityIdentifier(identifier)
         .accessibilityLabel(title)
     }
 }
