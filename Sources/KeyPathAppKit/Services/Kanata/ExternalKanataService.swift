@@ -150,28 +150,10 @@ public enum ExternalKanataService: Sendable {
     }
 
     static func runCommand(_ executable: String, arguments: [String]) async throws -> CommandResult {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: executable)
-        task.arguments = arguments
-
-        let stdoutPipe = Pipe()
-        let stderrPipe = Pipe()
-        task.standardOutput = stdoutPipe
-        task.standardError = stderrPipe
-
-        try task.run()
-        // Drain both pipes before waiting: a child that fills a 64 KB pipe
-        // buffer blocks until it is read, so waiting first can deadlock.
-        let stderrHandle = stderrPipe.fileHandleForReading
-        let stderrRead = Task.detached { stderrHandle.readDataToEndOfFile() }
-        let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-        let stderrData = await stderrRead.value
-        task.waitUntilExit()
-
-        return CommandResult(
-            status: task.terminationStatus,
-            stdout: String(data: stdoutData, encoding: .utf8) ?? "",
-            stderr: String(data: stderrData, encoding: .utf8) ?? ""
-        )
+        // Use the shared runner's dispatch-backed pipe drains. Blocking stdout
+        // while a detached Swift task drains stderr can starve the cooperative
+        // pool and deadlock under CI load, even when both drains were scheduled.
+        let result = try await SubprocessRunner.shared.run(executable, args: arguments, timeout: 30)
+        return CommandResult(status: result.exitCode, stdout: result.stdout, stderr: result.stderr)
     }
 }
