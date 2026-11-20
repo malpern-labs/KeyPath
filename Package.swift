@@ -8,50 +8,15 @@ let package = Package(
         // KeyPath supports only the latest macOS (ADR-047).
         .macOS("27.0")
     ],
+    // Internal modules are targets, not public package products.
     products: [
-        .library(
-            name: "KeyPathCore",
-            targets: ["KeyPathCore"]
-        ),
-        .library(
-            name: "KeyPathPermissions",
-            targets: ["KeyPathPermissions"]
-        ),
-        .library(
-            name: "KeyPathRulesCore",
-            targets: ["KeyPathRulesCore"]
-        ),
-        .library(
-            name: "KeyPathWizardCore",
-            targets: ["KeyPathWizardCore"]
-        ),
-        .library(
-            name: "KeyPathInstallationWizard",
-            targets: ["KeyPathInstallationWizard"]
-        ),
-        .library(
-            name: "KeyPathAppKit",
-            targets: ["KeyPathAppKit"]
-        ),
         .executable(
             name: "KeyPath",
             targets: ["KeyPath"]
         ),
-        .library(
-            name: "KeyPathLayoutTracerKit",
-            targets: ["KeyPathLayoutTracerKit"]
-        ),
         .executable(
             name: "KeyPathLayoutTracer",
             targets: ["KeyPathLayoutTracer"]
-        ),
-        .library(
-            name: "KeyPathPluginKit",
-            targets: ["KeyPathPluginKit"]
-        ),
-        .library(
-            name: "KeyPathCLISupport",
-            targets: ["KeyPathCLISupport"]
         ),
         .executable(
             name: "keypath-cli",
