@@ -197,7 +197,7 @@ final class AIConfigGenerationTests: XCTestCase {
 
         service.isEnabled = false
 
-        let result = await service.authenticate()
+        let result = await Task.detached { await service.authenticate() }.value
 
         switch result {
         case .notRequired:

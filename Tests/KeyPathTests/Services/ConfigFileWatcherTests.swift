@@ -1,8 +1,10 @@
 import Foundation
 @testable import KeyPathAppKit
 import Testing
+import XCTest
 
 @Suite("ConfigFileWatcher")
+@MainActor
 struct ConfigFileWatcherTests {
     private func makeTempFile() throws -> (dir: URL, path: String) {
         let dir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -11,6 +13,58 @@ struct ConfigFileWatcherTests {
         let path = dir.appendingPathComponent("config.kbd").path
         FileManager.default.createFile(atPath: path, contents: Data("initial".utf8))
         return (dir, path)
+    }
+
+    @Test("a real background file event reaches the main actor")
+    func backgroundFileEventUsesMainActor() async throws {
+        let (directory, path) = try makeTempFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let changed = XCTestExpectation(description: "file change delivered on main actor")
+        let watcher = ConfigFileWatcher(delay: { _ in })
+        watcher.startWatching(path: path) {
+            MainActor.preconditionIsolated()
+            changed.fulfill()
+        }
+        defer { watcher.stopWatching() }
+        try "external update".write(toFile: path, atomically: false, encoding: .utf8)
+        let outcome = await XCTWaiter.fulfillment(of: [changed], timeout: 2)
+        #expect(outcome == .completed)
+    }
+
+    @Test("stopping a watch cancels a suspended rebind")
+    func stoppedWatchCannotRebind() async throws {
+        let (directory, path) = try makeTempFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let gate = WatcherDelayGate()
+        let watcher = ConfigFileWatcher(delay: { duration in
+            if duration == .milliseconds(50) { await gate.wait() }
+        })
+        watcher.startWatching(path: path) {}
+        let pendingRebind = Task { await watcher.rebindForTesting() }
+        let outcome = await XCTWaiter.fulfillment(of: [gate.started], timeout: 2)
+        #expect(outcome == .completed)
+        watcher.stopWatching()
+        gate.release()
+        await pendingRebind.value
+        #expect(!watcher.isActive)
+    }
+
+    @Test("internal revision claims do not survive a different watch")
+    func replacementWatchDoesNotInheritInternalClaim() async throws {
+        let (directory, firstPath) = try makeTempFile()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let secondPath = directory.appendingPathComponent("second.kbd").path
+        try "second baseline".write(toFile: secondPath, atomically: false, encoding: .utf8)
+        let watcher = ConfigFileWatcher()
+        watcher.startWatching(path: firstPath) {}
+        watcher.claimInternalContent("same bytes, different watch")
+        watcher.stopWatching()
+        var callbacks = 0
+        watcher.startWatching(path: secondPath) { callbacks += 1 }
+        defer { watcher.stopWatching() }
+        try "same bytes, different watch".write(toFile: secondPath, atomically: false, encoding: .utf8)
+        await watcher.reconcileFileChangeForTesting()
+        #expect(callbacks == 1)
     }
 
     @Test("isActive is false before startWatching")
@@ -166,5 +220,27 @@ struct ConfigFileWatcherTests {
         watcher.stopWatching()
         watcher.stopWatching()
         #expect(watcher.isActive == false)
+    }
+}
+
+@MainActor
+private final class WatcherDelayGate {
+    let started = XCTestExpectation(description: "rebind reached controlled delay")
+    private var released = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func wait() async {
+        guard !released else { return }
+        await withCheckedContinuation { continuation in
+            if waiters.isEmpty { started.fulfill() }
+            waiters.append(continuation)
+        }
+    }
+
+    func release() {
+        released = true
+        let pending = waiters
+        waiters.removeAll()
+        pending.forEach { $0.resume() }
     }
 }

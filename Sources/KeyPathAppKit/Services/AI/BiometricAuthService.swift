@@ -4,19 +4,20 @@ import LocalAuthentication
 
 /// Service for biometric authentication before expensive API operations
 /// Provides Touch ID/Face ID authentication with password fallback
-// SAFETY: @unchecked Sendable — mutable state (hasAuthenticatedThisSession) is a single-writer
-// session flag only set during user-initiated authentication; LAContext is thread-safe.
-public final class BiometricAuthService: @unchecked Sendable {
+/// Settings, session authentication state and request completion share one
+/// checked actor owner. Each asynchronous request keeps its LAContext local.
+@MainActor
+public final class BiometricAuthService: Sendable {
     /// Shared instance
     public static let shared = BiometricAuthService()
 
     /// UserDefaults key for biometric auth preference
-    public static let requireBiometricAuthKey = "KeyPath.AI.RequireBiometricAuth"
+    public nonisolated static let requireBiometricAuthKey = "KeyPath.AI.RequireBiometricAuth"
 
     /// Default reason shown when authenticating before a paid Claude API call.
     /// Intentionally avoids a precise dollar figure — per-request cost varies with
     /// model and config size. Shared across all AI call sites for consistent copy.
-    public static let defaultAuthReason =
+    public nonisolated static let defaultAuthReason =
         String(localized: "This will use your Anthropic API quota (a small per-request cost). Authenticate to proceed?")
 
     /// Whether user has authenticated this session (persists until app restart)
