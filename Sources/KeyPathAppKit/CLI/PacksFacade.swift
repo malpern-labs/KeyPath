@@ -1,5 +1,6 @@
 import Foundation
 import KeyPathCore
+import KeyPathRulesCore
 
 public struct PacksFacade: Sendable {
     /// Previous user-facing names that remain accepted by the CLI after a pack

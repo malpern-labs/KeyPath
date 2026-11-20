@@ -2,6 +2,7 @@ import ArgumentParser
 import Foundation
 import KeyPathAppKit
 import KeyPathCLISupport
+import KeyPathRulesCore
 
 struct Completions: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -293,8 +294,7 @@ struct Completions: ParsableCommand {
                     CLIOutput.writeRaw(layer)
                 }
             case "rule":
-                let facade = RulesFacade()
-                let rules = await facade.listRules()
+                let rules = await CustomRulesStore.shared.listRules()
                 for rule in rules {
                     CLIOutput.writeRaw(rule.input)
                 }

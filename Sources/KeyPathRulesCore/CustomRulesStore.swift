@@ -1,17 +1,16 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
 /// Persists user-defined custom rules alongside the main configuration directory.
-actor CustomRulesStore {
-    static let shared = CustomRulesStore()
+package actor CustomRulesStore {
+    package static let shared = CustomRulesStore()
 
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
     private let fileURL: URL
     private let fileManager: FileManager
 
-    init(fileURL: URL? = nil, fileManager: FileManager = Foundation.FileManager()) {
+    package init(fileURL: URL? = nil, fileManager: FileManager = Foundation.FileManager()) {
         self.fileManager = fileManager
         // Under test, use the per-process sandbox like RuleCollectionStore, so a
         // plain `swift test` (no KEYPATH_HOME_DIR_OVERRIDE) can never overwrite the
@@ -31,7 +30,7 @@ actor CustomRulesStore {
         self.decoder = decoder
     }
 
-    func loadRules() -> [CustomRule] {
+    package func loadRules() -> [CustomRule] {
         AppLogger.shared.log("📂 [CustomRulesStore] loadRules from: \(fileURL.path)")
         guard fileManager.fileExists(atPath: fileURL.path) else {
             AppLogger.shared.log("📂 [CustomRulesStore] File does not exist, returning []")
@@ -52,22 +51,31 @@ actor CustomRulesStore {
         }
     }
 
-    func loadForMutation() throws -> [CustomRule] {
+    package func listRules(enabledOnly: Bool = false) -> [CLIRuleDetail] {
+        let rules = loadRules()
+        return (enabledOnly ? rules.filter(\.isEnabled) : rules).map(CLIRuleDetail.init(from:))
+    }
+
+    package func showRule(input: String) -> CLIRuleDetail? {
+        loadRules().first(where: { $0.input == input }).map(CLIRuleDetail.init(from:))
+    }
+
+    package func loadForMutation() throws -> [CustomRule] {
         let data: Data
         do { data = try Data(contentsOf: fileURL) }
         catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError { return [] }
         return try decoder.decode([CustomRule].self, from: data)
     }
 
-    func encodedRules(_ rules: [CustomRule]) throws -> Data {
+    package func encodedRules(_ rules: [CustomRule]) throws -> Data {
         try encoder.encode(rules)
     }
 
-    var persistenceURL: URL {
+    package var persistenceURL: URL {
         fileURL
     }
 
-    func saveRules(_ rules: [CustomRule]) throws {
+    package func saveRules(_ rules: [CustomRule]) throws {
         AppLogger.shared.log("💾 [CustomRulesStore] saveRules: \(rules.count) rules to \(fileURL.path)")
         for rule in rules {
             AppLogger.shared.log("💾 [CustomRulesStore]   - '\(rule.input)' → '\(rule.action.displayName)' (enabled: \(rule.isEnabled))")
@@ -81,7 +89,7 @@ actor CustomRulesStore {
 }
 
 #if DEBUG
-    extension CustomRulesStore {
+    package extension CustomRulesStore {
         nonisolated static func testStore(at url: URL) -> CustomRulesStore {
             CustomRulesStore(fileURL: url)
         }

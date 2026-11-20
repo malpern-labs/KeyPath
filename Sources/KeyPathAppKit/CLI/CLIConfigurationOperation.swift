@@ -1,5 +1,6 @@
 import Foundation
 import KeyPathCore
+import KeyPathRulesCore
 
 /// A command-scoped view of the existing configuration operation gate.
 /// Scoped facades may compose writes and apply without releasing ownership.
