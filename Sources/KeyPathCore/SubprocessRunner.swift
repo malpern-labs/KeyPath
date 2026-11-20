@@ -69,6 +69,7 @@ public actor SubprocessRunner: SubprocessRunning {
         task.standardError = stderrPipe
 
         let runContext = RunContext()
+        let output = ProcessOutputCapture(stdout: stdoutPipe, stderr: stderrPipe)
 
         @Sendable func terminateIfRunning(_ task: Process) {
             guard task.isRunning else { return }
@@ -81,12 +82,10 @@ public actor SubprocessRunner: SubprocessRunning {
 
                 // Set up termination handler (must be set before launching)
                 task.terminationHandler = { process in
-                    runContext.timeoutTask?.cancel()
-
                     let duration = Date().timeIntervalSince(startTime)
                     let exitCode = process.terminationStatus
-                    let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                    let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                    let (stdoutData, stderrData) = output.read()
+                    runContext.timeoutTask?.cancel()
                     let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
                     let stderr = String(data: stderrData, encoding: .utf8) ?? ""
 
@@ -133,7 +132,9 @@ public actor SubprocessRunner: SubprocessRunning {
                 // Launch process
                 do {
                     try task.run()
+                    output.start()
                 } catch {
+                    output.abandon()
                     runContext.timeoutTask?.cancel()
                     AppLogger.shared.errorUnlessQuietTest("❌ [SubprocessRunner] Failed to launch \(executable): \(error)")
                     runContext.resume(
@@ -159,6 +160,55 @@ public actor SubprocessRunner: SubprocessRunning {
         var allArgs = [subcommand]
         allArgs.append(contentsOf: args)
         return try await run("/bin/launchctl", args: allArgs, timeout: 10)
+    }
+}
+
+/// Drain both streams while the child runs: waiting for termination first can
+/// deadlock a child whose output exceeds the pipe buffer. Blocking reads use
+/// dispatch workers rather than the Swift cooperative executor or MainActor.
+private final class ProcessOutputCapture: @unchecked Sendable {
+    private let stdout: Pipe
+    private let stderr: Pipe
+    private let readers = DispatchGroup()
+    private let lock = NSLock()
+    private var stdoutData = Data()
+    private var stderrData = Data()
+
+    init(stdout: Pipe, stderr: Pipe) {
+        self.stdout = stdout
+        self.stderr = stderr
+        readers.enter()
+        readers.enter()
+    }
+
+    func start() {
+        DispatchQueue.global(qos: .utility).async {
+            let data = self.stdout.fileHandleForReading.readDataToEndOfFile()
+            self.lock.lock()
+            self.stdoutData = data
+            self.lock.unlock()
+            self.readers.leave()
+        }
+        DispatchQueue.global(qos: .utility).async {
+            let data = self.stderr.fileHandleForReading.readDataToEndOfFile()
+            self.lock.lock()
+            self.stderrData = data
+            self.lock.unlock()
+            self.readers.leave()
+        }
+    }
+
+    /// A failed launch schedules no readers; balance the reservations explicitly.
+    func abandon() {
+        readers.leave()
+        readers.leave()
+    }
+
+    func read() -> (Data, Data) {
+        readers.wait()
+        lock.lock()
+        defer { lock.unlock() }
+        return (stdoutData, stderrData)
     }
 }
 
