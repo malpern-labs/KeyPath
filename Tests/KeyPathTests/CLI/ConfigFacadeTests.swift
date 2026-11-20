@@ -4,17 +4,21 @@ import XCTest
 
 final class ConfigFacadeTests: XCTestCase {
     private var tempRoot: URL!
+    private var defaults: UserDefaults!
 
     override func setUpWithError() throws {
         tempRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("ConfigFacadeTests-\(UUID().uuidString)", isDirectory: true)
+        defaults = try XCTUnwrap(UserDefaults(suiteName: tempRoot.lastPathComponent))
         try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
     }
 
     override func tearDownWithError() throws {
         if let tempRoot {
+            defaults?.removePersistentDomain(forName: tempRoot.lastPathComponent)
             try? FileManager.default.removeItem(at: tempRoot)
         }
+        defaults = nil
         tempRoot = nil
     }
 
@@ -152,6 +156,7 @@ final class ConfigFacadeTests: XCTestCase {
             configDirectory: configDirectory.path,
             ruleCollectionLoader: { [] },
             customRuleLoader: { [] },
+            preferenceDefaults: defaults,
             reloadHandler: { await reloadProbe.reload() }
         )
 
@@ -186,14 +191,7 @@ final class ConfigFacadeTests: XCTestCase {
         let before = Data("before-config".utf8)
         let interrupted = Data("interrupted-config".utf8)
         try RecoverableRuleWrite.durableWrite(before, config)
-        let defaults = PreferencesService.canonicalDefaults
         let key = PreferencesService.leaderKeyPreferenceKey
-        let originalPreference = defaults.object(forKey: key)
-        defer {
-            if let originalPreference { defaults.set(originalPreference, forKey: key) }
-            else { defaults.removeObject(forKey: key) }
-            PreferencesService.shared.reloadLeaderKeyPreference()
-        }
         let priorPreference = try JSONEncoder().encode(LeaderKeyPreference.default)
         let attemptedPreference = try JSONEncoder().encode(
             LeaderKeyPreference(key: "tab", targetLayer: .navigation, enabled: true)
@@ -213,6 +211,7 @@ final class ConfigFacadeTests: XCTestCase {
         let facade = ConfigFacade(
             configDirectory: directory.path,
             ruleCollectionLoader: { [] }, customRuleLoader: { [] },
+            preferenceDefaults: defaults,
             reloadHandler: { await probe.reload() }
         )
 
@@ -255,24 +254,24 @@ final class ConfigFacadeTests: XCTestCase {
         try FileManager.default.createDirectory(at: configDirectory, withIntermediateDirectories: true)
 
         // Preference starts at the default ("space"); the loaded collection asks for "tab".
-        PreferencesService.shared.leaderKeyPreference = .default
-        defer { PreferencesService.shared.leaderKeyPreference = .default }
+        try storeLeaderPreference(.default)
 
         let collections = leaderKeyCollections(selectedOutput: "tab")
         let facade = ConfigFacade(
             configDirectory: configDirectory.path,
             ruleCollectionLoader: { collections },
             customRuleLoader: { [] },
+            preferenceDefaults: defaults,
             reloadHandler: { true }
         )
 
         _ = try await facade.applyConfiguration(dryRun: false)
 
         XCTAssertEqual(
-            PreferencesService.shared.leaderKeyPreference.key, "tab",
+            try storedLeaderPreference().key, "tab",
             "CLI apply should reconcile leaderKeyPreference from the collection's selectedOutput (#889)"
         )
-        XCTAssertTrue(PreferencesService.shared.leaderKeyPreference.enabled)
+        XCTAssertTrue(try storedLeaderPreference().enabled)
 
         // The generated config on disk must reflect the reconciled leader key in the
         // Primary Leader Key block, not the stale default. The leader block is annotated with
@@ -294,20 +293,20 @@ final class ConfigFacadeTests: XCTestCase {
     }
 
     /// Issue #889: a dry run previews the reconciled config but must not persist the
-    /// reconciled `leaderKeyPreference` — the store is restored afterward.
+    /// reconciled `leaderKeyPreference`.
     @MainActor
     func testApplyConfigurationDryRunDoesNotPersistReconciledLeaderKey() async throws {
         let configDirectory = tempRoot.appendingPathComponent("config", isDirectory: true)
         try FileManager.default.createDirectory(at: configDirectory, withIntermediateDirectories: true)
 
-        PreferencesService.shared.leaderKeyPreference = .default
-        defer { PreferencesService.shared.leaderKeyPreference = .default }
+        try storeLeaderPreference(.default)
 
         let collections = leaderKeyCollections(selectedOutput: "tab")
         let facade = ConfigFacade(
             configDirectory: configDirectory.path,
             ruleCollectionLoader: { collections },
             customRuleLoader: { [] },
+            preferenceDefaults: defaults,
             reloadHandler: { true }
         )
 
@@ -315,7 +314,7 @@ final class ConfigFacadeTests: XCTestCase {
 
         XCTAssertEqual(result.dryRun, true)
         XCTAssertEqual(
-            PreferencesService.shared.leaderKeyPreference.key, "space",
+            try storedLeaderPreference().key, "space",
             "A dry run must not persist the reconciled leader-key preference"
         )
         // And it must not write the active config.
@@ -329,14 +328,14 @@ final class ConfigFacadeTests: XCTestCase {
     func testFailedApplyDoesNotPersistReconciledLeaderKey() async throws {
         let blockedDirectory = tempRoot.appendingPathComponent("blocked")
         try Data("not-a-directory".utf8).write(to: blockedDirectory)
-        PreferencesService.shared.leaderKeyPreference = .default
-        defer { PreferencesService.shared.leaderKeyPreference = .default }
+        try storeLeaderPreference(.default)
 
         let collections = leaderKeyCollections(selectedOutput: "tab")
         let facade = ConfigFacade(
             configDirectory: blockedDirectory.path,
             ruleCollectionLoader: { collections },
             customRuleLoader: { [] },
+            preferenceDefaults: defaults,
             reloadHandler: { true }
         )
 
@@ -345,7 +344,7 @@ final class ConfigFacadeTests: XCTestCase {
             XCTFail("Expected CLI apply to fail before committing its retained transaction")
         } catch {}
 
-        XCTAssertEqual(PreferencesService.shared.leaderKeyPreference, .default)
+        XCTAssertEqual(try storedLeaderPreference(), .default)
         XCTAssertFalse(
             FileManager.default.fileExists(atPath: RecoverableRuleWrite.journalURL(blockedDirectory, scope: .rawConfig).path)
         )
@@ -357,16 +356,15 @@ final class ConfigFacadeTests: XCTestCase {
         try FileManager.default.createDirectory(at: configDirectory, withIntermediateDirectories: true)
         let config = configDirectory.appendingPathComponent("keypath.kbd")
         try RecoverableRuleWrite.durableWrite(Data("before-config".utf8), config)
-        PreferencesService.shared.leaderKeyPreference = .default
-        defer { PreferencesService.shared.leaderKeyPreference = .default }
+        try storeLeaderPreference(.default)
         let beforeData = try XCTUnwrap(
-            PreferencesService.canonicalDefaults.data(forKey: PreferencesService.leaderKeyPreferenceKey)
+            defaults.data(forKey: PreferencesService.leaderKeyPreferenceKey)
         )
         let attempted = LeaderKeyPreference(key: "tab", targetLayer: .navigation, enabled: true)
         _ = try RecoverableRuleWrite.stage(
             files: ["config": config], contents: ["config": Data("interrupted-config".utf8)],
             directory: configDirectory, scope: .rawConfig,
-            preferences: PreferencesService.canonicalDefaults,
+            preferences: defaults,
             preferenceChanges: [.leader(before: beforeData, after: JSONEncoder().encode(attempted))]
         )
 
@@ -375,13 +373,14 @@ final class ConfigFacadeTests: XCTestCase {
         let facade = ConfigFacade(
             configDirectory: configDirectory.path,
             ruleCollectionLoader: { collections }, customRuleLoader: { [] },
+            preferenceDefaults: defaults,
             reloadHandler: { await reloadProbe.reload() }
         )
         _ = try await facade.applyConfiguration()
 
         let reloadCount = await reloadProbe.count
         XCTAssertEqual(reloadCount, 2)
-        XCTAssertEqual(PreferencesService.shared.leaderKeyPreference, attempted)
+        XCTAssertEqual(try storedLeaderPreference(), attempted)
         XCTAssertFalse(FileManager.default.fileExists(
             atPath: RecoverableRuleWrite.journalURL(configDirectory, scope: .rawConfig).path
         ))
@@ -392,20 +391,60 @@ final class ConfigFacadeTests: XCTestCase {
     func testApplyReconcilesMalformedStoredLeaderFromDefaultFallback() async throws {
         let configDirectory = tempRoot.appendingPathComponent("config", isDirectory: true)
         try FileManager.default.createDirectory(at: configDirectory, withIntermediateDirectories: true)
-        PreferencesService.canonicalDefaults.set(
+        defaults.set(
             Data("malformed".utf8), forKey: PreferencesService.leaderKeyPreferenceKey
         )
-        PreferencesService.shared.reloadLeaderKeyPreference()
-        defer { PreferencesService.shared.leaderKeyPreference = .default }
 
         let collections = leaderKeyCollections(selectedOutput: "tab")
         let facade = ConfigFacade(
             configDirectory: configDirectory.path,
-            ruleCollectionLoader: { collections }, customRuleLoader: { [] }, reloadHandler: { true }
+            ruleCollectionLoader: { collections }, customRuleLoader: { [] },
+            preferenceDefaults: defaults, reloadHandler: { true }
         )
         _ = try await facade.applyConfiguration()
 
-        XCTAssertEqual(PreferencesService.shared.leaderKeyPreference.key, "tab")
+        XCTAssertEqual(try storedLeaderPreference().key, "tab")
+    }
+
+    func testConcurrentAppliesUseTheirOwnGenerationPreferences() async throws {
+        let otherSuite = tempRoot.lastPathComponent + "-other"
+        let first = try XCTUnwrap(defaults)
+        let second = try XCTUnwrap(UserDefaults(suiteName: otherSuite))
+        defer { second.removePersistentDomain(forName: otherSuite) }
+
+        func fixture(key: String, defaults: UserDefaults, trigger: ContextHUDTriggerMode) throws -> (ConfigFacade, URL) {
+            let directory = tempRoot.appendingPathComponent(key, isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let preference = LeaderKeyPreference(key: key, targetLayer: .navigation, enabled: true)
+            try defaults.set(JSONEncoder().encode(preference), forKey: PreferencesService.leaderKeyPreferenceKey)
+            defaults.set(trigger.rawValue, forKey: RecoverableRuleWrite.PreferenceRole.contextHUDTriggerMode.key)
+            let facade = ConfigFacade(
+                configDirectory: directory.path, ruleCollectionLoader: { [] }, customRuleLoader: { [] },
+                preferenceDefaults: defaults, reloadHandler: { true }
+            )
+            return (facade, directory.appendingPathComponent("keypath.kbd"))
+        }
+
+        let (tab, tabConfig) = try fixture(key: "tab", defaults: first, trigger: .tapToToggle)
+        let (space, spaceConfig) = try fixture(key: "space", defaults: second, trigger: .holdToShow)
+        async let tabResult = tab.applyConfiguration()
+        async let spaceResult = space.applyConfiguration()
+        _ = try await (tabResult, spaceResult)
+        let tabContent = try String(contentsOf: tabConfig, encoding: .utf8)
+        let spaceContent = try String(contentsOf: spaceConfig, encoding: .utf8)
+        XCTAssertTrue(tabContent.contains(";; Input: tab"))
+        XCTAssertTrue(tabContent.contains("(one-shot-press"))
+        XCTAssertTrue(spaceContent.contains(";; Input: space"))
+        XCTAssertFalse(spaceContent.contains("(one-shot-press"))
+    }
+
+    private func storeLeaderPreference(_ preference: LeaderKeyPreference) throws {
+        try defaults.set(JSONEncoder().encode(preference), forKey: PreferencesService.leaderKeyPreferenceKey)
+    }
+
+    private func storedLeaderPreference() throws -> LeaderKeyPreference {
+        let data = try XCTUnwrap(defaults.data(forKey: PreferencesService.leaderKeyPreferenceKey))
+        return try JSONDecoder().decode(LeaderKeyPreference.self, from: data)
     }
 
     private func createSymlinkedConfig(link: URL, target: URL) throws {

@@ -11,6 +11,7 @@ public struct ConfigFacade: Sendable {
     private let configDirectory: String
     private let ruleCollectionLoader: @Sendable () async -> [RuleCollection]
     private let customRuleLoader: @Sendable () async -> [CustomRule]
+    private let preferenceDefaultsOverride: RecoverableRuleWrite.PreferenceDefaults?
     private let reloadHandler: (@Sendable () async -> Bool)?
 
     public init(configDirectory: String = KeyPathConstants.Config.directory) {
@@ -20,6 +21,7 @@ public struct ConfigFacade: Sendable {
         let customStore = CustomRulesStore(fileURL: directory.appendingPathComponent("CustomRules.json"))
         ruleCollectionLoader = { await collectionStore.loadCollections() }
         customRuleLoader = { await customStore.loadRules() }
+        preferenceDefaultsOverride = nil
         reloadHandler = nil
     }
 
@@ -27,11 +29,13 @@ public struct ConfigFacade: Sendable {
         configDirectory: String,
         ruleCollectionLoader: @escaping @Sendable () async -> [RuleCollection],
         customRuleLoader: @escaping @Sendable () async -> [CustomRule],
+        preferenceDefaults: UserDefaults? = nil,
         reloadHandler: (@Sendable () async -> Bool)? = nil
     ) {
         self.configDirectory = configDirectory
         self.ruleCollectionLoader = ruleCollectionLoader
         self.customRuleLoader = customRuleLoader
+        preferenceDefaultsOverride = preferenceDefaults.map(RecoverableRuleWrite.PreferenceDefaults.init)
         self.reloadHandler = reloadHandler
     }
 
@@ -92,16 +96,14 @@ public struct ConfigFacade: Sendable {
         } else {
             try await service.recoverPendingRuleWrite(
                 mutationPermit: permit,
-                preferenceDefaults: PreferencesService.canonicalDefaults
+                preferenceDefaults: preferenceDefaults
             )
             _ = try await service.applyRecoveredRuntimeIfNeeded(
                 mutationPermit: permit,
                 reloadHandler: { await reloadResult() }
             )
         }
-        await MainActor.run {
-            PreferencesService.shared.reloadLeaderKeyPreference()
-        }
+        await refreshSharedLeaderPreference()
         let collections = await ruleCollectionLoader()
         let customRules = await customRuleLoader()
         let enabledCount = collections.filter(\.isEnabled).count
@@ -113,12 +115,19 @@ public struct ConfigFacade: Sendable {
         // neither in sync with the collection, so `keypath collection`/JSON edits to
         // `selectedOutput` were silently ignored by `keypath apply`. Reconcile both, mirroring
         // the in-process reconcile the app does on load (RuleCollectionsManager). See #889.
-        let reconcile = await reconciledLeaderKeyPreference(from: collections)
+        let previousData = preferenceDefaults.data(forKey: PreferencesService.leaderKeyPreferenceKey)
+        let current = previousData.flatMap { try? JSONDecoder().decode(LeaderKeyPreference.self, from: $0) } ?? .default
+        let reconcile = LeaderKeyPreference.reconciled(from: collections, current: current)
+        if let reconcile {
+            AppLogger.shared.log(
+                "🔑 [ConfigFacade] Reconciling leader key from collection selectedOutput: '\(reconcile.key)' (was '\(current.key)')"
+            )
+        }
         let reconciledCollections = reconcile.map { r in
             LeaderKeyPreference.reconcileLeaderActivators(
                 in: collections,
-                key: r.reconciled.key,
-                targetLayer: r.reconciled.targetLayer
+                key: r.key,
+                targetLayer: r.targetLayer
             )
         } ?? collections
 
@@ -126,7 +135,8 @@ public struct ConfigFacade: Sendable {
             let previewConfig = try await service.generateConfiguration(
                 ruleCollections: reconciledCollections,
                 customRules: customRules,
-                leaderKeyPreference: reconcile?.reconciled
+                leaderKeyPreference: reconcile ?? (preferenceDefaultsOverride == nil ? nil : current),
+                preferenceDefaults: preferenceDefaultsOverride?.value
             )
             try await validateDryRunConfig(previewConfig.content)
 
@@ -142,25 +152,24 @@ public struct ConfigFacade: Sendable {
 
         if let reconcile {
             let preferenceChange = try RecoverableRuleWrite.PreferenceChange.leader(
-                before: reconcile.previousData,
-                after: JSONEncoder().encode(reconcile.reconciled)
+                before: previousData,
+                after: JSONEncoder().encode(reconcile)
             )
             try await service.saveConfiguration(
                 ruleCollections: reconciledCollections,
                 customRules: customRules,
-                leaderKeyPreference: reconcile.reconciled,
-                preferenceDefaults: PreferencesService.canonicalDefaults,
+                leaderKeyPreference: reconcile,
+                preferenceDefaults: preferenceDefaults,
                 preferenceChanges: [preferenceChange],
                 mutationPermit: permit
             )
-            await MainActor.run {
-                PreferencesService.shared.reloadLeaderKeyPreference()
-            }
+            await refreshSharedLeaderPreference()
         } else {
             try await service.saveConfiguration(
                 ruleCollections: reconciledCollections,
                 customRules: customRules,
-                mutationPermit: permit
+                mutationPermit: permit,
+                preferenceDefaults: preferenceDefaults
             )
         }
 
@@ -189,32 +198,15 @@ public struct ConfigFacade: Sendable {
         return await tcpReload()
     }
 
-    private struct LeaderReconcile {
-        let reconciled: LeaderKeyPreference
-        let previousData: Data?
+    private var preferenceDefaults: UserDefaults {
+        preferenceDefaultsOverride?.value ?? PreferencesService.canonicalDefaults
     }
 
-    /// Prepare a leader preference candidate without changing shared defaults. A real apply
-    /// journals this exact preimage with the generated config; a dry run uses only the candidate.
     @MainActor
-    private func reconciledLeaderKeyPreference(from collections: [RuleCollection]) -> LeaderReconcile? {
-        let defaults = PreferencesService.canonicalDefaults
-        let previousData = defaults.data(forKey: PreferencesService.leaderKeyPreferenceKey)
-        let current: LeaderKeyPreference = if let previousData {
-            (try? JSONDecoder().decode(LeaderKeyPreference.self, from: previousData)) ?? .default
-        } else {
-            .default
+    private func refreshSharedLeaderPreference() {
+        if preferenceDefaultsOverride == nil {
+            PreferencesService.shared.reloadLeaderKeyPreference()
         }
-        guard let reconciled = LeaderKeyPreference.reconciled(from: collections, current: current) else {
-            return nil
-        }
-        AppLogger.shared.log(
-            "🔑 [ConfigFacade] Reconciling leader key from collection selectedOutput: '\(reconciled.key)' (was '\(current.key)')"
-        )
-        return LeaderReconcile(
-            reconciled: reconciled,
-            previousData: previousData
-        )
     }
 
     // MARK: - Backup / Restore

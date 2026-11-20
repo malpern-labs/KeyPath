@@ -349,13 +349,15 @@ public final class ConfigurationService: FileConfigurationProviding {
     func saveConfiguration(
         ruleCollections: [RuleCollection],
         customRules: [CustomRule] = [],
-        mutationPermit: ConfigurationOperationGate.Permit?
+        mutationPermit: ConfigurationOperationGate.Permit?,
+        preferenceDefaults: UserDefaults = PreferencesService.canonicalDefaults
     ) async throws {
         try await operationGate.withOperation(using: mutationPermit) { @MainActor [self] permit in
-            try await recoverPendingRuleWrite(mutationPermit: permit)
+            try await recoverPendingRuleWrite(mutationPermit: permit, preferenceDefaults: preferenceDefaults)
             let newConfig = try await preparedConfiguration(
                 ruleCollections: ruleCollections, customRules: customRules,
-                leaderKeyPreference: persistedLeaderPreference(in: PreferencesService.canonicalDefaults)
+                leaderKeyPreference: persistedLeaderPreference(in: preferenceDefaults),
+                preferenceDefaults: preferenceDefaults
             )
             try await writeFileAsync(string: newConfig.content, to: configurationPath)
             await publishSavedConfiguration(newConfig)
@@ -376,7 +378,8 @@ public final class ConfigurationService: FileConfigurationProviding {
             let newConfig = try await preparedConfiguration(
                 ruleCollections: ruleCollections,
                 customRules: customRules,
-                leaderKeyPreference: leaderKeyPreference
+                leaderKeyPreference: leaderKeyPreference,
+                preferenceDefaults: preferenceDefaults
             )
             let files = ["config": URL(fileURLWithPath: configurationPath)]
             let before = try await snapshotRuleFiles(files)
@@ -844,13 +847,15 @@ public final class ConfigurationService: FileConfigurationProviding {
         ruleCollections: [RuleCollection], customRules: [CustomRule],
         leaderKeyPreference: LeaderKeyPreference? = nil,
         shortcutListGenerationInput: ShortcutListGenerationInput? = nil,
-        deviceGenerationInput: DeviceGenerationInput? = nil
+        deviceGenerationInput: DeviceGenerationInput? = nil,
+        preferenceDefaults: UserDefaults? = nil
     ) async throws -> KanataConfiguration {
         let newConfig = try await generateConfiguration(
             ruleCollections: ruleCollections, customRules: customRules,
             leaderKeyPreference: leaderKeyPreference,
             shortcutListGenerationInput: shortcutListGenerationInput,
-            deviceGenerationInput: deviceGenerationInput
+            deviceGenerationInput: deviceGenerationInput,
+            preferenceDefaults: preferenceDefaults
         )
         let validation = await validateConfiguration(newConfig.content)
         guard validation.isValid else {
@@ -1079,12 +1084,19 @@ public final class ConfigurationService: FileConfigurationProviding {
         appSpecificKeys: Set<String>? = nil,
         leaderKeyPreference: LeaderKeyPreference? = nil,
         shortcutListGenerationInput: ShortcutListGenerationInput? = nil,
-        deviceGenerationInput: DeviceGenerationInput? = nil
+        deviceGenerationInput: DeviceGenerationInput? = nil,
+        preferenceDefaults: UserDefaults? = nil
     ) async throws -> KanataConfiguration {
-        let persistedInputs: GlobalRuleGenerationInputs? = if appSpecificKeys == nil || shortcutListGenerationInput == nil || deviceGenerationInput == nil {
-            try await persistedGlobalRuleGenerationInputs(preferenceDefaults: PreferencesService.canonicalDefaults)
+        let generationInputs: GlobalRuleGenerationInputs
+        if let appSpecificKeys, let shortcutListGenerationInput, let deviceGenerationInput {
+            generationInputs = .init(shortcut: shortcutListGenerationInput, device: deviceGenerationInput, appSpecificKeys: appSpecificKeys)
         } else {
-            nil
+            let persisted = try await persistedGlobalRuleGenerationInputs(preferenceDefaults: preferenceDefaults)
+            generationInputs = .init(
+                shortcut: shortcutListGenerationInput ?? persisted.shortcut,
+                device: deviceGenerationInput ?? persisted.device,
+                appSpecificKeys: appSpecificKeys ?? persisted.appSpecificKeys
+            )
         }
 
         // Custom rules come first so they take priority over preset collections
@@ -1106,15 +1118,12 @@ public final class ConfigurationService: FileConfigurationProviding {
             )
         }
 
-        // Get leader key preference and trigger mode from PreferencesService on MainActor.
-        // Fetched before conflict detection so the leader key participates in it (#463).
-        let (storedLeaderKeyPref, triggerMode, holdDelayMs) = await MainActor.run {
-            (PreferencesService.shared.leaderKeyPreference,
-             PreferencesService.shared.contextHUDTriggerMode,
-             PreferencesService.shared.contextHUDHoldDelayMs)
+        // Resolve the leader before checking conflicts; it participates in admission.
+        let leaderKeyPref: LeaderKeyPreference = if let leaderKeyPreference {
+            leaderKeyPreference
+        } else {
+            await MainActor.run { PreferencesService.shared.leaderKeyPreference }
         }
-        let leaderKeyPref = leaderKeyPreference ?? storedLeaderKeyPref
-        let shortcutInput = shortcutListGenerationInput
 
         // Admission before deduplication: two intentional claims on one slot are
         // refused here, so `dedupe` below never resolves one in silence (ADR-039 §1).
@@ -1136,12 +1145,12 @@ public final class ConfigurationService: FileConfigurationProviding {
             ?? LayoutPreferences.defaultLayoutId
         let inputs = KanataGenerationInputs(
             leaderKeyPreference: leaderKeyPref,
-            navActivationMode: shortcutInput?.triggerMode ?? persistedInputs?.shortcut.triggerMode ?? triggerMode,
-            navHoldDelayMs: shortcutInput?.holdDelayMs ?? persistedInputs?.shortcut.holdDelayMs ?? holdDelayMs,
-            deviceGenerationInput: deviceGenerationInput ?? persistedInputs?.device ?? DeviceGenerationInput(selections: [], connectedDevices: []),
+            navActivationMode: generationInputs.shortcut.triggerMode,
+            navHoldDelayMs: generationInputs.shortcut.holdDelayMs,
+            deviceGenerationInput: generationInputs.device,
             chordGroups: preservedChordGroups,
             sequences: preservedSequences,
-            appSpecificKeys: appSpecificKeys ?? persistedInputs?.appSpecificKeys ?? [],
+            appSpecificKeys: generationInputs.appSpecificKeys,
             physicalLayout: PhysicalLayout.find(id: layoutID) ?? .macBookUS
         )
         let configContent = KanataConfiguration.generateFromCollections(combinedCollections, inputs: inputs)
