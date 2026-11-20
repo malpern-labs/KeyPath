@@ -1,13 +1,13 @@
 import Foundation
 
-enum KanataConfigTokenizer {
-    static func stripInlineComment(_ line: String) -> String {
+package enum KanataConfigTokenizer {
+    package static func stripInlineComment(_ line: String) -> String {
         guard let index = line.firstIndex(of: ";") else { return line }
         return String(line[..<index])
     }
 
     /// Tokenize a Kanata config line while keeping parenthesized expressions intact.
-    static func tokenize(_ line: String) -> [String] {
+    package static func tokenize(_ line: String) -> [String] {
         var tokens: [String] = []
         var current = ""
         var depth = 0
