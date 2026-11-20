@@ -1,5 +1,6 @@
 import Foundation
 @testable import KeyPathAppKit
+import KeyPathCore
 import Testing
 
 /// Thread-safe box for capturing values in @Sendable closures.

@@ -112,6 +112,7 @@ final class AutoDetectKeyboardController {
     private let bindingStore: DeviceLayoutBindingStore
     private let displayContextStore: KeyboardDisplayContextStore
     private let recognitionService: DeviceRecognitionService
+    private let notificationCenter: NotificationCenter
     private let initialKeyboardEventsProvider: () -> [HIDDeviceMonitor.HIDKeyboardEvent]
 
     private static let baselineLayoutDefaultsKey = "AutoDetectKeyboardController.baselineLayoutId"
@@ -123,6 +124,7 @@ final class AutoDetectKeyboardController {
         displayContextStore: KeyboardDisplayContextStore = .shared,
         recognitionService: DeviceRecognitionService = .shared,
         defaults: UserDefaults = .standard,
+        notificationCenter: NotificationCenter = .default,
         initialKeyboardEventsProvider: @escaping () -> [HIDDeviceMonitor.HIDKeyboardEvent] = {
             let current = HIDDeviceMonitor.shared.connectedKeyboards
             return current.isEmpty ? HIDDeviceMonitor.currentKeyboardSnapshot() : current
@@ -143,6 +145,7 @@ final class AutoDetectKeyboardController {
         self.bindingStore = bindingStore
         self.displayContextStore = displayContextStore
         self.recognitionService = recognitionService
+        self.notificationCenter = notificationCenter
         self.initialKeyboardEventsProvider = initialKeyboardEventsProvider
     }
 
@@ -157,7 +160,7 @@ final class AutoDetectKeyboardController {
         guard connectCancellable == nil else { return }
         // Use notifications (fire-once) instead of @Published (replays current value).
         // This prevents stale lastConnectedKeyboard from triggering on re-subscribe.
-        connectCancellable = NotificationCenter.default
+        connectCancellable = notificationCenter
             .publisher(for: .hidKeyboardConnected)
             .compactMap { $0.userInfo?["event"] as? HIDDeviceMonitor.HIDKeyboardEvent }
             .sink { [weak self] event in
@@ -167,7 +170,7 @@ final class AutoDetectKeyboardController {
                 }
             }
 
-        disconnectCancellable = NotificationCenter.default
+        disconnectCancellable = notificationCenter
             .publisher(for: .hidKeyboardDisconnected)
             .compactMap { $0.userInfo?["event"] as? HIDDeviceMonitor.HIDKeyboardEvent }
             .sink { [weak self] event in

@@ -52,20 +52,9 @@ public enum WizardSystemPaths {
 
     // MARK: - Binary Paths
 
-    #if DEBUG
-        private nonisolated(unsafe) static var bundledKanataPathOverride: String?
-
-        public static func setBundledKanataPathOverride(_ path: String?) {
-            bundledKanataPathOverride = path
-        }
-    #endif
-
     /// Bundled kanata binary path (preferred - properly signed)
     public static var bundledKanataPath: String {
         #if DEBUG
-            if let override = bundledKanataPathOverride, !override.isEmpty {
-                return override
-            }
             if let override = ProcessInfo.processInfo.environment["KEYPATH_BUNDLED_KANATA_OVERRIDE"],
                !override.isEmpty
             {

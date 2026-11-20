@@ -321,30 +321,6 @@ final class ScenarioSnapshotTests: ScreenshotTestCase {
         )
     }
 
-    // MARK: - Overlay with Collection-Colored Keys (Vim Nav Layer)
-
-    func testOverlay_VimNavLayer() {
-        let viewModel = MockFactories.keyboardVisualizationViewModel()
-        viewModel.currentLayerName = "nav"
-        // Set up vim nav layer mappings with vimLabels (arrows must survive augmentation)
-        viewModel.layerKeyMap = Self.vimNavLayerMap
-        let uiState = MockFactories.overlayUIState()
-        let view = LiveKeyboardOverlayView(
-            viewModel: viewModel,
-            uiState: uiState,
-            inspectorWidth: 0,
-            isMapperAvailable: true,
-            kanataViewModel: nil
-        )
-        assertScreenshot(
-            of: view,
-            size: CGSize(width: 1200, height: 450),
-            named: "overlay-vim-nav-layer",
-            precision: 0.98,
-            perceptualPrecision: 0.98
-        )
-    }
-
     // MARK: - HJKL Arrow Regression Tests
 
     /// Base layer should show normal HJKL letter floating labels.
@@ -418,7 +394,8 @@ final class ScenarioSnapshotTests: ScreenshotTestCase {
     /// Regression: augmentation dropped vimLabels, making HJKL show description text.
     func testOverlay_NavLayer_HJKLArrows() {
         let viewModel = MockFactories.keyboardVisualizationViewModel()
-        viewModel.currentLayerName = "nav"
+        // Seed the live layer before supplying its arrow map.
+        viewModel.updateLayer("nav")
         viewModel.layerKeyMap = Self.vimNavLayerMap
         let uiState = MockFactories.overlayUIState()
         let view = LiveKeyboardOverlayView(

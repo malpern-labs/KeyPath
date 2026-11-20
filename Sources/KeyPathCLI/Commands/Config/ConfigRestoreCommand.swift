@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathRulesCore
 
 struct ConfigRestore: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -18,10 +18,10 @@ struct ConfigRestore: AsyncParsableCommand {
 
     mutating func run() async throws {
         let ctx = globals.outputContext
-        let facade = ConfigFacade()
+        let archive = ConfigurationArchive()
 
         do {
-            let result = try await facade.restoreConfig(from: backupPath, reload: reload)
+            let result = try await archive.restoreConfig(from: backupPath, reload: reload)
             CLIOutput.write(result, context: ctx) {
                 var lines = [
                     "Config restored: \(result.restoredPath)",

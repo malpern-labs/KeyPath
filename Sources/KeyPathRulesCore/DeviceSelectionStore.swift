@@ -1,13 +1,12 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 import Synchronization
 
 /// Thread-safe synchronous cache for UI and service-layer device snapshots.
 /// Configuration rendering receives a point-in-time `DeviceGenerationInput`
 /// instead of consulting this mutable cache directly.
-final class DeviceSelectionCache: Sendable {
-    static let shared = DeviceSelectionCache()
+package final class DeviceSelectionCache: Sendable {
+    package static let shared = DeviceSelectionCache()
 
     private struct State {
         var selections: [String: DeviceSelection] = [:]
@@ -16,42 +15,44 @@ final class DeviceSelectionCache: Sendable {
 
     private let state = Mutex(State())
 
+    package init() {}
+
     /// Update the cache with the latest selections from the store.
-    func update(_ newSelections: [DeviceSelection]) {
+    package func update(_ newSelections: [DeviceSelection]) {
         let selections = Dictionary(newSelections.map { ($0.hash, $0) }, uniquingKeysWith: { _, new in new })
         state.withLock { $0.selections = selections }
     }
 
     /// Update the cached connected devices (from kanata --list).
-    func updateConnectedDevices(_ devices: [ConnectedDevice]) {
+    package func updateConnectedDevices(_ devices: [ConnectedDevice]) {
         state.withLock { $0.connectedDevices = devices }
     }
 
     /// Get the cached connected devices. Returns empty if never populated.
-    func getConnectedDevices() -> [ConnectedDevice] {
+    package func getConnectedDevices() -> [ConnectedDevice] {
         state.withLock { $0.connectedDevices }
     }
 
     /// Check if a device hash is enabled. Devices not in the cache default to enabled.
-    func isEnabled(hash: String) -> Bool {
+    package func isEnabled(hash: String) -> Bool {
         state.withLock { $0.selections[hash]?.isEnabled ?? true }
     }
 
     /// Get all cached selections.
-    func allSelections() -> [DeviceSelection] {
+    package func allSelections() -> [DeviceSelection] {
         state.withLock { Array($0.selections.values) }
     }
 
     /// Reset all cached state. Used in tests to avoid pollution.
-    func reset() {
+    package func reset() {
         state.withLock { $0 = State() }
     }
 }
 
 /// Actor-based store for device selection persistence.
 /// File: `~/.config/keypath/DeviceSelection.json`
-actor DeviceSelectionStore {
-    static let shared = DeviceSelectionStore()
+package actor DeviceSelectionStore {
+    package static let shared = DeviceSelectionStore()
 
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
@@ -59,7 +60,7 @@ actor DeviceSelectionStore {
     private let fileManager: FileManager
     private let cache: DeviceSelectionCache
 
-    init(
+    package init(
         fileURL: URL? = nil,
         fileManager: FileManager = Foundation.FileManager(),
         cache: DeviceSelectionCache = .shared
@@ -83,11 +84,11 @@ actor DeviceSelectionStore {
 
     /// The transaction owner journals this exact file with the generated
     /// configuration. Keeping the URL here prevents a second path convention.
-    var persistenceURL: URL {
+    package var persistenceURL: URL {
         fileURL
     }
 
-    func loadSelections() -> [DeviceSelection] {
+    package func loadSelections() -> [DeviceSelection] {
         AppLogger.shared.log("📂 [DeviceSelectionStore] loadSelections from: \(fileURL.path)")
         guard fileManager.fileExists(atPath: fileURL.path) else {
             AppLogger.shared.log("📂 [DeviceSelectionStore] File does not exist, returning []")
@@ -106,30 +107,30 @@ actor DeviceSelectionStore {
 
     /// Mutation paths must not treat corrupt selection data as an empty choice:
     /// doing so could make a later rollback or apply target every keyboard.
-    func loadForMutation() throws -> [DeviceSelection] {
+    package func loadForMutation() throws -> [DeviceSelection] {
         guard fileManager.fileExists(atPath: fileURL.path) else { return [] }
         let data = try Data(contentsOf: fileURL)
         return try decoder.decode([DeviceSelection].self, from: data)
     }
 
-    func encodedSelections(_ selections: [DeviceSelection]) throws -> Data {
+    package func encodedSelections(_ selections: [DeviceSelection]) throws -> Data {
         try encoder.encode(selections)
     }
 
     /// Cache publication happens only after the corresponding durable write has
     /// settled. Candidate data must never leak into synchronous generation.
-    func publishSelectionsToCache(_ selections: [DeviceSelection]) {
+    package func publishSelectionsToCache(_ selections: [DeviceSelection]) {
         cache.update(selections)
     }
 
     /// Capture all device-dependent generation inputs from the same injected
     /// cache used by this store. A retained transaction must not mix its
     /// candidate selection with the process-global device cache.
-    func generationInput(for selections: [DeviceSelection]) -> DeviceGenerationInput {
+    package func generationInput(for selections: [DeviceSelection]) -> DeviceGenerationInput {
         DeviceGenerationInput(selections: selections, connectedDevices: cache.getConnectedDevices())
     }
 
-    func saveSelections(_ selections: [DeviceSelection]) throws {
+    package func saveSelections(_ selections: [DeviceSelection]) throws {
         AppLogger.shared.log("💾 [DeviceSelectionStore] saveSelections: \(selections.count) device(s) to \(fileURL.path)")
         let directory = fileURL.deletingLastPathComponent()
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -141,13 +142,13 @@ actor DeviceSelectionStore {
     }
 
     /// Load selections and sync to cache. Call at startup.
-    func syncToCache() {
+    package func syncToCache() {
         let selections = loadSelections()
         cache.update(selections)
     }
 
     /// Synchronously prime the shared cache before startup tasks can regenerate config.
-    static func primeCacheFromDisk(
+    package static func primeCacheFromDisk(
         fileURL: URL? = nil,
         cache: DeviceSelectionCache = .shared
     ) {
@@ -178,7 +179,7 @@ actor DeviceSelectionStore {
 }
 
 #if DEBUG
-    extension DeviceSelectionStore {
+    package extension DeviceSelectionStore {
         nonisolated static func testStore(
             at url: URL,
             cache: DeviceSelectionCache = DeviceSelectionCache()

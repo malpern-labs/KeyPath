@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import KeyPathRulesCore
 
 // MARK: - App Launch Info
 

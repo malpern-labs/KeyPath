@@ -51,6 +51,7 @@ final class ConfigFacadeAdmissionTests: KeyPathTestCase {
             try "must not replace generated config".write(to: backup.appendingPathComponent("keypath.kbd"), atomically: true, encoding: .utf8)
             let output = directory.deletingLastPathComponent().appendingPathComponent("forbidden-backup")
             let nested = ConfigFacade(configDirectory: directory.path)
+            let archive = ConfigurationArchive(configDirectory: directory.path)
             let facade = ConfigFacade(
                 configDirectory: directory.path,
                 ruleCollectionLoader: { [] },
@@ -61,11 +62,11 @@ final class ConfigFacadeAdmissionTests: KeyPathTestCase {
                         XCTFail("Callback apply must be rejected")
                     } catch ConfigurationOperationGate.Failure.recursiveOperation {} catch { XCTFail("Unexpected error: \(error)") }
                     do {
-                        _ = try await nested.backupConfig(outputPath: output.path)
+                        _ = try await archive.backupConfig(outputPath: output.path)
                         XCTFail("Callback backup must be rejected")
                     } catch ConfigurationOperationGate.Failure.recursiveOperation {} catch { XCTFail("Unexpected error: \(error)") }
                     do {
-                        _ = try await nested.restoreConfig(from: backup.path, reload: false)
+                        _ = try await archive.restoreConfig(from: backup.path, reload: false)
                         XCTFail("Callback restore must be rejected")
                     } catch ConfigurationOperationGate.Failure.recursiveOperation {} catch { XCTFail("Unexpected error: \(error)") }
                     return true
@@ -99,7 +100,7 @@ final class ConfigFacadeAdmissionTests: KeyPathTestCase {
             }
             await self.fulfillment(of: [entered], timeout: 5)
             let backup = Task { @MainActor in
-                let result = try await ConfigFacade(configDirectory: directory.path).backupConfig(outputPath: output.path)
+                let result = try await ConfigurationArchive(configDirectory: directory.path).backupConfig(outputPath: output.path)
                 if phase.isWaiting { prematureBackup.fulfill() }
                 return result
             }

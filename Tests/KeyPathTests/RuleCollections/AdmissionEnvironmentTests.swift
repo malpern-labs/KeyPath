@@ -133,16 +133,16 @@ final class AdmissionEnvironmentTests: KeyPathTestCase {
     // MARK: - Mapper
 
     func testMapperRefusesBeforeWritingAndSaysWhy() async {
-        BackendCapabilityProfile.testOverride = noVolume
-        defer { BackendCapabilityProfile.testOverride = nil }
-        let coordinator = RuntimeCoordinator()
-        let vm = MapperViewModel()
-        vm.inputSequence = KeySequence(keys: [KeyPress(baseKey: "f12", modifiers: [], keyCode: 111)], captureMode: .single)
-        vm.outputSequence = KeySequence(keys: [KeyPress(baseKey: "volumeup", modifiers: [], keyCode: 72)], captureMode: .single)
-        let before = coordinator.ruleCollectionsManager.customRules.count
-        await vm.save(kanataManager: coordinator)
-        XCTAssertTrue(vm.statusIsError)
-        XCTAssertEqual(vm.statusMessage?.hasSuffix("sends Volume Up, which the current backend can't send."), true, vm.statusMessage ?? "nil")
-        XCTAssertEqual(coordinator.ruleCollectionsManager.customRules.count, before, "nothing was written")
+        await BackendCapabilityProfile.$testOverride.withValue(noVolume) {
+            let coordinator = RuntimeCoordinator()
+            let vm = MapperViewModel()
+            vm.inputSequence = KeySequence(keys: [KeyPress(baseKey: "f12", modifiers: [], keyCode: 111)], captureMode: .single)
+            vm.outputSequence = KeySequence(keys: [KeyPress(baseKey: "volumeup", modifiers: [], keyCode: 72)], captureMode: .single)
+            let before = coordinator.ruleCollectionsManager.customRules.count
+            await vm.save(kanataManager: coordinator)
+            XCTAssertTrue(vm.statusIsError)
+            XCTAssertEqual(vm.statusMessage?.hasSuffix("sends Volume Up, which the current backend can't send."), true, vm.statusMessage ?? "nil")
+            XCTAssertEqual(coordinator.ruleCollectionsManager.customRules.count, before, "nothing was written")
+        }
     }
 }

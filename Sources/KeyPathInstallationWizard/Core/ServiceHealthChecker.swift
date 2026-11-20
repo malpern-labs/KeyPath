@@ -9,9 +9,7 @@ import os.lock
 /// comes from `ServiceLifecycleCoordinator`, which registers a provider at launch
 /// (`configureSessionReadinessProvider`). Without a provider (the CLI, or tests
 /// that do not configure one) the runtime reports not running.
-// SAFETY: @unchecked Sendable — the only mutable state is the provider, protected
-// by OSAllocatedUnfairLock.
-public final class ServiceHealthChecker: @unchecked Sendable {
+public final class ServiceHealthChecker: Sendable {
     @MainActor public static let shared = ServiceHealthChecker()
 
     public struct KanataServiceRuntimeSnapshot: Sendable, Equatable {
@@ -52,7 +50,7 @@ public final class ServiceHealthChecker: @unchecked Sendable {
 
     // MARK: - Session runtime readiness
 
-    /// Process + TCP + input-capture readiness of the session runtime.
+    /// Process, worker IPC, and input-capture readiness of the session runtime.
     public nonisolated func checkKanataServiceHealth() async -> KanataRuntimeReadiness {
         await sessionReadinessProvider.withLock { $0 }?()
             ?? KanataRuntimeReadiness(isRunning: false, isResponding: false, inputCaptureReady: false)
