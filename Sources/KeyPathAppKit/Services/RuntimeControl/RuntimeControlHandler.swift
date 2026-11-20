@@ -54,7 +54,7 @@ enum RuntimeControlHandler {
         do {
             switch request.operation {
             case .reload:
-                let result = await manager.triggerConfigReload()
+                let result = await manager.triggerConfigReload(waitForCooldown: true)
                 answer = await response(ok: result.isSuccess, operation: .reload,
                                         status: manager.currentRuntimeStatusInternal(),
                                         lastError: result.isSuccess ? nil : result.errorMessage)

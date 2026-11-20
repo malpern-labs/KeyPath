@@ -17,6 +17,7 @@ actor ReloadSafetyMonitor {
     // MARK: - Configuration
 
     /// Minimum time between reload attempts (prevents spam)
+    private let now: @Sendable () -> Date
     private let reloadCooldownSeconds: TimeInterval
 
     /// Time window to track reload history
@@ -47,7 +48,8 @@ actor ReloadSafetyMonitor {
     /// Service restart history (PID changes indicate restarts)
     private var restartHistory: [(timestamp: Date, pid: Int)] = []
 
-    init(reloadCooldownSeconds: TimeInterval = 2.0) {
+    init(reloadCooldownSeconds: TimeInterval = 2.0, now: @escaping @Sendable () -> Date = { Date() }) {
+        self.now = now
         self.reloadCooldownSeconds = reloadCooldownSeconds
     }
 
@@ -56,7 +58,7 @@ actor ReloadSafetyMonitor {
     /// Check if it's safe to perform a reload right now
     /// - Returns: SafetyCheck result with reasoning
     func checkReloadSafety() -> SafetyCheck {
-        let now = Date()
+        let now = self.now()
 
         // Check 1: Crash loop backoff
         if let crashTime = crashLoopDetectedAt {
@@ -107,7 +109,7 @@ actor ReloadSafetyMonitor {
     /// Record a reload attempt
     /// - Parameter succeeded: Whether the reload succeeded
     func recordReloadAttempt(succeeded: Bool) {
-        let now = Date()
+        let now = self.now()
         let attempt = ReloadAttempt(timestamp: now, succeeded: succeeded)
         reloadHistory.append(attempt)
         lastReloadTime = now
@@ -123,7 +125,7 @@ actor ReloadSafetyMonitor {
     /// Record a service restart (PID change)
     /// - Parameter pid: The new daemon PID
     func recordServiceRestart(pid: Int) {
-        let now = Date()
+        let now = self.now()
         restartHistory.append((timestamp: now, pid: pid))
 
         // Cleanup old history
@@ -151,7 +153,7 @@ actor ReloadSafetyMonitor {
 
     /// Get current safety status for debugging
     func getStatus() -> SafetyStatus {
-        let now = Date()
+        let now = self.now()
         let recentRestarts = countRecentRestarts(within: trackingWindowSeconds)
         let recentReloads = reloadHistory.filter {
             now.timeIntervalSince($0.timestamp) < trackingWindowSeconds
@@ -186,12 +188,12 @@ actor ReloadSafetyMonitor {
     // MARK: - Private Helpers
 
     private func countRecentRestarts(within seconds: TimeInterval) -> Int {
-        let cutoff = Date().addingTimeInterval(-seconds)
+        let cutoff = now().addingTimeInterval(-seconds)
         return restartHistory.filter { $0.timestamp > cutoff }.count
     }
 
     private func cleanupOldHistory() {
-        let cutoff = Date().addingTimeInterval(-trackingWindowSeconds)
+        let cutoff = now().addingTimeInterval(-trackingWindowSeconds)
         reloadHistory.removeAll { $0.timestamp < cutoff }
         restartHistory.removeAll { $0.timestamp < cutoff }
     }
