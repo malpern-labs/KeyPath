@@ -21,7 +21,8 @@ fi
 
 for resource_bundle in \
     KeyPath_KeyPath.bundle \
-    KeyPath_KeyPathAppKit.bundle; do
+    KeyPath_KeyPathAppKit.bundle \
+    KeyPath_KeyPathRulesCore.bundle; do
     packaged_bundle="$APP_PATH/Contents/Resources/$resource_bundle"
     if [[ ! -d "$packaged_bundle" ]]; then
         echo "❌ Packaged SwiftPM resource bundle is missing: $packaged_bundle" >&2
@@ -34,6 +35,16 @@ if [[ ! -f "$metal_library" || ! -s "$metal_library" ]]; then
 fi
 if [[ ! -f "$metal_library" || ! -s "$metal_library" ]]; then
     echo "❌ Packaged Metal library is missing or empty in the KeyPathAppKit resource bundle" >&2
+    exit 1
+fi
+
+catalog_bundle="$APP_PATH/Contents/Resources/KeyPath_KeyPathRulesCore.bundle"
+catalog="$catalog_bundle/rule-collection-catalog.json"
+if [[ ! -f "$catalog" || ! -s "$catalog" ]]; then
+    catalog="$catalog_bundle/Contents/Resources/rule-collection-catalog.json"
+fi
+if [[ ! -f "$catalog" || ! -s "$catalog" ]]; then
+    echo "❌ Packaged rule collection catalog is missing or empty in the KeyPathRulesCore resource bundle" >&2
     exit 1
 fi
 
