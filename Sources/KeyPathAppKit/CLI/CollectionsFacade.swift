@@ -278,11 +278,6 @@ public struct CollectionsFacade: Sendable {
     }
 
     private func convertComplexModsFile(data: Data, service: KarabinerConverterService) throws -> KarabinerConversionResult {
-        struct ComplexModsFile: Decodable {
-            let title: String?
-            let rules: [KarabinerRule]
-        }
-
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               json["rules"] != nil
         else {

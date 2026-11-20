@@ -1,5 +1,6 @@
 import AppKit
 @testable import KeyPathAppKit
+import KeyPathRulesCore
 @preconcurrency import XCTest
 
 /// Tests for MapperViewModel's per-app mapping functionality.

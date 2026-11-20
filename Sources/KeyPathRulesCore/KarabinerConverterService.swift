@@ -1,35 +1,34 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
 // MARK: - Conversion Result
 
 /// The output of a Karabiner → KeyPath conversion.
-struct KarabinerConversionResult: Sendable {
-    let collections: [RuleCollection]
-    let appKeymaps: [AppKeymap]
-    let launcherMappings: [LauncherMapping]
-    let skippedRules: [KarabinerSkippedRule]
-    let warnings: [String]
-    let profileName: String
+package struct KarabinerConversionResult: Sendable {
+    package let collections: [RuleCollection]
+    package let appKeymaps: [AppKeymap]
+    package let launcherMappings: [LauncherMapping]
+    package let skippedRules: [KarabinerSkippedRule]
+    package let warnings: [String]
+    package let profileName: String
 }
 
 /// A rule that was skipped during conversion, with reason.
-struct KarabinerSkippedRule: Identifiable, Sendable {
-    let id = UUID()
-    let description: String
-    let reason: String
+package struct KarabinerSkippedRule: Identifiable, Sendable {
+    package let id = UUID()
+    package let description: String
+    package let reason: String
 }
 
 // MARK: - Error Type
 
-enum KarabinerImportError: LocalizedError {
+package enum KarabinerImportError: LocalizedError {
     case invalidJSON(String)
     case noProfiles
     case fileTooLarge
     case profileIndexOutOfRange(Int)
 
-    var errorDescription: String? {
+    package var errorDescription: String? {
         switch self {
         case let .invalidJSON(detail):
             String(localized: "Invalid Karabiner JSON: \(detail)")
@@ -53,7 +52,9 @@ enum KarabinerImportError: LocalizedError {
 /// let profiles = try service.getProfiles(from: data)
 /// let result = try service.convert(data: data, profileIndex: 0)
 /// ```
-struct KarabinerConverterService: Sendable {
+package struct KarabinerConverterService: Sendable {
+    package init() {}
+
     /// Maximum file size we'll accept (10 MB).
     private static let maxFileSize = 10 * 1024 * 1024
 
@@ -69,7 +70,7 @@ struct KarabinerConverterService: Sendable {
     // MARK: - Public API
 
     /// List available profiles in a Karabiner config file.
-    func getProfiles(from data: Data) throws -> [(name: String, index: Int, isSelected: Bool)] {
+    package func getProfiles(from data: Data) throws -> [(name: String, index: Int, isSelected: Bool)] {
         let config = try decodeConfig(data)
         return config.profiles.enumerated().map { index, profile in
             (name: profile.name, index: index, isSelected: profile.selected ?? false)
@@ -80,7 +81,7 @@ struct KarabinerConverterService: Sendable {
     /// - Parameters:
     ///   - data: Raw JSON data from karabiner.json
     ///   - profileIndex: Which profile to convert (nil = first selected, or first profile)
-    func convert(data: Data, profileIndex: Int?) throws -> KarabinerConversionResult {
+    package func convert(data: Data, profileIndex: Int?) throws -> KarabinerConversionResult {
         let config = try decodeConfig(data)
         guard !config.profiles.isEmpty else {
             throw KarabinerImportError.noProfiles
@@ -956,23 +957,6 @@ struct KarabinerConverterService: Sendable {
         }
 
         return false
-    }
-
-    // MARK: - Launcher Persistence
-
-    /// Persist launcher mappings into the existing launcher rule collection.
-    /// Shared implementation used by both KarabinerImportSheet and WizardKarabinerImportPage.
-    static func persistLauncherMappings(_ newMappings: [LauncherMapping]) async throws {
-        var collections = await RuleCollectionStore.shared.loadCollections()
-        guard let index = collections.firstIndex(where: { $0.id == RuleCollectionIdentifier.launcher }) else { return }
-        var collection = collections[index]
-        guard var config = collection.configuration.launcherGridConfig else { return }
-
-        config.mappings.append(contentsOf: newMappings)
-        collection.configuration = .launcherGrid(config)
-        collections[index] = collection
-        try await RuleCollectionStore.shared.saveCollections(collections)
-        Foundation.NotificationCenter.default.post(name: .ruleCollectionsChanged, object: nil)
     }
 
     // MARK: - Deduplication
