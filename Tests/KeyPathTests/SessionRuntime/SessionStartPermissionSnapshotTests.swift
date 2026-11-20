@@ -88,8 +88,8 @@ final class SessionStartPermissionSnapshotTests: KeyPathTestCase {
         let primed = await counter.count
         XCTAssertEqual(primed, 1, "Precondition: the pre-runtime snapshot is cached")
 
-        ServiceLifecycleCoordinator.testSessionStart = { _ in true }
-        defer { ServiceLifecycleCoordinator.testSessionStart = nil }
+        coordinator.testSessionStart = { _ in true }
+        defer { coordinator.testSessionStart = nil }
         let started = await coordinator.startKanata()
         XCTAssertTrue(started)
 

@@ -88,9 +88,10 @@ final class ServiceLifecycleCoordinator {
     }
 
     #if DEBUG
-        /// Lifecycle tests inject session operations without launching an application.
-        nonisolated(unsafe) static var testSessionStart: (@MainActor (String) async -> Bool)?
-        nonisolated(unsafe) static var testSessionStop: (@MainActor () async -> Bool)?
+        // Keep default test-host operations inert. An explicit nil lets a lifecycle
+        // test exercise the real path, which still refuses worker launches in tests.
+        @ObservationIgnored var testSessionStart: (@MainActor (String) async -> Bool)?
+        @ObservationIgnored var testSessionStop: (@MainActor () async -> Bool)?
         var testSessionCurrentReport: (() -> SessionRuntimeReport?)?
         var testSessionCapabilityProbe: (() async -> PermissionOracle.RuntimeKeyAccess?)?
         var testSessionConfigurationValidation: (() -> KanataHostBridgeValidationResult)?
@@ -217,6 +218,12 @@ final class ServiceLifecycleCoordinator {
     // MARK: - Init
 
     init() {
+        #if DEBUG
+            if TestEnvironment.isTestHostProcess {
+                testSessionStart = { _ in false }
+                testSessionStop = { true }
+            }
+        #endif
         for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification,
                      NSWorkspace.sessionDidBecomeActiveNotification]
         {
@@ -519,7 +526,7 @@ final class ServiceLifecycleCoordinator {
         isStartingKanata = true
         defer { isStartingKanata = false }
         #if DEBUG
-            if let start = Self.testSessionStart {
+            if let start = testSessionStart {
                 let result = await start(reason)
                 guard sessionStartIsCurrent(generation) else {
                     // The seam represents a launch that can complete after
@@ -544,7 +551,7 @@ final class ServiceLifecycleCoordinator {
             }
         }
         #if DEBUG
-            if let stop = Self.testSessionStop { return await stop() }
+            if let stop = testSessionStop { return await stop() }
         #endif
         return await stopSessionRuntime()
     }

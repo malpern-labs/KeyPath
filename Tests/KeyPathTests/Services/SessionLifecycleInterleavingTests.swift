@@ -40,6 +40,12 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
         }
     }
 
+    override func tearDown() async throws {
+        coordinator?.testSessionStart = nil
+        coordinator?.testSessionStop = nil
+        try await super.tearDown()
+    }
+
     override func setUp() async throws {
         try await super.setUp()
         coordinator = ServiceLifecycleCoordinator()
@@ -78,6 +84,22 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
         return result ?? fallback
     }
 
+    func testLifecycleOperationsUseTheirOwnCoordinatorFixtures() async {
+        let other = ServiceLifecycleCoordinator()
+        var events: [String] = []
+        coordinator.testSessionStart = { reason in events.append("first start: \(reason)"); return false }
+        other.testSessionStart = { reason in events.append("second start: \(reason)"); return false }
+        coordinator.testSessionStop = { events.append("first stop"); return true }
+        other.testSessionStop = { events.append("second stop"); return true }
+
+        _ = await coordinator.startKanata(reason: "first")
+        _ = await other.startKanata(reason: "second")
+        _ = await coordinator.stopKanata()
+        _ = await other.stopKanata()
+
+        XCTAssertEqual(events, ["first start: first", "second start: second", "first stop", "second stop"])
+    }
+
     /// Regression (mini, 2026-10-19): with the chosen keyboard unplugged and
     /// several others connected, automatic Caps setup cannot choose, and that
     /// used to refuse the whole start. The session now starts with Caps Lock
@@ -85,11 +107,11 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     func testFailedCapsPreparationStillStartsTheSession() async {
         struct NoKeyboard: Error {}
         var launches: [String] = []
-        ServiceLifecycleCoordinator.testSessionStart = { reason in
+        coordinator.testSessionStart = { reason in
             launches.append(reason)
             return true
         }
-        defer { ServiceLifecycleCoordinator.testSessionStart = { _ in false } }
+        defer { coordinator.testSessionStart = { _ in false } }
         coordinator.testSessionCapsPreparation = { throw NoKeyboard() }
         let started = await coordinator.startKanata()
         XCTAssertTrue(started)
@@ -114,7 +136,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     }
 
     func testRepeatedHealthyStartTransfersSupervisionToLatestIntent() async {
-        ServiceLifecycleCoordinator.testSessionStart = nil
+        coordinator.testSessionStart = nil
         var adopted: [UInt64] = []
         coordinator.testSessionRunningReadiness = { true }
         coordinator.testSessionSupervisionStarted = { adopted.append($0) }
@@ -127,7 +149,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     }
 
     func testHealthyWorkerPendingCleanupCannotBeAdopted() async {
-        ServiceLifecycleCoordinator.testSessionStart = nil
+        coordinator.testSessionStart = nil
         coordinator.testSessionRunningReadiness = { true }
         var adopted = false
         coordinator.testSessionSupervisionStarted = { _ in adopted = true }
@@ -150,12 +172,12 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     }
 
     func testHealthyReportWithFailedTCPStopsInsteadOfAbandoningOutputs() async {
-        ServiceLifecycleCoordinator.testSessionStart = nil
+        coordinator.testSessionStart = nil
         var held = true
         var adoptionCount = 0
         coordinator.testSessionRunningReadiness = { false }
         coordinator.testSessionSupervisionStarted = { _ in adoptionCount += 1 }
-        ServiceLifecycleCoordinator.testSessionStop = { held = false; return true }
+        coordinator.testSessionStop = { held = false; return true }
         let result = await coordinator.startKanata()
         XCTAssertFalse(result)
         XCTAssertFalse(held)
@@ -166,14 +188,14 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
         let pause = Pause()
         var events: [String] = []
         var live: String?
-        ServiceLifecycleCoordinator.testSessionStart = { reason in
+        coordinator.testSessionStart = { reason in
             events.append("start:\(reason)")
             if reason == "old" { await pause.suspend() }
             XCTAssertNil(live, "A previous launch must be cleaned before a new one")
             live = reason
             return true
         }
-        ServiceLifecycleCoordinator.testSessionStop = { events.append("cleanup:\(live ?? "none")"); live = nil; return true }
+        coordinator.testSessionStop = { events.append("cleanup:\(live ?? "none")"); live = nil; return true }
         let old = Task { await coordinator.startKanata(reason: "old") }
         await pause.waitUntilEntered()
         let new = await nextRequest { await self.coordinator.startKanata(reason: "new") }
@@ -194,8 +216,8 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
         let pause = Pause()
         var held = false
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; await pause.suspend(); held = true; return true }
-        ServiceLifecycleCoordinator.testSessionStop = { held = false; return true }
+        coordinator.testSessionStart = { _ in starts += 1; await pause.suspend(); held = true; return true }
+        coordinator.testSessionStop = { held = false; return true }
         let start = Task { await coordinator.startKanata() }
         await pause.waitUntilEntered()
         let stop = await nextRequest { await self.coordinator.stopKanata() }
@@ -216,11 +238,11 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
         var starts = 0
         var stops = 0
         var errors: [String] = []
-        ServiceLifecycleCoordinator.testSessionStart = { _ in
+        coordinator.testSessionStart = { _ in
             starts += 1
             return true
         }
-        ServiceLifecycleCoordinator.testSessionStop = { stops += 1; return true }
+        coordinator.testSessionStop = { stops += 1; return true }
         let started = await coordinator.startKanata()
         XCTAssertTrue(started)
         coordinator.onError = { if let error = $0 { errors.append(error) } }
@@ -239,8 +261,8 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     func testCapsPreparationRunsOnceBeforeRestartStopAndLaunch() async {
         var events: [String] = []
         coordinator.testSessionCapsPreparation = { events.append("prepare") }
-        ServiceLifecycleCoordinator.testSessionStop = { events.append("stop"); return true }
-        ServiceLifecycleCoordinator.testSessionStart = { _ in events.append("start"); return true }
+        coordinator.testSessionStop = { events.append("stop"); return true }
+        coordinator.testSessionStart = { _ in events.append("start"); return true }
 
         let restarted = await coordinator.restartKanata()
 
@@ -256,8 +278,8 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
             events.append("prepare")
             await pause.suspend()
         }
-        ServiceLifecycleCoordinator.testSessionStop = { events.append("stop"); return true }
-        ServiceLifecycleCoordinator.testSessionStart = { _ in events.append("start"); return true }
+        coordinator.testSessionStop = { events.append("stop"); return true }
+        coordinator.testSessionStart = { _ in events.append("start"); return true }
         let restart = Task { await coordinator.restartKanata() }
         await pause.waitUntilEntered()
         let stop = await nextRequest { await self.coordinator.stopKanata() }
@@ -275,12 +297,12 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     func testRestartHoldsAdmissionAcrossStopAndSkipsStartAfterNewStop() async {
         let pause = Pause()
         var events: [String] = []
-        ServiceLifecycleCoordinator.testSessionStop = {
+        coordinator.testSessionStop = {
             events.append("stop")
             if events.count == 1 { await pause.suspend() }
             return true
         }
-        ServiceLifecycleCoordinator.testSessionStart = { _ in events.append("start"); return true }
+        coordinator.testSessionStart = { _ in events.append("start"); return true }
         let restart = Task { await coordinator.restartKanata() }
         await pause.waitUntilEntered()
         let stop = await nextRequest { await self.coordinator.stopKanata() }
@@ -297,12 +319,12 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
         let pause = Pause()
         var held = true
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStop = {
+        coordinator.testSessionStop = {
             if held { await pause.suspend() }
             held = false
             return true
         }
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
         let firstStop = Task { await coordinator.stopKanata() }
         await pause.waitUntilEntered()
         let queued = await nextRequest { await self.coordinator.startKanata() }
@@ -320,13 +342,13 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
         let pause = Pause()
         var held = true
         var stopCalls = 0
-        ServiceLifecycleCoordinator.testSessionStop = {
+        coordinator.testSessionStop = {
             stopCalls += 1
             if stopCalls == 1 { await pause.suspend() }
             held = false
             return true
         }
-        ServiceLifecycleCoordinator.testSessionStart = { _ in XCTFail("Restart superseded by stop must not launch"); return false }
+        coordinator.testSessionStart = { _ in XCTFail("Restart superseded by stop must not launch"); return false }
         let restart = Task { await coordinator.restartKanata() }
         await pause.waitUntilEntered()
         let stop = await nextRequest { await self.coordinator.stopKanata() }
@@ -343,8 +365,8 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     func testCancellationAfterLaunchCompletionCleansOwnedOutput() async {
         let pause = Pause()
         var held = false
-        ServiceLifecycleCoordinator.testSessionStart = { _ in await pause.suspend(); held = true; return true }
-        ServiceLifecycleCoordinator.testSessionStop = { held = false; return true }
+        coordinator.testSessionStart = { _ in await pause.suspend(); held = true; return true }
+        coordinator.testSessionStop = { held = false; return true }
         let start = Task { await coordinator.startKanata() }
         await pause.waitUntilEntered()
         start.cancel()
@@ -358,7 +380,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     func testSecureResumeQueuedBeforeManualStopCannotRecreateWorker() async {
         let pause = Pause()
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
         let initiallyStarted = await coordinator.startKanata()
         XCTAssertTrue(initiallyStarted)
         let oldGeneration = coordinator.sessionIntentGeneration
@@ -384,7 +406,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
 
     func testWakeBeforeTerminalReportResumesFreshAdmission() async {
         var reasons: [String] = []
-        ServiceLifecycleCoordinator.testSessionStart = { reasons.append($0); return true }
+        coordinator.testSessionStart = { reasons.append($0); return true }
         _ = await coordinator.startKanata()
         coordinator.testSessionWakeReady = { true }
         coordinator.sessionWakeEpoch = 1
@@ -397,7 +419,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
 
     func testSleepWaitsForWakeAndReadySession() async {
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
         _ = await coordinator.startKanata()
         var ready = false
         var waits = 0
@@ -450,8 +472,8 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
 
     func testManualStopWhileSleepingPreventsWakeRestart() async {
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
-        ServiceLifecycleCoordinator.testSessionStop = { true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStop = { true }
         _ = await coordinator.startKanata()
         coordinator.testSessionWakeReady = { true }
         coordinator.testSessionWakeWait = { [self] in
@@ -467,7 +489,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
 
     func testWorkerObservedWakeDoesNotRequireSecondNotification() async {
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
         _ = await coordinator.startKanata()
         coordinator.testSessionWakeReady = { true }
         let resumed = await coordinator.resumeAfterSystemWake(
@@ -478,7 +500,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     }
 
     func testQuitWhileWaitingForWakePreventsRestart() async {
-        ServiceLifecycleCoordinator.testSessionStart = { _ in true }
+        coordinator.testSessionStart = { _ in true }
         _ = await coordinator.startKanata()
         coordinator.testSessionWakeReady = { true }
         coordinator.testSessionWakeWait = { [self] in coordinator.setTerminationPreparationActive(true) }
@@ -490,7 +512,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
 
     func testWakeRetriesHeldKeyRaceWithoutCancellingRecoveryTask() async {
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStart = { [self] _ in
+        coordinator.testSessionStart = { [self] _ in
             starts += 1
             if starts == 2 {
                 // Production cleanup cancels the worker supervisor. It must no
@@ -524,13 +546,13 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
         for quit in [false, true] {
             coordinator.setTerminationPreparationActive(false)
             var starts = 0
-            ServiceLifecycleCoordinator.testSessionStart = { [self] _ in
+            coordinator.testSessionStart = { [self] _ in
                 starts += 1
                 if starts == 1 { return true }
                 coordinator.sessionWakeRetryGeneration = coordinator.sessionIntentGeneration
                 return false
             }
-            ServiceLifecycleCoordinator.testSessionStop = { true }
+            coordinator.testSessionStop = { true }
             _ = await coordinator.startKanata()
             coordinator.testSessionWakeReady = { true }
             coordinator.testSessionWakeWait = { [self] in
@@ -547,7 +569,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
 
     func testWakeDoesNotRetryUnrelatedFailureOrStaleRetryEvidence() async {
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return starts == 1 }
+        coordinator.testSessionStart = { _ in starts += 1; return starts == 1 }
         _ = await coordinator.startKanata()
         coordinator.sessionWakeRetryGeneration = coordinator.sessionIntentGeneration
         coordinator.testSessionWakeReady = { true }
@@ -594,7 +616,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
 
     func testScreenWakeResumesWithoutWaitingForSystemWake() async {
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
         _ = await coordinator.startKanata()
         let retired = Date()
         coordinator.observeSessionWake(NSWorkspace.screensDidWakeNotification, at: retired.addingTimeInterval(1))
@@ -609,7 +631,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
 
     func testEarlierScreenWakeCannotResumeLaterSleepAndStillWaitsForReadiness() async {
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
         _ = await coordinator.startKanata()
         let retired = Date()
         coordinator.observeSessionWake(NSWorkspace.screensDidWakeNotification, at: retired.addingTimeInterval(-1))
@@ -634,7 +656,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
 
     func testStartupSleepArmsRecoveryAndWaitsForFreshWake() async {
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
         _ = await coordinator.startKanata()
         let retired = Date()
         let report = SessionRuntimeReport(nonce: "owned", pid: 123, uid: getuid(), state: .failed,
@@ -656,7 +678,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     func testStartupSessionChangeRecoversOnlyAfterConsoleReadiness() async {
         for reason in ["session-resigned-active", "console-session-change-observed", "console-session-inactive"] {
             var starts = 0
-            ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
+            coordinator.testSessionStart = { _ in starts += 1; return true }
             _ = await coordinator.startKanata()
             let report = SessionRuntimeReport(nonce: "owned", pid: 123, uid: getuid(), state: .failed,
                                               accessibility: true, effectiveInputAccess: true, tapActive: false,
@@ -675,7 +697,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     func testHeldKeyStartupWaitsForReleaseThenResumesAutomatically() async {
         var starts = 0
         var errors: [String] = []
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
         coordinator.onError = { if let error = $0 { errors.append(error) } }
         _ = await coordinator.startKanata()
         let report = SessionRuntimeReport(nonce: "owned", pid: 123, uid: getuid(), state: .failed,
@@ -705,7 +727,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     func testSecureInputStartupWaitsForUnlockThenResumesAutomatically() async {
         var starts = 0
         var errors: [String] = []
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
         coordinator.onError = { if let error = $0 { errors.append(error) } }
         _ = await coordinator.startKanata()
         let report = SessionRuntimeReport(nonce: "owned", pid: 123, uid: getuid(), state: .secureInput,
@@ -729,7 +751,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     }
 
     func testSecureInputStartupRejectsUnownedEvidenceAndIncompleteCleanup() async {
-        ServiceLifecycleCoordinator.testSessionStart = { _ in true }
+        coordinator.testSessionStart = { _ in true }
         _ = await coordinator.startKanata()
         let report = SessionRuntimeReport(nonce: "owned", pid: 123, uid: getuid(), state: .secureInput,
                                           accessibility: true, effectiveInputAccess: true, tapActive: false,
@@ -747,7 +769,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
 
     func testHeldKeyStartupCannotRestartAfterQuit() async {
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
         _ = await coordinator.startKanata()
         let report = SessionRuntimeReport(nonce: "owned", pid: 123, uid: getuid(), state: .failed,
                                           accessibility: true, effectiveInputAccess: true, tapActive: false,
@@ -764,7 +786,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     }
 
     func testInterruptedStartupRejectsUnownedEvidenceAndIncompleteCleanup() async {
-        ServiceLifecycleCoordinator.testSessionStart = { _ in true }
+        coordinator.testSessionStart = { _ in true }
         _ = await coordinator.startKanata()
         let report = SessionRuntimeReport(nonce: "owned", pid: 123, uid: getuid(), state: .failed,
                                           accessibility: true, effectiveInputAccess: true, tapActive: false,
