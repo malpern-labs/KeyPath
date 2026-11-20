@@ -3,7 +3,9 @@
 `vm-lab keypath` is the supported controller for disposable installer
 testing on the existing Mac mini lab. It defaults to
 `clawd@keypath-lab-mini`; use `--host` or `KEYPATH_LAB_HOST` for another SSH
-alias that exposes the same lab contract.
+alias that exposes the same lab contract. Daily desktop work uses the Mini
+console account (`ssh malpern@mini`); the daily command selects it automatically.
+Other controller/CI operations may still use the clawd route.
 
 The controller does not modify disk layout, the host's main drive, the stopped
 Parallels base VM, or the Tart OCI base image. Destructive commands require an
@@ -26,9 +28,11 @@ when the batch ends.
 
 ## Prerequisites
 
-- SSH access to `clawd@keypath-lab-mini` without an interactive password.
+- SSH access to `malpern@mini` for the Mini console-owned desktop workflow.
 - `/Volumes/KeyPath Lab/CrabBox/keypath15`, `keypath26`, and `keypath27` executable.
-- Shared CrabBox 0.36.0 tools beneath `CrabBox/SharedTools`.
+- The installed `vm-lab` launcher; confirm its checkout and commit with
+  `vm-lab --version`. Do not infer the controller binary from a shell
+  `crabbox --version`: shell and controller installations may differ.
 - A full 40-character KeyPath commit SHA present in the local repository.
 - A signed installer artifact whose SHA-256 checksum can be recorded.
 
@@ -63,8 +67,7 @@ on a disposable child before using a new shared base.
 
 ### Daily UI and remapping
 
-On the Mini, run `vm-lab keypath daily` as the console account. The daily
-command selects the local console account automatically. It reuses the
+On the Mini, run `vm-lab keypath daily` as the console account. It reuses the
 verified warm guest or prepares a new guest when the previous lease has
 expired or been destroyed. Use `--ready-only` to require an existing guest.
 
@@ -75,22 +78,131 @@ vm-lab keypath daily --close
 ```
 
 The signed build swap uses the lab's guarded replacement workflow and preserves
-the guest's configuration and grant. Quit any test capture apps before swapping.
-Verify the installed executable, live runtime, and behavior under test. Record
-the source commit, replacement ZIP SHA-256, and revision receipt with the
-results. The lease manifest still identifies the initial build. At the end of
-the batch, `--close` collects artifacts and destroys the daily guest.
+the guest's configuration and grant. Verify the behavior under test and save
+the revision receipt with the results. `--close` collects artifacts and releases
+the daily lease at the end of the batch.
 
-On November 15, a macOS 27.2.1 Mini lease replaced one signed KeyPath build
-with a second signed build in 6 seconds. Preflight, replacement, relaunch, and
-the independent virtual `q → a` check took 19 seconds from the stopped app.
-The same guest boot and config survived the swap, and build B remapped with
-the existing grant. These timings exclude creating and granting the lease.
+#### Verified signed development run
+
+Run these commands in the Mini's `malpern` console account. From the Air,
+connect with `ssh malpern@mini`. Use a dedicated KeyPath worktree, fetch
+`origin/master`, and record its full SHA. Keep signing keys on the host.
+Build using the project's signed development workflow. For an app-only UI
+change, prefer the inner-loop build; the measured full candidate used
+`Scripts/build-and-sign.sh` with `SKIP_DEPLOY=1 SKIP_NOTARIZE=1
+SKIP_SNAPSHOTS=1 SKIP_SPARKLE=1 SKIP_WEBSITE=1`. Signing may require the
+existing GUI-session signing route; do not repeatedly attempt locked SSH
+Keychain signing or store its password. Notarization is a separate release gate.
+
+Do not edit or switch the worktree between building and recording provenance.
+Run the following immediately after the build, from that same worktree. Keep
+the ZIP and source JSON outside the worktree (or beneath ignored `dist/`) so
+writing the receipt does not itself change the dirty-state measurement.
+After signature verification, archive the complete app and write provenance
+from the exact ZIP and executable that will be installed:
+
+```bash
+codesign --verify --deep --strict /absolute/dist/KeyPath.app
+ditto -c -k --keepParent /absolute/dist/KeyPath.app /absolute/KeyPath.zip
+python3 - /absolute/KeyPath.zip /absolute/dist/KeyPath.app/Contents/MacOS/KeyPath \
+  "$(git rev-parse HEAD)" > /absolute/source.json <<'PYTHON'
+import hashlib, json, subprocess, sys
+
+def sha(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+archive, executable, commit = sys.argv[1:]
+dirty = bool(subprocess.check_output(["git", "status", "--porcelain",
+    "--untracked-files=all"], text=True).strip())
+print(json.dumps(dict(commit=commit, dirty=dirty,
+    archiveSHA256=sha(archive), executableSHA256=sha(executable))))
+PYTHON
+vm-lab --version
+vm-lab keypath daily
+vm-lab keypath daily --ready-only --installer /absolute/KeyPath.zip \
+  --source-identity /absolute/source.json
+bash /Users/malpern/local-code/vm-lab-prepared/rig/check-virtual-remap.sh <lease>
+```
+
+Check the daily replacement `build.json` receipt for `verified: true` and
+matching ZIP/executable hashes. Admission's original commit alone does not
+identify a swapped build. The installed harness captures `q → q`, adds
+`q → a`, then captures `a` before and after restarting KeyPath on the same
+guest. It uses lease-bound explicit key press/release and independent capture.
+It writes a test rule, so use only the owned disposable test guest. A retry or
+another guest is separate evidence. Record splash observation separately;
+a remap pass alone does not prove the splash appeared.
+
+On November 17, launcher `7597eef` swapped signed KeyPath master `049aaeb`
+on lease `cbx_8f186b766fd6` in **13.69 s**. The installed harness passed once
+in **18.22 s**, including all three captures. The full signed build took
+**285.13 s** and ran alongside one-time guest preparation, **571.76 s**.
+These are observations, not time guarantees. Warm reuse in the natural-expiry
+qualification took **4.70 s**. Closing the guest means the next daily call
+must prepare another one; retain it during the iteration batch.
+
+Evidence on the Mini is `/Users/malpern/vm-lab-dev-run.yA2YkP` and
+`/Users/malpern/vm-lab-natural-expiry.GpWW0s`. Both completed cleanup with the
+qualified base fingerprint unchanged. PRs [18](https://github.com/malpern/vm-lab/pull/18)
+and [19](https://github.com/malpern/vm-lab/pull/19) are merged. Do not repeat
+the two-hour expiry test for ordinary development. At batch completion run
+`vm-lab keypath daily --close` and check `cleanup_status` is `complete`.
 
 For onboarding or permission changes and release qualification, start a
 fresh clone, confirm KeyPath starts without effective permission, and exercise
 the normal Settings flow. A warm build replacement is functional evidence
 for that specific revision.
+
+### Concurrency qualification — November 19, 2026
+
+A bounded two-guest fresh-preparation run on installed lab `7597eef` did
+**not** qualify concurrent readiness. Both guests passed keyboard calibration
+but stopped at normal Settings consent with `unique enabled KeyPath toggle
+unavailable`, before loading credentials. The actions were not replayed.
+Concurrent remapping was therefore not executed. This does not establish
+whether concurrency caused the consent failure; inspect the retained journals
+before attempting a repair.
+
+Admission/settling took 143.96 s for the first guest and 290.32 s for the
+second, measured from simultaneous dispatch. The complete experiment and
+cleanup took 572.58 s. Both leases ended `destroyed` with `cleanup_status`
+`complete`, and the qualified base fingerprint was identical before and after.
+Evidence is on the Mini at `/Users/malpern/vm-lab-concurrency.IsqIK7`.
+
+Filesystem probes confirmed separate guest writes and no visibility of a
+synthetic host file or the host's credential-file path. Network and integration
+checks identified isolation gaps requiring follow-up. Treat the current lab as
+trusted-code testing infrastructure. Two admission slots are a capacity limit;
+parallel fresh preparation remains unqualified. Keep fresh consent testing
+separate from ordinary signed swaps on an already-ready guest. Physical USB
+qualification remains deferred.
+
+### Candidate isolation qualification — November 19, 2026
+
+The later candidate in [VM lab PR #20](https://github.com/malpern/vm-lab/pull/20)
+passed two fresh guests through normal consent, signed master swaps, and the
+baseline/remapped/relaunch captures. Exact host and sibling network probes
+passed with a working management positive control. Both guests cleaned up
+completely, and the base fingerprint was unchanged. Swaps took 11.61/12.60 s;
+remap checks took 19.86/20.80 s. Evidence:
+`/Users/malpern/vm-lab-peer-filter-pair.3rdrwh5y` on the Mini.
+
+The same candidate prepared a daily guest in 608.64 s, then reused it in
+13.59 s with filter reapplication/verification. Its remap harness passed on
+that guest. Evidence: `/Users/malpern/vm-lab-filtered-daily.abss6_c5`.
+These candidate results supersede the earlier consent failure for those exact
+runs; they do not erase the failed journals or establish unlimited concurrency.
+
+The installed launcher was still clean main `7597eef` when checked. Host-filter
+service installation/restart qualification and candidate rollout remain pending.
+Do not describe PR #20 as the deployed default until those postconditions pass.
+Guest filtering is defense in depth, and guest root can undo it: run trusted
+code only. Keep the source-base fingerprint check intact. Physical USB testing
+remains deferred, and may run only after verifying the fixture is silent.
 
 ### macOS 27.2.1 lab observations
 
