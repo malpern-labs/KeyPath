@@ -10,11 +10,11 @@ permalink: /getting-started/installation/
 
 # Setting Up KeyPath
 
+> This guide is for KeyPath development builds that run on **macOS 27 or later on Apple Silicon**. The public download is **KeyPath 1.0.1**. For that version, follow the [1.0.1 setup guide](https://github.com/malpern-labs/KeyPath/blob/v1.0.1/getting-started/installation.md).
+
 In two minutes, your keyboard will be able to launch apps, tile windows, fire shortcuts without reaching, and remap any key — all from the home row. This guide walks you through setup and explains what's happening at each step.
 
 Setup asks for **one permission** and installs nothing outside the app: no keyboard driver, no background system service, and no admin-level helper.
-
-> This page describes current builds. KeyPath 1.0.1 and earlier used a different setup that installed a privileged helper and asked for more permissions.
 
 ---
 
