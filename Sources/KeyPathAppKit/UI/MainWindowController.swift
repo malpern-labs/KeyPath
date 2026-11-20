@@ -23,7 +23,6 @@ final class MainWindowController: NSWindowController {
             .environment(splashPresentation)
             .environment(viewModel) // Phase 4: Inject ViewModel
             .environment(\.services, serviceContainer ?? ServiceContainer())
-            .environment(\.preferencesService, PreferencesService.shared)
             .environment(\.permissionSnapshotProvider, SystemStateProvider.shared)
 
         let hostingController = NSHostingController(rootView: rootView)
