@@ -37,22 +37,6 @@ extension EnvironmentValues {
     }
 }
 
-// MARK: - Preferences Service DI
-
-/// EnvironmentKey for PreferencesService (DI)
-private struct PreferencesServiceKey: EnvironmentKey {
-    static var defaultValue: PreferencesService {
-        PreferencesService()
-    }
-}
-
-extension EnvironmentValues {
-    var preferencesService: PreferencesService {
-        get { self[PreferencesServiceKey.self] }
-        set { self[PreferencesServiceKey.self] = newValue }
-    }
-}
-
 // MARK: - Service Container DI
 
 /// EnvironmentKey for the central ServiceContainer
