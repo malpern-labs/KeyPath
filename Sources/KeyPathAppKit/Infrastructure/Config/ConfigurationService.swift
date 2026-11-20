@@ -58,7 +58,7 @@ public final class ConfigurationService {
         #if DEBUG
             // The safe test runner supplies the parser explicitly. An invalid
             // path still fails admission, and release builds use the bundled host.
-            if TestEnvironment.isTestHostProcess,
+            if TestEnvironment.isRunningTests,
                let bridgePath = ProcessInfo.processInfo.environment["KEYPATH_SESSION_TEST_BRIDGE_PATH"]
             {
                 let current = KanataRuntimeHost.current()
