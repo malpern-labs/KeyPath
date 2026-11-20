@@ -42,6 +42,7 @@ public struct InstallationWizardView: View {
     /// Test seam for the authoritative post-start state inspection. Production
     /// uses `WizardStateMachine.detectCurrentState()` directly.
     var postStartStateDetector: (@MainActor () async -> SystemStateResult)?
+    private let onboardingDefaults: UserDefaults
 
     // New architecture components
     @State public var stateMachine = WizardStateMachine()
@@ -93,6 +94,7 @@ public struct InstallationWizardView: View {
         self.onFirstSuccess = onFirstSuccess
         self.onOpenKeyboard = onOpenKeyboard
         postStartStateDetector = nil
+        onboardingDefaults = .standard
         dismissHandler = nil
     }
 
@@ -101,6 +103,7 @@ public struct InstallationWizardView: View {
         onFirstSuccess: (() -> Void)? = nil,
         onOpenKeyboard: (() -> Void)? = nil,
         didShowWelcomePage: Bool = false,
+        onboardingDefaults: UserDefaults = .standard,
         postStartStateDetector: @escaping @MainActor () async -> SystemStateResult,
         dismissHandler: (@MainActor () -> Void)? = nil
     ) {
@@ -109,12 +112,22 @@ public struct InstallationWizardView: View {
         self.onOpenKeyboard = onOpenKeyboard
         _didShowWelcomePage = State(initialValue: didShowWelcomePage)
         self.postStartStateDetector = postStartStateDetector
+        self.onboardingDefaults = onboardingDefaults
         self.dismissHandler = dismissHandler
     }
 
     public var currentFixDescriptionForUI: String? {
         guard let currentFixAction else { return nil }
         return describeAutoFixActionForUI(currentFixAction)
+    }
+
+    var shouldOfferFirstSuccessTour: Bool {
+        onFirstSuccess != nil && FirstSuccessOnboardingGate.isEligible(
+            didShowWelcomePage: didShowWelcomePage,
+            wizardState: stateMachine.wizardState,
+            issues: stateMachine.wizardIssues,
+            defaults: onboardingDefaults
+        )
     }
 
     var shouldCompleteHealthySetup: Bool {

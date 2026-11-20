@@ -66,11 +66,7 @@ extension InstallationWizardView {
                 showAllItems: $showAllSummaryItems,
                 navSequence: $navSequence,
                 opensKeyboardOnCompletion: onOpenKeyboard != nil,
-                startsTourOnCompletion: onFirstSuccess != nil && FirstSuccessOnboardingGate.isEligible(
-                    didShowWelcomePage: didShowWelcomePage,
-                    wizardState: stateMachine.wizardState,
-                    issues: stateMachine.wizardIssues
-                )
+                startsTourOnCompletion: shouldOfferFirstSuccessTour
             )
         case .accessibility:
             if let coordinator = kanataManager {

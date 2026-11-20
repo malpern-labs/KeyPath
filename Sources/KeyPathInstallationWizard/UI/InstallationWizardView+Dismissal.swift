@@ -19,15 +19,7 @@ public extension InstallationWizardView {
 
     @MainActor
     func dismissAndRefreshMainScreen() {
-        let shouldShowFirstSuccess = if onFirstSuccess == nil {
-            false
-        } else {
-            FirstSuccessOnboardingGate.isEligible(
-                didShowWelcomePage: didShowWelcomePage,
-                wizardState: stateMachine.wizardState,
-                issues: stateMachine.wizardIssues
-            )
-        }
+        let shouldShowFirstSuccess = shouldOfferFirstSuccessTour
 
         NotificationCenter.default.post(name: .wizardStartupRevalidate, object: nil)
         // Queue window handoffs before closing so synchronous dismissal cannot

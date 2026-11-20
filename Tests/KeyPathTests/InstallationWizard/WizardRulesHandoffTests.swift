@@ -4,19 +4,15 @@ import XCTest
 
 @MainActor
 final class WizardRulesHandoffTests: XCTestCase {
-    func testFreshVerifiedSessionQueuesTourBeforeSynchronousDismissal() {
-        let defaults = UserDefaults.standard
-        let previous = defaults.object(forKey: FirstSuccessOnboardingGate.hasShownKey)
-        defaults.set(false, forKey: FirstSuccessOnboardingGate.hasShownKey)
-        defer {
-            if let previous { defaults.set(previous, forKey: FirstSuccessOnboardingGate.hasShownKey) }
-            else { defaults.removeObject(forKey: FirstSuccessOnboardingGate.hasShownKey) }
-        }
+    func testFreshVerifiedSessionQueuesTourBeforeSynchronousDismissal() throws {
+        let fixture = try IsolatedPreferenceDefaults()
+        fixture.defaults.set(false, forKey: FirstSuccessOnboardingGate.hasShownKey)
         var events: [String] = []
         let view = InstallationWizardView(
             onFirstSuccess: { events.append("tour") },
             onOpenKeyboard: { events.append("keyboard") },
             didShowWelcomePage: true,
+            onboardingDefaults: fixture.defaults,
             postStartStateDetector: { fatalError("No refresh expected") },
             dismissHandler: { events.append("dismiss") }
         )
@@ -25,19 +21,15 @@ final class WizardRulesHandoffTests: XCTestCase {
         XCTAssertEqual(events, ["tour", "dismiss"])
     }
 
-    func testPreviouslyPresentedTourQueuesKeyboardBeforeDismissal() {
-        let defaults = UserDefaults.standard
-        let previous = defaults.object(forKey: FirstSuccessOnboardingGate.hasShownKey)
-        defaults.set(true, forKey: FirstSuccessOnboardingGate.hasShownKey)
-        defer {
-            if let previous { defaults.set(previous, forKey: FirstSuccessOnboardingGate.hasShownKey) }
-            else { defaults.removeObject(forKey: FirstSuccessOnboardingGate.hasShownKey) }
-        }
+    func testPreviouslyPresentedTourQueuesKeyboardBeforeDismissal() throws {
+        let fixture = try IsolatedPreferenceDefaults()
+        fixture.defaults.set(true, forKey: FirstSuccessOnboardingGate.hasShownKey)
         var events: [String] = []
         let view = InstallationWizardView(
             onFirstSuccess: { events.append("tour") },
             onOpenKeyboard: { events.append("keyboard") },
             didShowWelcomePage: true,
+            onboardingDefaults: fixture.defaults,
             postStartStateDetector: { fatalError("No refresh expected") },
             dismissHandler: { events.append("dismiss") }
         )

@@ -3,15 +3,9 @@ import XCTest
 
 @MainActor
 final class OverlayWindowFrameStoreTests: XCTestCase {
-    private let suiteName = "OverlayWindowFrameStoreTests"
-
-    override func tearDown() {
-        UserDefaults.standard.removePersistentDomain(forName: suiteName)
-        super.tearDown()
-    }
-
     func testSaveAndRestoreRoundTrip() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let fixture = try IsolatedPreferenceDefaults()
+        let defaults = fixture.defaults
         let store = OverlayWindowFrameStore(defaults: defaults, frameVersion: 1)
         let frame = CGRect(x: 10, y: 20, width: 300, height: 200)
 
@@ -25,7 +19,8 @@ final class OverlayWindowFrameStoreTests: XCTestCase {
     }
 
     func testRestoreClearsOnVersionMismatch() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let fixture = try IsolatedPreferenceDefaults()
+        let defaults = fixture.defaults
         let store = OverlayWindowFrameStore(defaults: defaults, frameVersion: 2)
 
         defaults.set(1, forKey: "LiveKeyboardOverlay.frameVersion")
@@ -43,7 +38,8 @@ final class OverlayWindowFrameStoreTests: XCTestCase {
     }
 
     func testRestoreClearsOnMissingHeight() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let fixture = try IsolatedPreferenceDefaults()
+        let defaults = fixture.defaults
         let store = OverlayWindowFrameStore(defaults: defaults, frameVersion: 1)
 
         defaults.set(1, forKey: "LiveKeyboardOverlay.frameVersion")
