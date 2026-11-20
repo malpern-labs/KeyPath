@@ -728,3 +728,9 @@ headless CI: a login-Keychain request can wait for UI instead of immediately
 returning a denial. The full safe gate on November 19 stalled in
 `testInsertRemoveAndReloadFromKeychain` and reached its 240-second watchdog;
 that timeout is preserved as a failed gate, not reported as a pass.
+
+Script-action dispatcher tests likewise use the existing injected dispatcher,
+in-memory approval/link-grant stores, and a unique defaults domain per test.
+They do not enable scripts in the developer's shared security preferences or
+read the real script-approval Keychain item. The temporary defaults domain is
+removed when the per-test fixture is released.

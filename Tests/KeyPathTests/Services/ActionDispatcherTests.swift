@@ -597,7 +597,10 @@ struct ActionDispatcherFolderTests {
 }
 
 @Suite("ActionDispatcher Script Actions")
+@MainActor
 struct ActionDispatcherScriptTests {
+    private let fixture = ScriptActionFixture()
+
     @Test("Parses script URI")
     func parsesScriptURI() {
         let uri = KeyPathActionURI(string: "keypath://script/Users/test/Scripts/backup.sh")
@@ -620,7 +623,7 @@ struct ActionDispatcherScriptTests {
     @MainActor
     func returnsMissingTargetForScriptWithoutPath() throws {
         let uri = try #require(KeyPathActionURI(string: "keypath://script"))
-        let result = ActionDispatcher.shared.dispatch(uri)
+        let result = fixture.dispatcher.dispatch(uri)
 
         if case let .missingTarget(action) = result {
             #expect(action == "script")
@@ -633,10 +636,10 @@ struct ActionDispatcherScriptTests {
     @MainActor
     func returnsFailedWhenDisabled() throws {
         // Ensure script execution is disabled
-        ScriptSecurityService.shared.isScriptExecutionEnabled = false
+        fixture.security.isScriptExecutionEnabled = false
 
         let uri = try #require(KeyPathActionURI(string: "keypath://script/some/script.sh"))
-        let result = ActionDispatcher.shared.dispatch(uri)
+        let result = fixture.dispatcher.dispatch(uri)
 
         if case let .failed(action, _) = result {
             #expect(action == "script")
@@ -649,13 +652,13 @@ struct ActionDispatcherScriptTests {
     @MainActor
     func returnsFailedForNonexistentScript() throws {
         // Enable script execution
-        ScriptSecurityService.shared.isScriptExecutionEnabled = true
+        fixture.security.isScriptExecutionEnabled = true
         defer {
-            ScriptSecurityService.shared.isScriptExecutionEnabled = false
+            fixture.security.isScriptExecutionEnabled = false
         }
 
         let uri = try #require(KeyPathActionURI(string: "keypath://script/nonexistent/path/script.sh"))
-        let result = ActionDispatcher.shared.dispatch(uri)
+        let result = fixture.dispatcher.dispatch(uri)
 
         if case let .failed(action, _) = result {
             #expect(action == "script")
@@ -668,23 +671,23 @@ struct ActionDispatcherScriptTests {
     @MainActor
     func callsConfirmationCallback() throws {
         // Enable script execution but require confirmation
-        ScriptSecurityService.shared.isScriptExecutionEnabled = true
+        fixture.security.isScriptExecutionEnabled = true
         defer {
-            ScriptSecurityService.shared.isScriptExecutionEnabled = false
-            ActionDispatcher.shared.onScriptConfirmationNeeded = nil
+            fixture.security.isScriptExecutionEnabled = false
+            fixture.dispatcher.onScriptConfirmationNeeded = nil
         }
 
         var confirmationRequested = false
         var requestedPath: String?
 
-        ActionDispatcher.shared.onScriptConfirmationNeeded = { request in
+        fixture.dispatcher.onScriptConfirmationNeeded = { request in
             confirmationRequested = true
             requestedPath = request.path
         }
 
         // Use /bin/bash which is always an executable that exists
         let uri = try #require(KeyPathActionURI(string: "script:/bin/bash"))
-        _ = ActionDispatcher.shared.dispatch(uri)
+        _ = fixture.dispatcher.dispatch(uri)
 
         #expect(confirmationRequested == true)
         #expect(requestedPath == "/bin/bash")
@@ -693,19 +696,19 @@ struct ActionDispatcherScriptTests {
     @Test("Calls disabled callback when scripts disabled")
     @MainActor
     func callsDisabledCallback() throws {
-        ScriptSecurityService.shared.isScriptExecutionEnabled = false
+        fixture.security.isScriptExecutionEnabled = false
         defer {
-            ActionDispatcher.shared.onScriptExecutionDisabled = nil
+            fixture.dispatcher.onScriptExecutionDisabled = nil
         }
 
         var disabledCallbackCalled = false
 
-        ActionDispatcher.shared.onScriptExecutionDisabled = { _ in
+        fixture.dispatcher.onScriptExecutionDisabled = { _ in
             disabledCallbackCalled = true
         }
 
         let uri = try #require(KeyPathActionURI(string: "keypath://script/some/script.sh"))
-        _ = ActionDispatcher.shared.dispatch(uri)
+        _ = fixture.dispatcher.dispatch(uri)
 
         #expect(disabledCallbackCalled == true)
     }
@@ -713,9 +716,9 @@ struct ActionDispatcherScriptTests {
     @Test("Returns failed when file exists but is not executable script type")
     @MainActor
     func returnsFailedForNotExecutableScriptType() throws {
-        ScriptSecurityService.shared.isScriptExecutionEnabled = true
+        fixture.security.isScriptExecutionEnabled = true
         defer {
-            ScriptSecurityService.shared.isScriptExecutionEnabled = false
+            fixture.security.isScriptExecutionEnabled = false
         }
 
         let tempPath = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -726,13 +729,33 @@ struct ActionDispatcherScriptTests {
         }
 
         let uri = try #require(KeyPathActionURI(string: "script:\(tempPath)"))
-        let result = ActionDispatcher.shared.dispatch(uri)
+        let result = fixture.dispatcher.dispatch(uri)
 
         if case let .failed(action, _) = result {
             #expect(action == "script")
         } else {
             Issue.record("Expected failed result for non-executable non-script file")
         }
+    }
+}
+
+@MainActor
+private final class ScriptActionFixture {
+    private let suiteName = "com.keypath.action-script-tests.\(UUID().uuidString)"
+    let security: ScriptSecurityService
+    let dispatcher: ActionDispatcher
+
+    init() {
+        let defaults = UserDefaults(suiteName: suiteName)!
+        security = ScriptSecurityService(defaults: defaults, approvals: InMemoryScriptApprovalStore())
+        dispatcher = ActionDispatcher(
+            scriptSecurityService: security,
+            linkGrants: InMemoryLinkGrantStore()
+        )
+    }
+
+    deinit {
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
     }
 }
 
