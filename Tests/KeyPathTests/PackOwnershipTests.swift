@@ -4,25 +4,19 @@ import KeyPathRulesCore
 
 @MainActor
 final class PackOwnershipTests: XCTestCase {
-    private var originalInstalledPacks: [InstalledPackRecord] = []
+    private var fixture: CLIStoreFixture!
+    private var tracker: InstalledPackTracker!
 
     override func setUp() async throws {
         try await super.setUp()
-        originalInstalledPacks = await InstalledPackTracker.shared.allInstalled()
+        fixture = try CLIStoreFixture()
+        tracker = InstalledPackTracker(fileURL: fixture.directory.appendingPathComponent("installed-packs.json"))
     }
 
     override func tearDown() async throws {
-        let current = await InstalledPackTracker.shared.allInstalled()
-        for record in current {
-            if !originalInstalledPacks.contains(where: { $0.packID == record.packID }) {
-                try await InstalledPackTracker.shared.remove(packID: record.packID)
-            }
-        }
-        for record in originalInstalledPacks {
-            if await !(InstalledPackTracker.shared.isInstalled(packID: record.packID)) {
-                try await InstalledPackTracker.shared.upsert(record)
-            }
-        }
+        tracker = nil
+        try fixture.remove()
+        fixture = nil
         try await super.tearDown()
     }
 
@@ -52,15 +46,15 @@ final class PackOwnershipTests: XCTestCase {
 
     func testPackManagingCollectionWhenInstalled() async throws {
         // Ensure vallack-system is not installed so HRM is self-managed
-        try? await InstalledPackTracker.shared.remove(packID: "com.keypath.pack.vallack-system")
+        try? await tracker.remove(packID: "com.keypath.pack.vallack-system")
 
         let record = InstalledPackRecord(
             packID: "com.keypath.pack.home-row-mods",
             version: "1.0.0"
         )
-        try await InstalledPackTracker.shared.upsert(record)
+        try await tracker.upsert(record)
 
-        let owner = await InstalledPackTracker.shared.packManagingCollection(
+        let owner = await tracker.packManagingCollection(
             RuleCollectionIdentifier.homeRowMods
         )
         XCTAssertNotNil(owner)
@@ -68,11 +62,11 @@ final class PackOwnershipTests: XCTestCase {
     }
 
     func testPackManagingCollectionWhenNotInstalled() async throws {
-        if await InstalledPackTracker.shared.isInstalled(packID: "com.keypath.pack.chord-groups") {
-            try await InstalledPackTracker.shared.remove(packID: "com.keypath.pack.chord-groups")
+        if await tracker.isInstalled(packID: "com.keypath.pack.chord-groups") {
+            try await tracker.remove(packID: "com.keypath.pack.chord-groups")
         }
 
-        let owner = await InstalledPackTracker.shared.packManagingCollection(
+        let owner = await tracker.packManagingCollection(
             RuleCollectionIdentifier.chordGroups
         )
         XCTAssertNil(owner)
@@ -83,18 +77,18 @@ final class PackOwnershipTests: XCTestCase {
             packID: "com.keypath.pack.vallack-system",
             version: "1.0.0"
         )
-        try await InstalledPackTracker.shared.upsert(record)
+        try await tracker.upsert(record)
 
-        let navOwner = await InstalledPackTracker.shared.packManagingCollection(
+        let navOwner = await tracker.packManagingCollection(
             RuleCollectionIdentifier.vallackNavigation
         )
-        let hrmOwner = await InstalledPackTracker.shared.packManagingCollection(
+        let hrmOwner = await tracker.packManagingCollection(
             RuleCollectionIdentifier.homeRowMods
         )
-        let togglesOwner = await InstalledPackTracker.shared.packManagingCollection(
+        let togglesOwner = await tracker.packManagingCollection(
             RuleCollectionIdentifier.homeRowLayerToggles
         )
-        let arrowsOwner = await InstalledPackTracker.shared.packManagingCollection(
+        let arrowsOwner = await tracker.packManagingCollection(
             RuleCollectionIdentifier.homeRowArrows
         )
 
@@ -109,10 +103,10 @@ final class PackOwnershipTests: XCTestCase {
     func testSelfManagedPackShouldNotShowBadge() async throws {
         let packID = "com.keypath.pack.key-repeat-control"
         let record = InstalledPackRecord(packID: packID, version: "1.0.0")
-        try await InstalledPackTracker.shared.upsert(record)
+        try await tracker.upsert(record)
 
         let collectionID = RuleCollectionIdentifier.keyRepeatControl
-        let owner = await InstalledPackTracker.shared.packManagingCollection(collectionID)
+        let owner = await tracker.packManagingCollection(collectionID)
         XCTAssertNotNil(owner, "Pack should report owning its collection")
 
         let pack = try PackRegistry.pack(id: XCTUnwrap(owner?.packID))
@@ -127,9 +121,9 @@ final class PackOwnershipTests: XCTestCase {
             packID: "com.keypath.pack.vallack-system",
             version: "1.0.0"
         )
-        try await InstalledPackTracker.shared.upsert(record)
+        try await tracker.upsert(record)
 
-        let owner = await InstalledPackTracker.shared.packManagingCollection(
+        let owner = await tracker.packManagingCollection(
             RuleCollectionIdentifier.homeRowMods
         )
         XCTAssertNotNil(owner)
@@ -155,16 +149,16 @@ final class PackOwnershipTests: XCTestCase {
             packID: "com.keypath.pack.chord-groups",
             version: "1.0.0"
         )
-        try await InstalledPackTracker.shared.upsert(record)
+        try await tracker.upsert(record)
 
-        let before = await InstalledPackTracker.shared.packManagingCollection(
+        let before = await tracker.packManagingCollection(
             RuleCollectionIdentifier.chordGroups
         )
         XCTAssertNotNil(before)
 
-        try await InstalledPackTracker.shared.remove(packID: "com.keypath.pack.chord-groups")
+        try await tracker.remove(packID: "com.keypath.pack.chord-groups")
 
-        let after = await InstalledPackTracker.shared.packManagingCollection(
+        let after = await tracker.packManagingCollection(
             RuleCollectionIdentifier.chordGroups
         )
         XCTAssertNil(after)
@@ -177,9 +171,9 @@ final class PackOwnershipTests: XCTestCase {
             packID: "com.keypath.pack.chord-groups",
             version: "1.0.0"
         )
-        try await InstalledPackTracker.shared.upsert(record)
+        try await tracker.upsert(record)
 
-        let facade = CollectionsFacade()
+        let facade = CollectionsFacade(store: fixture.collections, installedPackTracker: tracker)
         do {
             _ = try await facade.enableCollection(nameOrId: "Chord Groups")
             XCTFail("Should throw PackManagedCollectionError")
@@ -193,15 +187,30 @@ final class PackOwnershipTests: XCTestCase {
             packID: "com.keypath.pack.chord-groups",
             version: "1.0.0"
         )
-        try await InstalledPackTracker.shared.upsert(record)
+        try await tracker.upsert(record)
 
-        let facade = CollectionsFacade()
+        let facade = CollectionsFacade(store: fixture.collections, installedPackTracker: tracker)
         do {
             _ = try await facade.disableCollection(nameOrId: "Chord Groups")
             XCTFail("Should throw PackManagedCollectionError")
         } catch is PackManagedCollectionError {
             // expected
         }
+    }
+
+    func testPackOwnershipDoesNotLeakIntoAnotherFacade() async throws {
+        let other = try CLIStoreFixture()
+        defer { try? other.remove() }
+        let otherTracker = InstalledPackTracker(fileURL: other.directory.appendingPathComponent("installed-packs.json"))
+        try await tracker.upsert(InstalledPackRecord(packID: "com.keypath.pack.chord-groups", version: "1.0.0"))
+
+        let otherFacade = CollectionsFacade(store: other.collections, installedPackTracker: otherTracker)
+        let enabled = try await otherFacade.enableCollection(nameOrId: "Chord Groups")
+        XCTAssertNotNil(enabled)
+        let otherPacks = await otherTracker.allInstalled()
+        XCTAssertTrue(otherPacks.isEmpty)
+        let retained = await tracker.isInstalled(packID: "com.keypath.pack.chord-groups")
+        XCTAssertTrue(retained)
     }
 
     // MARK: - Rules-tab coverage (no orange boxes)

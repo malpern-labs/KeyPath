@@ -53,7 +53,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **B4** Tests for removed behaviour | ✅ | Dead tests removed and two stale references refreshed (#1420). The historical General Settings reference was refreshed to the existing Nothing default in #1478, retaining tolerances. The combined gate passed 5,524 tests. |
 | **B5** Binary assets | ✅ | Unused assets removed (#1397); help assets compressed/deduplicated (#1422). Metal goldens losslessly recompressed in #1479: 28.7% smaller, identical decoded scanlines, full resolution and tolerances retained. |
 | **B6** Root and package stragglers | ✅ | Root cleanup merged (#1395). Process probes moved into Core and the unused wizard screenshot and resource bundle were removed (#1440). Nine unused library product exports removed in #1475; executable products and internal target dependencies remain unchanged. |
-| **B7** Docs | 🟡 | Public docs republished, archive removed, and runtime architecture page rewritten and published (#1394, #1399, #1402, #1437). The macOS 27 Accessibility screenshot remains. |
+| **B7** Docs | 🟡 | Public docs republished, archive removed, and runtime architecture page rewritten and published (#1394, #1399, #1402, #1437). The current macOS 27 permission screenshot merged in #1491 and was published at gh-pages 99a2200b6; public page and exact PNG hash verified. |
 | **P1** Sparkle | ✅ | See row 5. |
 | **P2** Apple Events usage string | ✅ | #1404. Normal KeyPath → System Events prompt and shipped explanation verified on fresh guest cbx_093147ab40fe, signed candidate f2434116a, November 20. This verifies the requested prompt, not the resulting AppleScript action. |
 | **P3** Blocking subprocesses | ✅ | `SecCodeCopySelf` replaces the signing shell-out and pipes are drained before waiting (#1404). Migration discovery is async and bounded, with retryable unknown states and tested stop routing (#1480). System probes also drain both output pipes concurrently (#1483); the serialized full gate passed 5,534 tests. Latest-master deployment and live verification remain separate release checks. |
@@ -72,9 +72,17 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 ### Open follow-ups
 
-- B7: merge and publish the current macOS 27 permission screenshot. P2's clean-VM prompt check passed on November 20.
-- P8 and P9: finish localization verification and continue isolating shared test state.
-- B5 and B6 are complete: merged asset and package cleanups are linked above.
+- O7b: retain packs and their existing features; finish the CLI compile-boundary evaluation.
+- O8c: replace remaining implicit test-mode behavior with scoped dependencies where appropriate, retaining safeguards against real system operations in tests.
+- P6: finish the ownership audit and owner-lifetime checks. BuildInfo's version cache is synchronized in the current follow-up; biometric service ownership remains to review.
+- P7b: evaluate the remaining SwiftUI/AppKit idioms against their actual behavior and window requirements.
+- P8: finish localization layout/copy verification and native-language review.
+- P9: finish the remaining shared on-disk test fixtures before broadening parallel execution.
+
+P2's normal usage prompt passed on a fresh macOS 27 guest. B7's current permission
+screenshot is published at gh-pages `99a2200b6`: the public guide returned HTTP
+200 with the new caption, and the downloaded PNG hash matched the verified
+capture. Final host deployment and release qualification are separate gates.
 
 ---
 
@@ -530,7 +538,8 @@ Remaining work:
   boundary with a mutex merely to reduce a count.
 - `BackendCapabilityProfile` uses checked mutex-backed state after #1487.
   Its full gate passed 5,525 tests and six post-integration regressions passed.
-  The unprotected BuildInfo version cache is a separate current follow-up.
+  BuildInfo now protects its once-only fetch reservation and cached version with
+  checked mutex state; no lock is held across asynchronous process execution.
 - Reconcile delayed UI callbacks and timers with their owning view/window
   lifetimes. Convert only callbacks that require cancellation, and test closing
   or replacing the owner while a callback is pending.
@@ -594,7 +603,7 @@ before adopting more in-process parallel testing.
 - Permission artwork was recaptured on November 20 from a fresh macOS 27 lab
   guest, with KeyPath enabled under Device Control and Data Access. The guide
   identifies the unrelated lab tools visible in the screenshot. Publication to
-  gh-pages remains a separate step after this change merges.
+  gh-pages completed at 99a2200b6; public page and exact image hash verified.
 - Parts of the privately tracked findings still need release qualification.
   P2's usage-string prompt was verified on a fresh macOS 27 guest on November 20;
   evidence is retained on the Mini under `~/keypath-final-ui-qa.XIYk30` and the
