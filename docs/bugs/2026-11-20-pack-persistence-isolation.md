@@ -46,3 +46,19 @@ This qualifies this subset, not unrestricted in-process parallelism. Other
 TestEnvironment and dialog override globals remain separate audit work. Full
 safe-gate, review and CI acceptance are recorded with the PR. No physical input
 was sent and the VM base fingerprint contract is unchanged.
+
+## Integrated final gate
+
+After merging checked preference ownership from master 277a32be6, the full safe
+gate compiled with zero Swift warnings and passed its 4,458-case main XCTest
+target (46 skipped). It then exceeded the unchanged shared 240-second test budget
+during snapshots; exit 124 remains recorded in
+`/private/tmp/keypath-pack-persistence-full.log`. This is not a passing full gate.
+Local review passed with no blocking findings. Accessibility, no-sleep lint,
+string-catalog and diff checks passed.
+
+The final integrated binary then repeated all 165 distinct cases with two
+XCTest workers and no rebuild: exit zero, 21-second test phase, 22 seconds total.
+The complete 1-through-165 selection sequence and zero exit were verified in
+`/private/tmp/keypath-pack-parallel-integrated-runner.log`. Broad CI serialization
+remains unchanged, and required CI is the merge gate.

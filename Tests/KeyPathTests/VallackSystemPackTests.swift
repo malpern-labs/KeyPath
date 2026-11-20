@@ -606,7 +606,7 @@ final class VallackSystemPackTests: XCTestCase {
             autoResolveConflicts: true
         )
 
-        // Register as installed in the tracker (tearDown restores original state)
+        // Register in this test's private tracker; fixture cleanup owns the file.
         try await tracker.upsert(InstalledPackRecord(
             packID: PackRegistry.vallackSystem.id,
             version: PackRegistry.vallackSystem.version
