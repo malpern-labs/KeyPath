@@ -1,6 +1,7 @@
 @testable import KeyPathAppKit
 @testable import KeyPathCore
 import KeyPathRulesCore
+import Synchronization
 import XCTest
 
 /// Phase 1 of docs/architecture/rules-admission-review.md: what the backend can
@@ -64,11 +65,37 @@ final class BackendCapabilityProfileTests: XCTestCase {
     }
 
     func testAnswersAreCachedPerKey() {
-        final class Counter: @unchecked Sendable { var calls = 0 }
-        let counter = Counter()
-        let profile = BackendCapabilityProfile { _ in counter.calls += 1; return true }
+        let calls = Mutex(0)
+        let profile = BackendCapabilityProfile { _ in calls.withLock { $0 += 1 }; return true }
         _ = profile.canEmit(kanataKey: "a")
         _ = profile.canEmit(kanataKey: "C-a")
-        XCTAssertEqual(counter.calls, 1)
+        XCTAssertEqual(calls.withLock { $0 }, 1)
+    }
+
+    func testConcurrentQueriesKeepIndependentCaches() async {
+        let profile = BackendCapabilityProfile { key in
+            switch key {
+            case "a": true
+            case "calc": false
+            default: nil
+            }
+        }
+        let results = await withTaskGroup(of: Bool.self, returning: [Bool].self) { group in
+            for _ in 0 ..< 100 {
+                group.addTask {
+                    profile.canEmit(kanataKey: "C-a")
+                        && !profile.canEmit(kanataKey: "calc")
+                        && profile.knowsKey("calc") == true
+                        && profile.knowsKey("unknown-key") == false
+                }
+            }
+            var results: [Bool] = []
+            for await result in group {
+                results.append(result)
+            }
+            return results
+        }
+        XCTAssertEqual(results.count, 100)
+        XCTAssertTrue(results.allSatisfy { $0 })
     }
 }
