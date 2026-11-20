@@ -48,6 +48,15 @@ if [[ ! -f "$catalog" || ! -s "$catalog" ]]; then
     exit 1
 fi
 
+# Layout-dependent generation must have the same keyboard data in the app and CLI.
+for layout_name in macbook-us.json ansi-60.json; do
+    if [[ ! -s "$catalog_bundle/Keyboards/$layout_name" &&
+          ! -s "$catalog_bundle/Contents/Resources/Keyboards/$layout_name" ]]; then
+        echo "❌ Packaged keyboard layout is missing or empty: $layout_name" >&2
+        exit 1
+    fi
+done
+
 # The launch splash is this poster; without it the app falls back to a plain glyph.
 if [[ ! -s "$APP_PATH/Contents/Resources/keypath-poster-hor.png" ]]; then
     echo "❌ Launch splash poster is missing: $APP_PATH/Contents/Resources/keypath-poster-hor.png" >&2

@@ -1,4 +1,5 @@
 import Foundation
+import KeyPathCore
 
 // MARK: - Native Layout JSON Format
 
@@ -6,21 +7,21 @@ import Foundation
 /// This is the "native" format used by MacBook and other layouts that store
 /// pre-computed key geometry directly (as opposed to the QMK format which
 /// requires a keyMapping function to resolve keyCodes and labels).
-struct PhysicalKeyDTO: Codable {
-    let keyCode: UInt16
-    let label: String
-    let x: Double
-    let y: Double
-    let width: Double
-    let height: Double
-    let rotation: Double?
-    let rotationPivotX: Double?
-    let rotationPivotY: Double?
-    let shiftLabel: String?
-    let subLabel: String?
-    let tertiaryLabel: String?
+package struct PhysicalKeyDTO: Codable {
+    package let keyCode: UInt16
+    package let label: String
+    package let x: Double
+    package let y: Double
+    package let width: Double
+    package let height: Double
+    package let rotation: Double?
+    package let rotationPivotX: Double?
+    package let rotationPivotY: Double?
+    package let shiftLabel: String?
+    package let subLabel: String?
+    package let tertiaryLabel: String?
 
-    func toPhysicalKey() -> PhysicalKey {
+    package func toPhysicalKey() -> PhysicalKey {
         PhysicalKey(
             keyCode: keyCode,
             label: label,
@@ -39,14 +40,14 @@ struct PhysicalKeyDTO: Codable {
 }
 
 /// Codable representation of a complete physical layout for JSON serialization.
-struct PhysicalLayoutDTO: Codable {
-    let id: String
-    let name: String
-    let keys: [PhysicalKeyDTO]
-    let totalWidth: Double?
-    let totalHeight: Double?
+package struct PhysicalLayoutDTO: Codable {
+    package let id: String
+    package let name: String
+    package let keys: [PhysicalKeyDTO]
+    package let totalWidth: Double?
+    package let totalHeight: Double?
 
-    func toPhysicalLayout() -> PhysicalLayout {
+    package func toPhysicalLayout() -> PhysicalLayout {
         let physicalKeys = keys.map { $0.toPhysicalKey() }
         if let totalWidth, let totalHeight {
             return PhysicalLayout(
@@ -72,7 +73,17 @@ struct PhysicalLayoutDTO: Codable {
 /// Native JSON files contain pre-computed key geometry with keyCodes and labels
 /// already resolved. This is used for MacBook layouts and other layouts that
 /// don't use QMK keyMapping functions.
-enum PhysicalLayoutLoader {
+package enum PhysicalLayoutLoader {
+    private static let resourceBundle = KeyPathResourceBundle.resolve(
+        named: "KeyPath_KeyPathRulesCore.bundle",
+        mainBundle: .main,
+        codeBundle: Bundle(for: KeyboardLayoutBundleSentinel.self)
+    )
+
+    static func bundledJSON(named filename: String) -> URL? {
+        resourceBundle.url(forResource: filename, withExtension: "json", subdirectory: "Keyboards")
+    }
+
     /// Load a native-format layout JSON from the app bundle.
     ///
     /// - Parameters:
@@ -80,12 +91,12 @@ enum PhysicalLayoutLoader {
     ///   - idOverride: Optional override for the layout ID
     ///   - nameOverride: Optional override for the layout display name
     /// - Returns: A `PhysicalLayout` if loading succeeds, nil otherwise
-    static func loadFromBundle(
+    package static func loadFromBundle(
         filename: String,
         idOverride: String? = nil,
         nameOverride: String? = nil
     ) -> PhysicalLayout? {
-        guard let url = KeyPathAppKitResources.url(forResource: filename, withExtension: "json") else {
+        guard let url = bundledJSON(named: filename) else {
             #if DEBUG
                 print("PhysicalLayoutLoader: Could not find \(filename).json in bundle")
             #endif
@@ -107,7 +118,7 @@ enum PhysicalLayoutLoader {
     ///   - idOverride: Optional override for the layout ID
     ///   - nameOverride: Optional override for the layout display name
     /// - Returns: A `PhysicalLayout` if parsing succeeds, nil otherwise
-    static func load(
+    package static func load(
         from data: Data,
         idOverride: String? = nil,
         nameOverride: String? = nil
@@ -139,3 +150,5 @@ enum PhysicalLayoutLoader {
         return layout
     }
 }
+
+private final class KeyboardLayoutBundleSentinel {}

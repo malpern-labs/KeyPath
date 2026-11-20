@@ -1,15 +1,16 @@
 import Foundation
+import Synchronization
 
 /// Represents a complete physical keyboard layout
-struct PhysicalLayout: Identifiable {
-    let id: String // Unique identifier: "macbook-us", "kinesis-360"
-    let name: String // Display name: "MacBook US", "Kinesis Advantage 360"
-    let keys: [PhysicalKey]
-    let totalWidth: Double // For aspect ratio calculation
-    let totalHeight: Double
+package struct PhysicalLayout: Identifiable, Sendable {
+    package let id: String // Unique identifier: "macbook-us", "kinesis-360"
+    package let name: String // Display name: "MacBook US", "Kinesis Advantage 360"
+    package let keys: [PhysicalKey]
+    package let totalWidth: Double // For aspect ratio calculation
+    package let totalHeight: Double
 
     /// Initialize with explicit dimensions
-    init(id: String, name: String, keys: [PhysicalKey], totalWidth: Double, totalHeight: Double) {
+    package init(id: String, name: String, keys: [PhysicalKey], totalWidth: Double, totalHeight: Double) {
         self.id = id
         self.name = name
         self.keys = keys
@@ -18,7 +19,7 @@ struct PhysicalLayout: Identifiable {
     }
 
     /// Initialize with auto-computed dimensions from keys
-    init(id: String, name: String, keys: [PhysicalKey]) {
+    package init(id: String, name: String, keys: [PhysicalKey]) {
         self.id = id
         self.name = name
         self.keys = keys
@@ -39,7 +40,7 @@ struct PhysicalLayout: Identifiable {
     // MARK: - Layout Registry
 
     /// US Standard layouts (ANSI-based)
-    static let usLayouts: [PhysicalLayout] = [
+    package static let usLayouts: [PhysicalLayout] = [
         macBookUS,
         magicKeyboardCompact,
         magicKeyboardTouchID,
@@ -55,7 +56,7 @@ struct PhysicalLayout: Identifiable {
     ]
 
     /// International layouts (ISO, JIS, ABNT2, Korean)
-    static let internationalLayouts: [PhysicalLayout] = [
+    package static let internationalLayouts: [PhysicalLayout] = [
         macBookISO,
         macBookJIS,
         macBookABNT2,
@@ -63,7 +64,7 @@ struct PhysicalLayout: Identifiable {
     ]
 
     /// Ergonomic and split keyboards
-    static let ergonomicLayouts: [PhysicalLayout] = [
+    package static let ergonomicLayouts: [PhysicalLayout] = [
         kinesisAdvantage360,
         kinesisMWave,
         corne,
@@ -74,31 +75,30 @@ struct PhysicalLayout: Identifiable {
 
     // MARK: - Custom Layouts Cache
 
-    /// Cache for custom layouts to avoid blocking UI thread
-    /// Thread-safe using a lock for concurrent access
-    private static let cacheLock = NSLock()
-    private nonisolated(unsafe) static var _cachedCustomLayouts: [PhysicalLayout]?
-    private nonisolated(unsafe) static var _cacheTimestamp: Date?
-    private static let cacheTTL: TimeInterval = 5.0 // 5 second cache TTL
+    private struct CachedLayouts {
+        let layouts: [PhysicalLayout]
+        let loadedAt: Date
+    }
 
-    /// Custom imported layouts (loaded from UserDefaults)
-    /// Note: Uses caching to avoid blocking UI thread. Call `invalidateCustomLayoutCache()` after importing.
-    static var customLayouts: [PhysicalLayout] {
-        cacheLock.lock()
-        defer { cacheLock.unlock() }
+    private static let customLayoutCache = Mutex<CachedLayouts?>(nil)
+    private static let cacheTTL: TimeInterval = 5
 
-        // Check cache freshness
-        if let cached = _cachedCustomLayouts,
-           let timestamp = _cacheTimestamp,
-           Date().timeIntervalSince(timestamp) < cacheTTL
-        {
-            return cached
+    /// Imported layouts are cached to avoid reparsing during UI updates.
+    package static var customLayouts: [PhysicalLayout] {
+        customLayoutCache.withLock { cache in
+            if let cache, Date().timeIntervalSince(cache.loadedAt) < cacheTTL {
+                return cache.layouts
+            }
+            let layouts = loadCustomLayouts()
+            cache = CachedLayouts(layouts: layouts, loadedAt: Date())
+            return layouts
         }
+    }
 
-        // Load custom layouts synchronously from storage
+    private static func loadCustomLayouts() -> [PhysicalLayout] {
         let store = CustomLayoutStore.load()
 
-        let layouts: [PhysicalLayout] = store.layouts.compactMap { storedLayout -> PhysicalLayout? in
+        return store.layouts.compactMap { storedLayout -> PhysicalLayout? in
             let layoutId = "custom-\(storedLayout.id)"
 
             let parsed: PhysicalLayout?
@@ -141,31 +141,22 @@ struct PhysicalLayout: Identifiable {
             // Inject drawer key if the layout has layer keys but no drawer button
             return parsed?.withDrawerKeyInjected()
         }
-
-        // Update cache
-        _cachedCustomLayouts = layouts
-        _cacheTimestamp = Date()
-
-        return layouts
     }
 
-    /// Invalidate the custom layouts cache (call after importing/deleting layouts)
-    static func invalidateCustomLayoutCache() {
-        cacheLock.lock()
-        defer { cacheLock.unlock() }
-        _cachedCustomLayouts = nil
-        _cacheTimestamp = nil
+    /// Invalidate after importing or deleting a layout.
+    package static func invalidateCustomLayoutCache() {
+        customLayoutCache.withLock { $0 = nil }
     }
 
     /// Registry of all known layouts (US first, then International, then Ergonomic, then Custom)
     // swiftformat:disable:next redundantSelf
-    static var all: [PhysicalLayout] {
+    package static var all: [PhysicalLayout] {
         usLayouts + internationalLayouts + ergonomicLayouts + customLayouts
     }
 
     /// Get layouts grouped by category for UI display
     /// Order: US Standard (no header), Ergonomic, International, Custom
-    static func layoutsByCategory() -> [(category: LayoutCategory, layouts: [PhysicalLayout])] {
+    package static func layoutsByCategory() -> [(category: LayoutCategory, layouts: [PhysicalLayout])] {
         [
             (.usStandard, usLayouts),
             (.ergonomic, ergonomicLayouts),
@@ -175,12 +166,12 @@ struct PhysicalLayout: Identifiable {
     }
 
     /// Find a layout by its identifier
-    static func find(id: String) -> PhysicalLayout? {
+    package static func find(id: String) -> PhysicalLayout? {
         all.first { $0.id == id }
     }
 
     /// Whether this layout has a Touch ID key that acts as the drawer toggle
-    var hasDrawerButtons: Bool {
+    package var hasDrawerButtons: Bool {
         keys.contains { $0.keyCode == PhysicalKey.unmappedKeyCode && $0.label == "🔒" }
     }
 
@@ -189,7 +180,7 @@ struct PhysicalLayout: Identifiable {
     /// Whether a label indicates a pure layer-switch key (MO, TG, OSL, DF abbreviations).
     /// These are candidates for drawer key injection. Layer-taps (LT) resolve to their
     /// base key with a real keyCode, so they're naturally excluded.
-    static func isLayerKeyLabel(_ label: String) -> Bool {
+    package static func isLayerKeyLabel(_ label: String) -> Bool {
         guard label.count >= 2, label.count <= 3, let first = label.first else { return false }
         guard "LTD".contains(first) else { return false }
         return label.dropFirst().allSatisfy(\.isNumber)
@@ -201,7 +192,7 @@ struct PhysicalLayout: Identifiable {
     /// Picks the rightmost pure layer-switch key (highest x), breaking ties with
     /// bottom-most (highest y). Layer-taps (LT) that resolve to a base key are
     /// excluded since they're typing keys.
-    func withDrawerKeyInjected() -> PhysicalLayout {
+    package func withDrawerKeyInjected() -> PhysicalLayout {
         // Already has a drawer button — no injection needed
         guard !hasDrawerButtons else { return self }
 

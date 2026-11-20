@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 /// Orchestrates the auto-detect keyboard flow:

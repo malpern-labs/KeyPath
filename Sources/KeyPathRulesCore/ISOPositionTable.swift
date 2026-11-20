@@ -3,7 +3,7 @@ import Foundation
 /// Standard ISO keyboard position table
 /// Maps (row, col) matrix positions to macOS keyCodes and labels for standard ISO layouts
 /// ISO differs from ANSI in: L-shaped Enter key, extra IntlBackslash key between Left Shift and Z
-enum ISOPositionTable {
+package enum ISOPositionTable {
     /// Standard ISO key mapping from (row, col) to (keyCode, label)
     /// Row 0: Number row (same as ANSI)
     /// Row 1: Top row (same as ANSI)
@@ -15,7 +15,7 @@ enum ISOPositionTable {
     /// - Enter key is L-shaped (spans 2 rows, typically 1.25u wide, 2.25u tall)
     /// - Extra IntlBackslash key (keycode 10) between Left Shift and Z
     /// - Left Shift is shorter (typically 1.25u) to accommodate IntlBackslash
-    static func keyMapping(row: Int, col: Int) -> (keyCode: UInt16, label: String)? {
+    package static func keyMapping(row: Int, col: Int) -> (keyCode: UInt16, label: String)? {
         switch (row, col) {
         // Row 0: Number row (same as ANSI)
         case (0, 0): (18, "1")
@@ -120,7 +120,7 @@ enum ISOPositionTable {
     }
 
     /// Get key mapping with support for custom mappings
-    static func keyMapping(row: Int, col: Int, customMappings: [((Int, Int), (UInt16, String))] = []) -> (keyCode: UInt16, label: String)? {
+    package static func keyMapping(row: Int, col: Int, customMappings: [((Int, Int), (UInt16, String))] = []) -> (keyCode: UInt16, label: String)? {
         // Check custom mappings first
         if let custom = customMappings.first(where: { $0.0 == (row, col) }) {
             return custom.1

@@ -1,5 +1,6 @@
 import Foundation
 import KeyPathCore
+import KeyPathRulesCore
 
 /// Service for searching QMK keyboards using a bundled index of 3,700+ keyboards.
 ///
