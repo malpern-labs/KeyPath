@@ -72,12 +72,12 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 ### Open follow-ups
 
-- O7b: retain packs and their existing features; finish the CLI compile-boundary evaluation.
+- O7b: retain packs and their existing features. See the [CLI compile-boundary evaluation](#cli-compile-boundary-evaluation) for the extraction decision and verification criteria.
 - O8c: replace remaining implicit test-mode behavior with scoped dependencies where appropriate, retaining safeguards against real system operations in tests.
 - P6: finish the ownership audit and owner-lifetime checks. BuildInfo #1493, watcher/HID session and biometric ownership #1494, diagnostic callback synchronization #1495, and checked preference ownership #1497 have merged. Remaining framework and timer boundaries still need audit.
 - P7b: evaluate the remaining SwiftUI/AppKit idioms against their actual behavior and window requirements.
 - P8: finish localization layout/copy verification and native-language review.
-- P9: the pack/collection fixtures now own their tracker, legacy snapshots and preference domains in this follow-up. Seven affected suites passed 165 checks both serially and with two XCTest workers. Global wizard-restoration defaults and fake app-control routing still need scoped dependencies; broad in-process parallel execution is not yet qualified.
+- P9: the pack/collection fixtures now own their tracker, legacy snapshots and preference domains in this follow-up. Seven affected suites passed 165 checks both serially and with two XCTest workers. The unused wizard restart helper was removed and fake app-control routing is scoped per test facade (#1499). Other shared preference fixtures and broad in-process parallel qualification remain open.
 
 P2's normal usage prompt passed on a fresh macOS 27 guest. B7's current permission
 screenshot is published at gh-pages `99a2200b6`: the public guide returned HTTP
@@ -275,6 +275,32 @@ inside the app bundle and drop the downloader. Product decision.
 | `keypath-cli` | imports AppKit in 57 files | Links SwiftUI and the Metal renderer. A `KeyPathEngine` target (config, rules, session runtime, networking) would be the split that pays |
 
 The Karabiner converter, QMK import and layout tracer are proportionate.
+
+#### CLI compile-boundary evaluation
+
+At master `4ee44aa72`, 54 Swift files under `Sources/KeyPathCLI` import
+`KeyPathAppKit`. SwiftPM already separates help and command presentation
+into `KeyPathCLIHelp` and `KeyPathCLICommon`. The executable still depends
+on the app library through `KeyPathCLI`. On a local Debug build containing
+the scoped routing change, `otool -L` listed AppKit, SwiftUI, Metal,
+MetalKit, and Sparkle. This shows the link boundary. It does not measure
+release binary size, launch time, or incremental build savings.
+
+Keep the existing commands and pack features. A new umbrella engine target
+would still pull in app code if it carried the current facades wholesale.
+`ConfigFacade` combines generation, transactional writes, and runtime
+routing. `PacksFacade` reaches the pack installer, which still presents some
+decisions through AppKit alerts. CLI setup and runtime activation also have
+legitimate AppKit calls of their own.
+
+Start with read-only config and rule operations that can use the existing
+Core targets. Keep consent, UI presentation, and live session control at
+their existing boundaries. Extract pack mutations only after the app and CLI
+can supply explicit decisions to a shared transaction. Before moving a
+target, compare clean and incremental CLI-only builds on the same machine
+and toolchain, and inspect the resulting release binary's dependencies.
+Verify CLI output and exit codes, dry-run behavior, and rollback and
+dependency handling before replacing the existing path.
 
 ### O8. Smaller items
 
