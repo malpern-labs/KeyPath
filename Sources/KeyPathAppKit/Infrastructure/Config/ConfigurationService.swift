@@ -218,41 +218,9 @@ public final class ConfigurationService: FileConfigurationProviding {
     // MARK: - FileConfigurationProviding Protocol
 
     public func validate(content: String) throws -> KanataConfiguration {
-        // Basic validation - ensure content is not empty
-        guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw KeyPathError.configuration(.invalidFormat(reason: String(localized: "Configuration content is empty")))
-        }
-
-        // Get file modification date
         let attributes = try? Foundation.FileManager().attributesOfItem(atPath: configurationPath)
         let lastModified = (attributes?[FileAttributeKey.modificationDate] as? Date) ?? Date()
-
-        // Extract key mappings from content (simplified - could be enhanced)
-        let keyMappings = extractKeyMappingsFromContent(content)
-        let chordGroups = KanataDefchordsParser.parseGroups(from: content)
-
-        if !chordGroups.isEmpty {
-            let knownGroups = Set(chordGroups.map(\.name))
-            let referencedGroups = KanataDefchordsParser.referencedChordGroups(in: keyMappings)
-            let missing = referencedGroups.subtracting(knownGroups)
-            if !missing.isEmpty {
-                AppLogger.shared.warn(
-                    "⚠️ [ConfigService] Chord group references missing definitions: \(missing.sorted().joined(separator: ", "))"
-                )
-            }
-        }
-
-        // Parse sequences from config
-        let sequences = KanataDefseqParser.parseSequences(from: content)
-
-        return KanataConfiguration(
-            content: content,
-            keyMappings: keyMappings,
-            lastModified: lastModified,
-            path: configurationPath,
-            chordGroups: chordGroups,
-            sequences: sequences
-        )
+        return try KanataConfiguration.parse(content, path: configurationPath, lastModified: lastModified)
     }
 
     public func startFileMonitoring() -> ConfigurationObservationToken {

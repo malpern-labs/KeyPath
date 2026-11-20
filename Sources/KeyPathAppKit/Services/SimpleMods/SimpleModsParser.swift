@@ -1,4 +1,5 @@
 import Foundation
+import KeyPathRulesCore
 
 /// Parser for reading and indexing simple modifications sentinel blocks
 public final class SimpleModsParser: Sendable {
