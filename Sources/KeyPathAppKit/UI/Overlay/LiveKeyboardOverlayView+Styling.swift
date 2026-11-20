@@ -127,10 +127,10 @@ extension LiveKeyboardOverlayView {
             editingLayer: viewModel.currentLayerName,
             onRemapApplied: { keyCode, layer, undo, mapper in
                 viewModel.highlightAppliedRemap(keyCode: keyCode, layer: layer)
-                guard let window = NSApp.windows.first(where: { $0 is OverlayWindow }),
-                      let undoManager = window.undoManager,
+                guard let window = NSApp.windows.compactMap({ $0 as? OverlayWindow }).first,
                       let runtime = kanataViewModel?.underlyingManager
                 else { return }
+                let undoManager = window.remapUndoManager
                 undoManager.registerUndo(withTarget: viewModel) { [weak mapper] _ in
                     Task { @MainActor in
                         if await runtime.rulesManager.undoRemap(undo) {

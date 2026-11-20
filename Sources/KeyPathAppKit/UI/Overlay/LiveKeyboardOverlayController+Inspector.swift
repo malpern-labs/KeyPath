@@ -7,6 +7,10 @@ extension LiveKeyboardOverlayController {
 
     func openInspector(animated: Bool) {
         guard let window else { return }
+        // Opening the editor is an explicit interaction. The passive overlay
+        // can stay in front without taking keyboard focus from another app.
+        NSApp.activate()
+        window.makeKey()
         let token = UUID()
         inspectorAnimationToken = token
         let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
