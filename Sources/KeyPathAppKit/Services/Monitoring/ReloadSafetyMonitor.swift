@@ -58,7 +58,7 @@ actor ReloadSafetyMonitor {
     /// Check if it's safe to perform a reload right now
     /// - Returns: SafetyCheck result with reasoning
     func checkReloadSafety() -> SafetyCheck {
-        let now = self.now()
+        let now = now()
 
         // Check 1: Crash loop backoff
         if let crashTime = crashLoopDetectedAt {
@@ -109,7 +109,7 @@ actor ReloadSafetyMonitor {
     /// Record a reload attempt
     /// - Parameter succeeded: Whether the reload succeeded
     func recordReloadAttempt(succeeded: Bool) {
-        let now = self.now()
+        let now = now()
         let attempt = ReloadAttempt(timestamp: now, succeeded: succeeded)
         reloadHistory.append(attempt)
         lastReloadTime = now
@@ -125,7 +125,7 @@ actor ReloadSafetyMonitor {
     /// Record a service restart (PID change)
     /// - Parameter pid: The new daemon PID
     func recordServiceRestart(pid: Int) {
-        let now = self.now()
+        let now = now()
         restartHistory.append((timestamp: now, pid: pid))
 
         // Cleanup old history
@@ -153,7 +153,7 @@ actor ReloadSafetyMonitor {
 
     /// Get current safety status for debugging
     func getStatus() -> SafetyStatus {
-        let now = self.now()
+        let now = now()
         let recentRestarts = countRecentRestarts(within: trackingWindowSeconds)
         let recentReloads = reloadHistory.filter {
             now.timeIntervalSince($0.timestamp) < trackingWindowSeconds
