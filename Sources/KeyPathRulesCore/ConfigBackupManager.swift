@@ -1,6 +1,5 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
 /// Service for managing configuration backups to protect against corruption
 ///
@@ -37,7 +36,7 @@ public final class ConfigBackupManager {
         createPreEditBackup(generationPreferences: nil)
     }
 
-    func createPreEditBackup(generationPreferences: RuleBackupPreferences?) -> Bool {
+    package func createPreEditBackup(generationPreferences: RuleBackupPreferences?) -> Bool {
         guard Foundation.FileManager().fileExists(atPath: configPath) else {
             AppLogger.shared.log("⚠️ [BackupManager] No config file to backup at: \(configPath)")
             return false
@@ -64,7 +63,7 @@ public final class ConfigBackupManager {
                 let recordedFingerprint = try? String(contentsOf: fingerprintURL, encoding: .utf8)
                 let snapshot = try RuleBackupSnapshot(
                     version: 1, config: content, generationPreferences: generationPreferences,
-                    wasManagedWrite: recordedFingerprint == ConfigurationService.managedFingerprint(content),
+                    wasManagedWrite: recordedFingerprint == KanataConfiguration.managedFingerprint(content),
                     collections: Data(contentsOf: collectionsURL),
                     customRules: FileManager.default.fileExists(atPath: rulesURL.path)
                         ? Data(contentsOf: rulesURL) : Data("[]".utf8)
@@ -207,9 +206,9 @@ public final class ConfigBackupManager {
             // shared one such as a temp directory or the home folder.
             let parent = (backupDirectory as NSString).deletingLastPathComponent
             if (parent as NSString).lastPathComponent == "keypath" {
-                ConfigurationService.restrictToOwner(directory: parent)
+                DurableRuleFile.restrictToOwner(directory: parent)
             }
-            ConfigurationService.restrictToOwner(directory: backupDirectory)
+            DurableRuleFile.restrictToOwner(directory: backupDirectory)
             AppLogger.shared.log("✅ [BackupManager] Created backup directory: \(backupDirectory)")
         } catch {
             AppLogger.shared.log("❌ [BackupManager] Failed to create backup directory: \(error)")
@@ -317,20 +316,36 @@ public struct BackupInfo {
 // (Removed deprecated ConfigBackupError - now using KeyPathError directly)
 
 /// A backup is bound to its exact .kbd content. Decoding never silently drops rules.
-struct RuleBackupSnapshot: Codable, Sendable {
-    let version: Int
-    let config: String
-    var generationPreferences: RuleBackupPreferences? = nil
+package struct RuleBackupSnapshot: Codable, Sendable {
+    package let version: Int
+    package let config: String
+    package let generationPreferences: RuleBackupPreferences?
     /// The backed-up config was KeyPath's own unedited write (its fingerprint
     /// matched), so its rules alone reproduce it, under whatever generator the
     /// restore runs. Older snapshots lack this and must match byte for byte.
-    var wasManagedWrite: Bool? = nil
-    let collections: Data
-    let customRules: Data
+    package let wasManagedWrite: Bool?
+    package let collections: Data
+    package let customRules: Data
 
-    enum Failure: LocalizedError {
+    package init(
+        version: Int,
+        config: String,
+        generationPreferences: RuleBackupPreferences? = nil,
+        wasManagedWrite: Bool? = nil,
+        collections: Data,
+        customRules: Data
+    ) {
+        self.version = version
+        self.config = config
+        self.generationPreferences = generationPreferences
+        self.wasManagedWrite = wasManagedWrite
+        self.collections = collections
+        self.customRules = customRules
+    }
+
+    package enum Failure: LocalizedError {
         case requiresManagedRestore, missingMetadata, inconsistentSnapshot
-        var errorDescription: String? {
+        package var errorDescription: String? {
             switch self {
             case .requiresManagedRestore:
                 String(localized: "Restore this backup through Settings so rules and runtime are updated together.")
@@ -342,7 +357,7 @@ struct RuleBackupSnapshot: Codable, Sendable {
         }
     }
 
-    static func read(_ backup: BackupInfo) throws -> Self {
+    package static func read(_ backup: BackupInfo) throws -> Self {
         let url = URL(fileURLWithPath: backup.fullPath + ".json")
         guard FileManager.default.fileExists(atPath: url.path) else { throw Failure.missingMetadata }
         let snapshot = try JSONDecoder().decode(Self.self, from: Data(contentsOf: url))
@@ -354,7 +369,7 @@ struct RuleBackupSnapshot: Codable, Sendable {
         return snapshot
     }
 
-    func decodedRules() throws -> (collections: [RuleCollection], customRules: [CustomRule]) {
+    package func decodedRules() throws -> (collections: [RuleCollection], customRules: [CustomRule]) {
         struct Versioned: Decodable { let schemaVersion: Int; let collections: [RuleCollection] }
         let decoder = JSONDecoder()
         let decodedCollections: [RuleCollection]
@@ -368,14 +383,14 @@ struct RuleBackupSnapshot: Codable, Sendable {
 }
 
 /// Only preferences that participate in the canonical rule-write journal belong here.
-struct RuleBackupPreferences: Codable, Sendable {
-    let leader: LeaderKeyPreference
-    let trigger: String
-    let delayPreset: String
-    let customDelay: Int
+package struct RuleBackupPreferences: Codable, Sendable {
+    package let leader: LeaderKeyPreference
+    package let trigger: String
+    package let delayPreset: String
+    package let customDelay: Int
 
     @MainActor
-    init(defaults: UserDefaults) {
+    package init(defaults: UserDefaults) {
         leader = LeaderKeyPreference(persistedData: defaults.data(forKey: RecoverableRuleWrite.PreferenceRole.leader.key))
         trigger = defaults.string(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDTriggerMode.key)
             ?? ShortcutListGenerationInput.defaultTriggerMode.rawValue
@@ -385,7 +400,7 @@ struct RuleBackupPreferences: Codable, Sendable {
             ?? ShortcutListGenerationInput.defaultCustomHoldDelayMs
     }
 
-    func shortcutInput() throws -> ShortcutListGenerationInput {
+    package func shortcutInput() throws -> ShortcutListGenerationInput {
         guard let triggerMode = ContextHUDTriggerMode(rawValue: trigger),
               let preset = ContextHUDHoldDelayPreset(rawValue: delayPreset)
         else {
@@ -395,9 +410,9 @@ struct RuleBackupPreferences: Codable, Sendable {
     }
 
     @MainActor
-    func changes(from defaults: UserDefaults) throws -> [RecoverableRuleWrite.PreferenceChange] {
+    package func changes(from defaults: UserDefaults) throws -> [RecoverableRuleWrite.PreferenceChange] {
         try [
-            .leader(before: defaults.data(forKey: PreferencesService.leaderKeyPreferenceKey), after: JSONEncoder().encode(leader)),
+            .leader(before: defaults.data(forKey: RecoverableRuleWrite.PreferenceRole.leader.key), after: JSONEncoder().encode(leader)),
             .contextHUDTriggerMode(before: defaults.object(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDTriggerMode.key), after: trigger),
             .contextHUDHoldDelayPreset(before: defaults.object(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayPreset.key), after: delayPreset),
             .contextHUDHoldDelayCustomMs(before: defaults.object(forKey: RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayCustomMs.key), after: customDelay)
