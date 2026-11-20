@@ -90,7 +90,7 @@ REQUIRED_SNIPPETS: dict[str, list[str]] = {
     ],
     "Sources/KeyPathAppKit/UI/Settings/SettingsView+ScriptExecution.swift": [
         '"settings-script-execution-toggle"',
-        '"settings-script-bypass-dialog-toggle"',
+        '"settings-script-forget-approvals-button"',
         '"settings-script-execution-log-button"',
         '"settings-script-clear-log-button"',
         '"settings-script-clear-log-confirm"',
@@ -272,7 +272,9 @@ REQUIRED_SNIPPETS: dict[str, list[str]] = {
         '"pack-detail-quick-setting-\\(setting.id)"',
     ],
     "Sources/KeyPathAppKit/UI/Gallery/SystemPackComponentsView.swift": [
-        '"system-pack-card-\\(title.lowercased().replacingOccurrences(of: \" \", with: \"-\"))"',
+        '"system-pack-card-layer-activation"',
+        '"system-pack-card-top-row-modifiers"',
+        '"system-pack-card-navigation-mappings"',
         '"system-pack-layer-tab-\\(id)"',
     ],
     "Sources/KeyPathAppKit/UI/Settings/VirtualKeysInspectorView.swift": [

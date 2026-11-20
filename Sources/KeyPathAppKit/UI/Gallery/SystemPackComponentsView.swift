@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SystemPackComponentCard: View {
     let icon: String
+    let identifier: String
     let title: String
     let summary: String
     let isExpanded: Bool
@@ -44,7 +45,7 @@ struct SystemPackComponentCard: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier("system-pack-card-\(title.lowercased().replacingOccurrences(of: " ", with: "-"))")
+            .accessibilityIdentifier(identifier)
 
             if isExpanded {
                 Divider()
@@ -160,6 +161,7 @@ struct VallackSystemPackContent: View {
 
                 SystemPackComponentCard(
                     icon: "hand.tap",
+                    identifier: "system-pack-card-layer-activation",
                     title: String(localized: "Layer Activation"),
                     summary: String(localized: "Hold either index finger to enter nav"),
                     isExpanded: expandedComponent == "toggles",
@@ -169,6 +171,7 @@ struct VallackSystemPackContent: View {
 
                 SystemPackComponentCard(
                     icon: "keyboard",
+                    identifier: "system-pack-card-top-row-modifiers",
                     title: String(localized: "Top Row Modifiers"),
                     summary: String(localized: "Tap for letters, hold for ⌃ ⌥ ⌘"),
                     isExpanded: expandedComponent == "mods",
@@ -178,6 +181,7 @@ struct VallackSystemPackContent: View {
 
                 SystemPackComponentCard(
                     icon: "arrow.up.and.down.and.arrow.left.and.right",
+                    identifier: "system-pack-card-navigation-mappings",
                     title: String(localized: "Navigation Mappings"),
                     summary: String(localized: "\(navCollection?.mappings.count ?? 0) keys — arrows, clipboard, tabs"),
                     isExpanded: expandedComponent == "nav",
