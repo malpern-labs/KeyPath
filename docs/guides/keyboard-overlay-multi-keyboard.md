@@ -234,7 +234,7 @@ If a keyCode is not in the mapping, it returns `"unknown-{keyCode}"` and is filt
 
 ### Tier 1 Keyboard (Hand-Tuned)
 
-1. **Create JSON file**: `Sources/KeyPathAppKit/Resources/Keyboards/{keyboard-id}.json`
+1. **Create JSON file**: `Sources/KeyPathRulesCore/Resources/Keyboards/{keyboard-id}.json`
    - Include physical layout (x, y, w, h, r)
    - Include `keyCode` and `label` for each key
    - Use `0xFFFF` for keys without macOS equivalents

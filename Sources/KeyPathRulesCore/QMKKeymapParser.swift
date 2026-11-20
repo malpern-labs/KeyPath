@@ -7,11 +7,11 @@ import KeyPathCore
 /// The sequential order matches the `layout` array in the keyboard's info.json,
 /// which is how every QMK tool (Configurator, VIA, Vial) correlates physical
 /// key positions with keycode assignments.
-enum QMKKeymapParser {
+package enum QMKKeymapParser {
     /// Parse a keymap source (either C or JSON) and return the base layer's keycodes.
     /// - Parameter source: Raw file content (keymap.c or keymap.json)
     /// - Returns: Array of QMK keycode name strings in layout order, or nil if parsing fails
-    static func parseBaseLayer(from source: String) -> [String]? {
+    package static func parseBaseLayer(from source: String) -> [String]? {
         // Try JSON first (rare but cleanest format)
         if let jsonResult = parseKeymapJSON(source) {
             return jsonResult
@@ -204,7 +204,7 @@ enum QMKKeymapParser {
     /// - "KC_NO" → nil (no key)
     /// - "KC_TRNS" / "_______" → nil (transparent)
     /// - "QK_BOOT" → nil (system command)
-    static func extractBaseKey(_ keycode: String) -> String? {
+    package static func extractBaseKey(_ keycode: String) -> String? {
         let trimmed = keycode.trimmingCharacters(in: .whitespacesAndNewlines)
 
         // Transparent / no key
@@ -291,7 +291,7 @@ enum QMKKeymapParser {
     /// Returns nil for layer keys, transparent keys, and unknown keycodes.
     /// Keys with no macOS equivalent (mouse buttons, media playback) resolve
     /// with `PhysicalKey.unmappedKeyCode` (0xFFFF) and a descriptive label.
-    static func resolveKeycode(_ token: String) -> (keyCode: UInt16, label: String)? {
+    package static func resolveKeycode(_ token: String) -> (keyCode: UInt16, label: String)? {
         guard let baseKey = extractBaseKey(token) else {
             return nil
         }
@@ -320,7 +320,7 @@ enum QMKKeymapParser {
     }
 
     /// Generate a short display label for a QMK keycode name.
-    static func keycodeLabel(_ keycode: String) -> String {
+    package static func keycodeLabel(_ keycode: String) -> String {
         // Handle QK_ prefixed keycodes
         if keycode == "QK_GESC" || keycode == "QK_GRAVE_ESCAPE" {
             return "esc"

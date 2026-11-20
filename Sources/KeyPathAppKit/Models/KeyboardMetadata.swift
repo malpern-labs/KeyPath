@@ -1,4 +1,5 @@
 import Foundation
+import KeyPathRulesCore
 
 /// Metadata for a QMK keyboard, used for search and display
 struct KeyboardMetadata: Identifiable, Hashable, Sendable {

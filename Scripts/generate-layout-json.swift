@@ -1,7 +1,7 @@
 #!/usr/bin/env swift
 // Standalone script to generate JSON layout files from the procedural MacBook layout definitions.
 // Run: swift Scripts/generate-layout-json.swift
-// Output: Sources/KeyPathAppKit/Resources/Keyboards/macbook-*.json
+// Output: Sources/KeyPathRulesCore/Resources/Keyboards/macbook-*.json
 
 import Foundation
 
@@ -819,7 +819,7 @@ encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
 
 let scriptDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
 let outputDir = scriptDir.deletingLastPathComponent()
-    .appendingPathComponent("Sources/KeyPathAppKit/Resources/Keyboards")
+    .appendingPathComponent("Sources/KeyPathRulesCore/Resources/Keyboards")
 
 for (filename, layout) in layouts {
     let data = try encoder.encode(layout)
