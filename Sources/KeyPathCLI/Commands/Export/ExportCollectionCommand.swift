@@ -1,6 +1,5 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
 import KeyPathRulesCore
 
 struct ExportCollection: AsyncParsableCommand {

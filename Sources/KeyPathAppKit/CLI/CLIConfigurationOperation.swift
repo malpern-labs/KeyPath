@@ -16,7 +16,12 @@ public struct CLIConfigurationOperation: Sendable {
     }
 
     public var collections: CollectionsFacade {
-        CollectionsFacade(operation: self)
+        CollectionsFacade(
+            configDirectory: URL(fileURLWithPath: directory),
+            gate: service.operationGate,
+            permit: permit,
+            installedPackTracker: installedPackTracker
+        )
     }
 
     public var packs: PacksFacade {

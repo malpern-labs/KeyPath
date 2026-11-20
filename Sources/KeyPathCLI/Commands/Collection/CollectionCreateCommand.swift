@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathRulesCore
 
 struct CollectionCreate: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
