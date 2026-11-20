@@ -61,6 +61,8 @@ Click **Open Full Editor** to configure your chords in detail:
 - **Chord press window** — the maximum time from the first chord key to the last required key
 - **Chord list** — each chord showing its keys, output, and an ergonomic score
 
+In a chord's editor, choose **Choose output** to browse actions or search for a key, system action, or known app. Selecting an action updates the chord preview. Use **Save** to apply the edit.
+
 ### Speed presets
 
 | Preset | Chord press window | Felt effect |

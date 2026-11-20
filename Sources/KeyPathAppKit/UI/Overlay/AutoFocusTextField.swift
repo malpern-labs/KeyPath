@@ -12,6 +12,8 @@ import SwiftUI
 struct AutoFocusTextField: NSViewRepresentable {
     @Binding var text: String
     var autoFocus: Bool = true
+    var placeholder: String?
+    var onCommand: ((Selector) -> Bool)?
 
     func makeNSView(context: Context) -> NSTextField {
         let field = NSTextField()
@@ -26,12 +28,14 @@ struct AutoFocusTextField: NSViewRepresentable {
         field.cell?.isScrollable = true
         field.cell?.wraps = false
         field.stringValue = text
+        field.placeholderString = placeholder
         field.setContentHuggingPriority(.defaultLow, for: .horizontal)
         field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return field
     }
 
     func updateNSView(_ nsView: NSTextField, context: Context) {
+        context.coordinator.onCommand = onCommand
         if nsView.stringValue != text {
             nsView.stringValue = text
         }
@@ -52,9 +56,14 @@ struct AutoFocusTextField: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextFieldDelegate {
         private let text: Binding<String>
         var didFocus = false
+        var onCommand: ((Selector) -> Bool)?
 
         init(text: Binding<String>) {
             self.text = text
+        }
+
+        func control(_: NSControl, textView _: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            onCommand?(commandSelector) ?? false
         }
 
         func controlTextDidChange(_ notification: Notification) {

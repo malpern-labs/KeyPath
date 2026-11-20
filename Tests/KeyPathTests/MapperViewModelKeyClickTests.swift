@@ -1,3 +1,4 @@
+import AppKit
 @testable import KeyPathAppKit
 import XCTest
 
@@ -88,6 +89,35 @@ final class MapperViewModelKeyClickTests: XCTestCase {
 
         XCTAssertFalse(viewModel.hasShiftedOutputConfigured)
         XCTAssertNil(viewModel.currentShiftedOutputKanataString())
+    }
+
+    func testSelectingPresetReplacesSystemOutputWithoutResettingInput() {
+        let viewModel = MapperViewModel()
+        viewModel.setInputFromKeyClick(
+            keyCode: 1,
+            inputLabel: "s",
+            outputLabel: "Spotlight",
+            systemActionIdentifier: "spotlight"
+        )
+
+        viewModel.selectOutputKeystroke("left")
+
+        XCTAssertNil(viewModel.selectedSystemAction)
+        XCTAssertEqual(viewModel.currentInputKanataString(), "s")
+        XCTAssertEqual(viewModel.outputSequence.map(viewModel.convertSequenceToKanataFormat), "left")
+    }
+
+    func testSelectingAppReplacesPreviousKeystrokeOutput() {
+        let viewModel = MapperViewModel()
+        viewModel.setInputFromKeyClick(keyCode: 0, inputLabel: "a", outputLabel: "b")
+        let app = AppLaunchInfo(name: "Safari", bundleIdentifier: "com.apple.Safari", icon: NSImage())
+
+        viewModel.selectOutputApp(app)
+
+        XCTAssertEqual(viewModel.selectedApp?.bundleIdentifier, "com.apple.Safari")
+        XCTAssertNil(viewModel.outputSequence)
+        XCTAssertEqual(viewModel.outputLabel, "Safari")
+        XCTAssertEqual(viewModel.currentInputKanataString(), "a")
     }
 
     // MARK: - System Action Tests

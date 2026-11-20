@@ -407,11 +407,17 @@ extension MapperViewModel {
 
     /// Process the selected app and update output
     func handleSelectedApp(at url: URL) {
-        let appInfo = buildAppLaunchInfo(from: url)
+        selectOutputApp(buildAppLaunchInfo(from: url))
+    }
 
+    func selectOutputApp(_ appInfo: AppLaunchInfo) {
+        stopRecording(replacingOutput: true)
         selectedApp = appInfo
-        selectedSystemAction = nil // Clear any system action selection
+        selectedSystemAction = nil
         selectedURL = nil
+        selectedFolder = nil
+        selectedScript = nil
+        selectedLayerOutput = nil
         clearShiftedOutput()
         outputLabel = appInfo.name
         outputSequence = nil // Clear any key sequence output
