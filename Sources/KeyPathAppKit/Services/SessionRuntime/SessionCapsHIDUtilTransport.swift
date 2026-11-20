@@ -2,6 +2,7 @@ import Darwin
 import Foundation
 import IOKit
 import KeyPathCore
+import Synchronization
 
 /// Only the property output grammar witnessed in the owned physical-fixture
 /// guest is accepted. IOHIDDevice registry IDs never stand in for event-service IDs.
@@ -9,9 +10,16 @@ public enum SessionCapsHIDUtilTransport {
     public enum Refusal: Error { case unsupportedOutput, commandFailed, timedOut, excessiveOutput }
     public typealias Policy = SessionCapsMappingPolicy
 
-    /// Diagnostics that change nothing. The session worker routes this to
-    /// AppLogger once at startup, before any HID work reads it.
-    public nonisolated(unsafe) static var warn: (String) -> Void = { FileHandle.standardError.write(Data(($0 + "\n").utf8)) }
+    private static let warningHandler = Mutex<@Sendable (String) -> Void>({
+        FileHandle.standardError.write(Data(($0 + "\n").utf8))
+    })
+
+    /// Diagnostics that change nothing. Copy the handler under the lock and
+    /// invoke it after releasing the lock, so logging can safely reenter.
+    public static var warn: @Sendable (String) -> Void {
+        get { warningHandler.withLock { $0 } }
+        set { warningHandler.withLock { $0 = newValue } }
+    }
 
     public static func selector(_ device: Policy.DeviceIdentity) throws -> String {
         try selector(device, primaryUsagePage: 1, primaryUsage: 6)
