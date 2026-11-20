@@ -275,7 +275,7 @@ struct Completions: ParsableCommand {
         mutating func run() async throws {
             switch noun.lowercased() {
             case "pack":
-                let facade = PacksFacade()
+                let facade = CLIPackCatalog()
                 let packs = await facade.listPacks()
                 for pack in packs {
                     let slug = pack.id.replacingOccurrences(of: "com.keypath.pack.", with: "")

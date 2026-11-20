@@ -1,4 +1,5 @@
 import Foundation
+import KeyPathRulesCore
 
 extension Notification.Name {
     /// Startup coordination
@@ -40,11 +41,6 @@ extension Notification.Name {
     /// Overlay app-scoped suppression list changed — observers should
     /// re-evaluate whether to hide/show the overlay for the current app.
     static let overlaySuppressedBundleIDsChanged = Notification.Name("KeyPath.Overlay.SuppressedBundleIDsChanged")
-
-    /// `InstalledPackTracker` upserted or removed a pack record. Observers
-    /// such as the KindaVim mode monitor controller use this to start/stop
-    /// based on whether their pack is installed.
-    static let installedPacksChanged = Notification.Name("KeyPath.Packs.InstalledPacksChanged")
 
     /// Mapper drawer
     /// Posted when a key is clicked and should be selected in the mapper drawer

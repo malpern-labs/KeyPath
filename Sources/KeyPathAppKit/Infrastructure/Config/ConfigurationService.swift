@@ -531,7 +531,7 @@ public final class ConfigurationService: FileConfigurationProviding {
                                                synchronizePreferences: self.synchronizePreferences)
                 { data, url in
                     if let packUpdate, url == packUpdate.fileURL { try packUpdate.writeFile(data, url) }
-                    else { try RecoverableRuleWrite.durableWrite(data, url) }
+                    else { try DurableRuleFile.write(data, url) }
                 }
             }
             return RuleWrite(pending: pending, configuration: newConfig, packUpdate: packUpdate, deviceSelections: deviceSelections)

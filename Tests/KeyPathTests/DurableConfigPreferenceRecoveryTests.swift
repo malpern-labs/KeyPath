@@ -43,7 +43,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
 
     func testInterruptedCLIRawWriteRestoresCanonicalLeaderAndConfig() throws {
         let config = directory.appendingPathComponent("keypath.kbd")
-        try RecoverableRuleWrite.durableWrite(Data("before-config".utf8), config)
+        try DurableRuleFile.write(Data("before-config".utf8), config)
         let before = LeaderKeyPreference.default
         let after = LeaderKeyPreference(key: "tab", targetLayer: .navigation, enabled: true)
         let beforeData = try JSONEncoder().encode(before)
@@ -109,7 +109,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
             )],
             writeFile: { data, url in
                 writes += 1
-                try RecoverableRuleWrite.durableWrite(data, url)
+                try DurableRuleFile.write(data, url)
                 if writes == 1 {
                     try self.defaults.set(JSONEncoder().encode(newer),
                                           forKey: PreferencesService.leaderKeyPreferenceKey)
@@ -128,7 +128,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
         let pendingData = try Data(contentsOf: RecoverableRuleWrite.journalURL(directory))
         var journal = try JSONDecoder().decode(RecoverableRuleWrite.Journal.self, from: pendingData)
         journal.committed = true
-        try RecoverableRuleWrite.durableWrite(
+        try DurableRuleFile.write(
             JSONEncoder().encode(journal), RecoverableRuleWrite.journalURL(directory)
         )
         try defaults.set(JSONEncoder().encode(newer), forKey: PreferencesService.leaderKeyPreferenceKey)

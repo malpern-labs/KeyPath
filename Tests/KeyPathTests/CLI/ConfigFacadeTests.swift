@@ -190,7 +190,7 @@ final class ConfigFacadeTests: XCTestCase {
         let config = directory.appendingPathComponent("keypath.kbd")
         let before = Data("before-config".utf8)
         let interrupted = Data("interrupted-config".utf8)
-        try RecoverableRuleWrite.durableWrite(before, config)
+        try DurableRuleFile.write(before, config)
         let key = PreferencesService.leaderKeyPreferenceKey
         let priorPreference = try JSONEncoder().encode(LeaderKeyPreference.default)
         let attemptedPreference = try JSONEncoder().encode(
@@ -355,7 +355,7 @@ final class ConfigFacadeTests: XCTestCase {
         let configDirectory = tempRoot.appendingPathComponent("config", isDirectory: true)
         try FileManager.default.createDirectory(at: configDirectory, withIntermediateDirectories: true)
         let config = configDirectory.appendingPathComponent("keypath.kbd")
-        try RecoverableRuleWrite.durableWrite(Data("before-config".utf8), config)
+        try DurableRuleFile.write(Data("before-config".utf8), config)
         try storeLeaderPreference(.default)
         let beforeData = try XCTUnwrap(
             defaults.data(forKey: PreferencesService.leaderKeyPreferenceKey)
