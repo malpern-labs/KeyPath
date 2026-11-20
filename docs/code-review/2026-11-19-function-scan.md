@@ -25,3 +25,15 @@ old report formatter was reachable only from the three retired commands.
 The direct parser test for the unregistered repair command is removed; tests
 that reject unavailable system-uninstall CLI requests remain. An unused
 spinner message setter is removed as well. No command registration changes.
+
+## Unused diagnostic query path
+
+The November 19 Periphery scan marks DiagnosticsServiceProtocol,
+DiagnosticsService and KanataProcessDetector unused. Repository-wide source
+usage tracing confirms only their own tests instantiate the service/detector;
+there are no production consumers, runtime registrations or Objective-C entry
+points. Remove that service path and its dedicated tests and source-file lint
+checks, rather than maintaining test-only bypasses in unreachable production
+logic. KanataDiagnostic, DiagnosticSeverity and DiagnosticCategory are retained
+in Models/KanataDiagnostic.swift because live runtime/recovery/UI code uses them.
+Historical ADRs and investigation records retain the old names as history.
