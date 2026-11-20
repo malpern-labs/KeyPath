@@ -12,6 +12,12 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
     private var capturedWarnings: [String?] = []
     private var stateChangeCount = 0
 
+    override func tearDown() async throws {
+        coordinator?.testSessionStart = nil
+        coordinator?.testSessionStop = nil
+        try await super.tearDown()
+    }
+
     override func setUp() async throws {
         try await super.setUp()
         coordinator = ServiceLifecycleCoordinator()
@@ -108,11 +114,11 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
     func testCapsSelectionChangeRestartsARuntimeThatWasRunning() async {
         coordinator.testSessionConfigurationValidation = { .valid }
         var launches = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in launches += 1; return true }
-        ServiceLifecycleCoordinator.testSessionStop = { true }
+        coordinator.testSessionStart = { _ in launches += 1; return true }
+        coordinator.testSessionStop = { true }
         defer {
-            ServiceLifecycleCoordinator.testSessionStart = nil
-            ServiceLifecycleCoordinator.testSessionStop = nil
+            coordinator.testSessionStart = nil
+            coordinator.testSessionStop = nil
         }
         _ = await coordinator.startKanata()
         XCTAssertTrue(coordinator.sessionWantsRunning)
@@ -137,12 +143,12 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
     func testCapsSelectionRefusalPreservesConsentAndRequiresSuccessfulCleanup() async {
         var commits = 0
         var verifications = 0
-        ServiceLifecycleCoordinator.testSessionStop = { false }
-        defer { ServiceLifecycleCoordinator.testSessionStop = nil }
+        coordinator.testSessionStop = { false }
+        defer { coordinator.testSessionStop = nil }
         let stopped = await coordinator.changeCapsSelection(verify: {}, commit: { commits += 1 })
         XCTAssertFalse(stopped)
         XCTAssertEqual(commits, 0)
-        ServiceLifecycleCoordinator.testSessionStop = { true }
+        coordinator.testSessionStop = { true }
         let refused = await coordinator.changeCapsSelection(verify: { throw SessionCapsRuntimeSupport.Refusal.selection }, commit: { commits += 1 })
         XCTAssertFalse(refused)
         XCTAssertEqual(commits, 0)
@@ -160,8 +166,8 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
     func testUpdatePreparationRefusesQueuedAndNewStartsUntilReleased() async throws {
         coordinator.testSessionConfigurationValidation = { .valid }
         var launches = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in launches += 1; return true }
-        defer { ServiceLifecycleCoordinator.testSessionStart = nil }
+        coordinator.testSessionStart = { _ in launches += 1; return true }
+        defer { coordinator.testSessionStart = nil }
         let coordinator = coordinator!
         let generation = coordinator.sessionIntentGeneration
         let blocker = Task { @MainActor in
@@ -193,11 +199,11 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
     func testTerminationPreparationSurvivesUpdateAbortAndRefusesQueuedStartsButAllowsStop() async throws {
         coordinator.testSessionConfigurationValidation = { .valid }
         var launches = 0, stops = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in launches += 1; return true }
-        ServiceLifecycleCoordinator.testSessionStop = { stops += 1; return true }
+        coordinator.testSessionStart = { _ in launches += 1; return true }
+        coordinator.testSessionStop = { stops += 1; return true }
         defer {
-            ServiceLifecycleCoordinator.testSessionStart = nil
-            ServiceLifecycleCoordinator.testSessionStop = nil
+            coordinator.testSessionStart = nil
+            coordinator.testSessionStop = nil
         }
         let coordinator = coordinator!
         let generation = coordinator.sessionIntentGeneration
@@ -239,8 +245,8 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
     func testUpdateHoldSurvivesCancelledTermination() async {
         coordinator.testSessionConfigurationValidation = { .valid }
         var launches = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in launches += 1; return true }
-        defer { ServiceLifecycleCoordinator.testSessionStart = nil }
+        coordinator.testSessionStart = { _ in launches += 1; return true }
+        defer { coordinator.testSessionStart = nil }
         coordinator.setUpdatePreparationActive(true)
         coordinator.setTerminationPreparationActive(true)
         coordinator.setTerminationPreparationActive(false)
@@ -255,8 +261,8 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
 
     func testRecoveryRefusalSurvivesNoWorkerStartAndRestartThenClearsOnRecovery() async {
         coordinator.testSessionConfigurationValidation = { .valid }
-        ServiceLifecycleCoordinator.testSessionStart = nil
-        ServiceLifecycleCoordinator.testSessionStop = nil
+        coordinator.testSessionStart = nil
+        coordinator.testSessionStop = nil
         var recoveries = 0
         coordinator.testSessionCapsRecovery = {
             recoveries += 1
@@ -288,7 +294,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
     func testUnsupportedConfigurationRefusesBeforeLaunchAndPersistsFailure() async {
         var launches = 0
         coordinator.testSessionConfigurationValidation = { .invalid(reason: "Caps Lock remapping requires the advanced driver backend") }
-        ServiceLifecycleCoordinator.testSessionStart = { _ in launches += 1; return true }
+        coordinator.testSessionStart = { _ in launches += 1; return true }
         let admissionResult1 = await coordinator.startKanata(reason: "unsupported config")
         XCTAssertFalse(admissionResult1)
         XCTAssertEqual(launches, 0)
@@ -310,7 +316,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
         coordinator.admissionAttribution = { ["Louder sends volu, which the current backend can't send."] }
         var surfaced: String?
         coordinator.onError = { surfaced = $0 }
-        ServiceLifecycleCoordinator.testSessionStart = { _ in XCTFail("must not launch"); return true }
+        coordinator.testSessionStart = { _ in XCTFail("must not launch"); return true }
         let started = await coordinator.startKanata(reason: "unsupported config")
         XCTAssertFalse(started)
         let expected = "This configuration cannot run in the driverless session. Louder sends volu, which the current backend can't send. "
@@ -327,7 +333,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
         XCTAssertFalse(admissionResult3)
         coordinator.testSessionConfigurationValidation = { .valid }
         var launches = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in launches += 1; return true }
+        coordinator.testSessionStart = { _ in launches += 1; return true }
         let admissionResult4 = await coordinator.startKanata(reason: "corrected config")
         XCTAssertTrue(admissionResult4)
         XCTAssertEqual(launches, 1)
@@ -338,7 +344,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
     func testUnavailableValidationIsNotUnsupportedConfiguration() async {
         coordinator.testSessionConfigurationValidation = { .unavailable(reason: "bridge library missing") }
         var launches = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in launches += 1; return true }
+        coordinator.testSessionStart = { _ in launches += 1; return true }
         let admissionResult5 = await coordinator.startKanata()
         XCTAssertFalse(admissionResult5)
         XCTAssertEqual(launches, 0)
@@ -359,7 +365,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
         coordinator.testSessionCurrentReport = { report }
         var validations = 0, stops = 0
         coordinator.testSessionConfigurationValidation = { validations += 1; return .invalid(reason: "edited config unsupported") }
-        ServiceLifecycleCoordinator.testSessionStop = { stops += 1; return true }
+        coordinator.testSessionStop = { stops += 1; return true }
         let admissionResult7 = await coordinator.restartKanata(reason: "invalid edit")
         XCTAssertFalse(admissionResult7)
         XCTAssertEqual(stops, 0)
@@ -381,14 +387,14 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
         coordinator.testSessionRunningReadiness = { true }
         var supervised: [UInt64] = []
         coordinator.testSessionSupervisionStarted = { supervised.append($0) }
-        ServiceLifecycleCoordinator.testSessionStart = nil
+        coordinator.testSessionStart = nil
         let adopted = await coordinator.startKanata(reason: "adopt existing tap")
         XCTAssertTrue(adopted)
         XCTAssertEqual(supervised, [1])
 
         var starts = 0, stops = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
-        ServiceLifecycleCoordinator.testSessionStop = { stops += 1; return true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStop = { stops += 1; return true }
         coordinator.testSessionConfigurationValidation = { .invalid(reason: "edited config unsupported") }
         let refusedStart = await coordinator.startKanata(reason: "invalid edited start")
         let refusedRestart = await coordinator.restartKanata(reason: "invalid edited restart")
@@ -416,13 +422,13 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
         coordinator.testSessionRunningReadiness = { true }
         var supervised: [UInt64] = []
         coordinator.testSessionSupervisionStarted = { supervised.append($0) }
-        ServiceLifecycleCoordinator.testSessionStart = nil
+        coordinator.testSessionStart = nil
         let adopted = await coordinator.startKanata(reason: "adopt retained ownership")
         XCTAssertTrue(adopted)
 
         var starts = 0, stops = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in starts += 1; return true }
-        ServiceLifecycleCoordinator.testSessionStop = { stops += 1; return true }
+        coordinator.testSessionStart = { _ in starts += 1; return true }
+        coordinator.testSessionStop = { stops += 1; return true }
         coordinator.testSessionConfigurationValidation = { .invalid(reason: "unsupported edit") }
         let refusedStart = await coordinator.startKanata()
         let refusedRestart = await coordinator.restartKanata()
@@ -487,8 +493,8 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
             events.append("probe-end")
             return nil
         }
-        ServiceLifecycleCoordinator.testSessionStop = { events.append("stop"); return true }
-        defer { ServiceLifecycleCoordinator.testSessionStop = nil }
+        coordinator.testSessionStop = { events.append("stop"); return true }
+        defer { coordinator.testSessionStop = nil }
         let probe = Task { await coordinator.sessionRuntimeKeyAccess() }
         for await _ in entered.stream {
             break
@@ -525,7 +531,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
 
     func testStartUsesSessionOwnerWithoutPrivilegedFallbackOnFailure() async {
         var reasons: [String] = []
-        ServiceLifecycleCoordinator.testSessionStart = { reason in
+        coordinator.testSessionStart = { reason in
             reasons.append(reason)
             XCTAssertTrue(self.coordinator.isStartingKanata)
             return false
@@ -538,7 +544,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
 
     func testValidationUsesSessionStart() async {
         var reasons: [String] = []
-        ServiceLifecycleCoordinator.testSessionStart = { reason in
+        coordinator.testSessionStart = { reason in
             reasons.append(reason)
             return false
         }
@@ -547,7 +553,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
     }
 
     func testStopUsesOnlySessionOwner() async {
-        ServiceLifecycleCoordinator.testSessionStop = {
+        coordinator.testSessionStop = {
             self.coordinator.onStateChanged?()
             return true
         }
@@ -559,7 +565,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
     // MARK: - Stop
 
     func testStopNotifiesStateChange() async {
-        ServiceLifecycleCoordinator.testSessionStop = { self.coordinator.onStateChanged?(); return true }
+        coordinator.testSessionStop = { self.coordinator.onStateChanged?(); return true }
         let result = await coordinator.stopKanata(reason: "test")
 
         XCTAssertTrue(result)
@@ -585,7 +591,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
             }
         }
 
-        ServiceLifecycleCoordinator.testSessionStop = { self.coordinator.onStateChanged?(); return true }
+        coordinator.testSessionStop = { self.coordinator.onStateChanged?(); return true }
         _ = await coordinator.stopKanata(reason: "test")
 
         XCTAssertEqual(seenDuringStop, true, "Transition gate must be closed during the stop")
@@ -620,8 +626,8 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
 
     func testRestartCallsSessionStopThenStart() async {
         var operations: [String] = []
-        ServiceLifecycleCoordinator.testSessionStop = { operations.append("stop"); return true }
-        ServiceLifecycleCoordinator.testSessionStart = { _ in operations.append("start"); return true }
+        coordinator.testSessionStop = { operations.append("stop"); return true }
+        coordinator.testSessionStart = { _ in operations.append("start"); return true }
         let restarted = await coordinator.restartKanata(reason: "test restart")
         XCTAssertTrue(restarted)
         XCTAssertEqual(operations, ["stop", "start"])
@@ -629,8 +635,8 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
 
     func testRestartRefusesStartAfterSessionStopFailure() async {
         var startCalls = 0
-        ServiceLifecycleCoordinator.testSessionStop = { false }
-        ServiceLifecycleCoordinator.testSessionStart = { _ in startCalls += 1; return true }
+        coordinator.testSessionStop = { false }
+        coordinator.testSessionStart = { _ in startCalls += 1; return true }
         let restarted = await coordinator.restartKanata(reason: "test restart")
         XCTAssertFalse(restarted)
         XCTAssertEqual(startCalls, 0)
@@ -668,7 +674,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
     func testCompletedPermissionRefusalExposesStoppedStateUntilExplicitRetry() async {
         coordinator.testSessionConfigurationValidation = { .valid }
         var starts = 0
-        ServiceLifecycleCoordinator.testSessionStart = { _ in
+        coordinator.testSessionStart = { _ in
             starts += 1
             let transient = await self.coordinator.isInTransientRuntimeStartupWindow()
             let status = await self.coordinator.currentRuntimeStatus()
@@ -676,7 +682,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
             XCTAssertEqual(status, .starting)
             return false
         }
-        defer { ServiceLifecycleCoordinator.testSessionStart = nil }
+        defer { coordinator.testSessionStart = nil }
 
         let denied = await coordinator.startKanata(reason: "Automatic start before permission grant")
         XCTAssertFalse(denied)
@@ -693,7 +699,7 @@ final class ServiceLifecycleCoordinatorTests: KeyPathTestCase {
         XCTAssertEqual(starts, 1, "Permission grant alone does not request another start")
 
         // Model the newly granted permission without mutating a captured value.
-        ServiceLifecycleCoordinator.testSessionStart = { _ in
+        coordinator.testSessionStart = { _ in
             starts += 1
             let transient = await self.coordinator.isInTransientRuntimeStartupWindow()
             XCTAssertTrue(transient)

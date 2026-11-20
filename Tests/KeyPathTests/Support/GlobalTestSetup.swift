@@ -31,10 +31,7 @@ enum TestSingletonReset {
         DeviceSelectionCache.shared.reset()
         KeyboardDetectionIndex.resetCache()
 
-        // Session lifecycle tests must never launch or terminate a real application.
         #if DEBUG
-            ServiceLifecycleCoordinator.testSessionStart = { _ in false }
-            ServiceLifecycleCoordinator.testSessionStop = { true }
             WizardSystemPaths.setBundledKanataPathOverride(nil)
         #endif
 
