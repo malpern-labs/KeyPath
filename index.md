@@ -18,10 +18,10 @@ content_class: content-full kanata-landing
       <p class="kanata-landing-subtitle hero-animate hero-animate-3">Remap keys, launch apps, tile windows, and automate workflows — all without leaving the home row.</p>
 
       <div class="kanata-landing-actions hero-animate hero-animate-4">
-        <a class="button button-orange" href="https://github.com/malpern-labs/KeyPath/releases/download/v1.0.1/KeyPath-1.0.1.dmg">Download for macOS <span class="button-badge">Free</span></a>
+        <a class="button button-orange" href="https://github.com/malpern-labs/KeyPath/releases/download/v1.0.1/KeyPath-1.0.1.dmg">Download KeyPath 1.0.1 <span class="button-badge">Free</span></a>
       </div>
 
-      <p class="kanata-landing-requirements hero-animate hero-animate-5">Pre-release · Requires macOS 15+ (Sequoia) · Apple Silicon or Intel</p>
+      <p class="kanata-landing-requirements hero-animate hero-animate-5">Pre-release · Requires macOS 15+ (Sequoia) · Apple Silicon or Intel · <a href="https://github.com/malpern-labs/KeyPath/blob/v1.0.1/getting-started/installation.md">1.0.1 setup guide</a></p>
     </div>
 
     <!-- App screenshot -->
@@ -1399,7 +1399,7 @@ content_class: content-full kanata-landing
     <h2 class="mt-0">Ready?</h2>
     <p>Download KeyPath and start customizing your keyboard.</p>
     <div class="kanata-landing-actions">
-      <a class="button button-orange" href="https://github.com/malpern-labs/KeyPath/releases/download/v1.0.1/KeyPath-1.0.1.dmg">Download <span class="button-badge">Free</span></a>
+      <a class="button button-orange" href="https://github.com/malpern-labs/KeyPath/releases/download/v1.0.1/KeyPath-1.0.1.dmg">Download KeyPath 1.0.1 <span class="button-badge">Free</span></a>
       <a class="button button-secondary" href="{{ site.github_url }}/discussions">Ask a question</a>
     </div>
   </section>
