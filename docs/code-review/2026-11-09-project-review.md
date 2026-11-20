@@ -29,7 +29,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | 4 | Deletion pass (~34k lines) | ✅ Done. Remaining asset and package follow-ups are listed below. | #1395, #1397, #1398, #1399, #1406 |
 | 5 | Update story | ✅ Sparkle is re-enabled. The managed Caps Lock gate passed on notarized builds after a worker-exit fix. | #1409, #1418, #1419 |
 | 6 | Installer collapse (O1) | ✅ Planner indirection removed. One repair action remains: Start Remapping Engine. | #1410, #1421 |
-| 7 | `NSAppleEventsUsageDescription` | ✅ Added. Clean-VM consent verification is open. | #1404 |
+| 7 | `NSAppleEventsUsageDescription` | ✅ Added; the normal System Events consent prompt and usage explanation were captured on a fresh macOS 27 guest with signed candidate f2434116a. | #1404 |
 
 ### By section
 
@@ -55,7 +55,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **B6** Root and package stragglers | ✅ | Root cleanup merged (#1395). Process probes moved into Core and the unused wizard screenshot and resource bundle were removed (#1440). Nine unused library product exports removed in #1475; executable products and internal target dependencies remain unchanged. |
 | **B7** Docs | 🟡 | Public docs republished, archive removed, and runtime architecture page rewritten and published (#1394, #1399, #1402, #1437). The macOS 27 Accessibility screenshot remains. |
 | **P1** Sparkle | ✅ | See row 5. |
-| **P2** Apple Events usage string | ✅ | #1404. Verify the consent prompt on a clean VM. |
+| **P2** Apple Events usage string | ✅ | #1404. Normal KeyPath → System Events prompt and shipped explanation verified on fresh guest cbx_093147ab40fe, signed candidate f2434116a, November 20. This verifies the requested prompt, not the resulting AppleScript action. |
 | **P3** Blocking subprocesses | ✅ | `SecCodeCopySelf` replaces the signing shell-out and pipes are drained before waiting (#1404). Migration discovery is async and bounded, with retryable unknown states and tested stop routing (#1480). System probes also drain both output pipes concurrently (#1483); the serialized full gate passed 5,534 tests. Latest-master deployment and live verification remain separate release checks. |
 | **P4** Shell-outs with API replacements | ✅ | Hidden flags, editor launch, function key preference writes, and signals use direct APIs. Spotlight search keeps a cancellable subprocess (#1426). |
 | **P5** `os.Logger` in `AppLogger` | ✅ | Unified log output added (#1427). File logger state is synchronized and queued writes flush (#1445). |
@@ -72,7 +72,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 ### Open follow-ups
 
-- P2: run the clean-VM installation and confirm the Apple Events consent prompt. B7 also tracks the macOS 27 Accessibility screenshot.
+- B7: merge and publish the current macOS 27 permission screenshot. P2's clean-VM prompt check passed on November 20.
 - P8 and P9: finish localization verification and continue isolating shared test state.
 - B5 and B6 are complete: merged asset and package cleanups are linked above.
 
@@ -528,9 +528,9 @@ Remaining work:
 - Audit remaining `@unchecked Sendable` types according to their actual
   ownership and synchronization. Do not replace a valid actor or framework
   boundary with a mutex merely to reduce a count.
-- `BackendCapabilityProfile` still has manual cache locking and an unsafe debug
-  override on merged master. A checked-mutex change is under validation; it is
-  not a verified fix yet.
+- `BackendCapabilityProfile` uses checked mutex-backed state after #1487.
+  Its full gate passed 5,525 tests and six post-integration regressions passed.
+  The unprotected BuildInfo version cache is a separate current follow-up.
 - Reconcile delayed UI callbacks and timers with their owning view/window
   lifetimes. Convert only callbacks that require cancellation, and test closing
   or replacing the owner while a callback is pending.
@@ -591,11 +591,14 @@ before adopting more in-process parallel testing.
 ## Not verified
 
 - The engine's TCP command set (submodule not checked out).
-- `images/help/screenshot-accessibility-settings.png` shows the pre-27
-  Accessibility pane; the install guide's caption now names the macOS 27
-  pane. Recapture it on macOS 27.
-- The usage-string behaviour in P2, and parts of the privately tracked
-  findings. Each needs a clean lab VM.
+- Permission artwork was recaptured on November 20 from a fresh macOS 27 lab
+  guest, with KeyPath enabled under Device Control and Data Access. The guide
+  identifies the unrelated lab tools visible in the screenshot. Publication to
+  gh-pages remains a separate step after this change merges.
+- Parts of the privately tracked findings still need release qualification.
+  P2's usage-string prompt was verified on a fresh macOS 27 guest on November 20;
+  evidence is retained on the Mini under `~/keypath-final-ui-qa.XIYk30` and the
+  guest artifact capture `20261120T051303Z`.
 - Deprecation status of specific APIs in the macOS 27 SDK.
 - The function-level dead-code estimate and the historical share of `docs/`.
 - Build-time effects of any target change.

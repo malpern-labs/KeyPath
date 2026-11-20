@@ -59,8 +59,10 @@ Want to see what's possible before you start? Check out [What You Can Build]({{ 
 The setup wizard opens the right pane in System Settings. Turn **KeyPath** on. macOS may ask for your password or Touch ID — that is macOS confirming the change, not KeyPath installing anything.
 
 
-![Screenshot]({{ '/images/help/screenshot-accessibility-settings.png' | relative_url }})
-Screenshot — System Settings > Privacy & Security > Device Control and Data Access (Accessibility before macOS 27):
+![KeyPath enabled in macOS 27 Device Control and Data Access]({{ '/images/help/screenshot-accessibility-settings.png' | relative_url }})
+Screenshot from a macOS 27 test Mac: **KeyPath** is on. The other apps shown are lab tools; you do not need to add or enable them.
+
+System Settings > Privacy & Security > Device Control and Data Access (Accessibility before macOS 27):
 ```
   ┌──────────────────────────────────────────────┐
   │  Privacy & Security > Device Control …       │
