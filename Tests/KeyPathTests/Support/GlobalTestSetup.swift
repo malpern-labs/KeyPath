@@ -21,15 +21,6 @@ enum TestSingletonReset {
             ProcessInfo.processInfo.environment["KEYPATH_TEST_VERBOSE_LOGS"] == "1"
         )
 
-        #if DEBUG
-            // All configuration-writing harnesses exercise the same fresh real
-            // bridge, including services constructed indirectly by managers.
-            // An explicit missing/bad path remains a validation failure.
-            ConfigurationService.setSessionValidationRuntimeHostForTesting(
-                ProcessInfo.processInfo.environment["KEYPATH_SESSION_TEST_BRIDGE_PATH"] == nil
-                    ? nil : SessionBridgeTestFixture.runtimeHost
-            )
-        #endif
         // MainAppStateController — most common source of flakiness
         let controller = MainAppStateController.shared
         controller.validationState = nil

@@ -12,7 +12,7 @@ import Network
 ///
 /// This service handles all configuration-related operations:
 /// - Loading and saving configuration files
-/// - Validation via TCP and file-based checks
+/// - Session admission and CLI validation
 /// - File watching and change detection
 /// - Key mapping generation and conversion
 public final class ConfigurationService: FileConfigurationProviding {
@@ -51,24 +51,10 @@ public final class ConfigurationService: FileConfigurationProviding {
     /// Protect shared state when accessed from multiple threads
     private let stateLock = NSLock()
 
-    #if DEBUG
-        private static let sessionValidationTestLock = NSLock()
-        /// Lock protects this test-only fixture. Validation still runs the real
-        /// parser and eligibility checks; no result can be forced to succeed.
-        private nonisolated(unsafe) static var sessionValidationTestHost: KanataRuntimeHost?
-
-        static func setSessionValidationRuntimeHostForTesting(_ host: KanataRuntimeHost?) {
-            sessionValidationTestLock.withLock { sessionValidationTestHost = host }
-        }
-    #endif
-
     private static func defaultSessionValidationRuntimeHost() -> KanataRuntimeHost {
         #if DEBUG
-            if let fixture = sessionValidationTestLock.withLock({ sessionValidationTestHost }) {
-                return fixture
-            }
-            // Plain XCTestCase suites can construct services before the shared
-            // reset hook. Honor only an explicit bridge in an actual test host.
+            // The safe test runner supplies the parser explicitly. An invalid
+            // path still fails admission, and release builds use the bundled host.
             if TestEnvironment.isTestHostProcess,
                let bridgePath = ProcessInfo.processInfo.environment["KEYPATH_SESSION_TEST_BRIDGE_PATH"]
             {

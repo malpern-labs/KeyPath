@@ -49,7 +49,6 @@ import Observation
 // - Configuration (UI-level operations)
 //   - `createDefaultUserConfigIfMissing()`
 //   - `backupFailedConfigAndApplySafe(failedConfig:mappings:)`
-//   - `validateConfigFile()`
 //   - `resetToDefaultConfig()`
 //
 // All other methods are internal implementation details and may change.
@@ -842,12 +841,6 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
     /// Returns true if the config exists after this call.
     func createDefaultUserConfigIfMissing() async -> Bool {
         await configurationManager.createDefaultIfMissing()
-    }
-
-    // MARK: - Configuration Validation
-
-    func validateConfigFile() async -> (isValid: Bool, errors: [String]) {
-        await configurationManager.validateConfigFile()
     }
 
     func backupFailedConfigAndApplySafe(failedConfig: String, mappings: [KeyMapping]) async throws

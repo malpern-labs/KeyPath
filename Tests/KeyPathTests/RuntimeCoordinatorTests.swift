@@ -37,12 +37,6 @@ final class RuntimeCoordinatorTests: KeyPathTestCase {
         XCTAssertTrue(manager.diagnostics.isEmpty, "Should have no diagnostics after clear")
     }
 
-    func testConfigValidation() async {
-        let validation = await manager.validateConfigFile()
-        XCTAssertNotNil(validation.isValid)
-        XCTAssertNotNil(validation.errors)
-    }
-
     func testKeyMappingStorage() {
         let testMapping = KeyMapping(input: "caps", action: .keystroke(key: "escape"))
         manager.keyMappings.append(testMapping)
@@ -61,13 +55,6 @@ final class RuntimeCoordinatorTests: KeyPathTestCase {
     func testInstallationStatus() {
         let isInstalled = manager.isCompletelyInstalled()
         XCTAssertNotNil(isInstalled)
-    }
-
-    func testPerformanceConfigValidation() async {
-        let startTime = Date()
-        _ = await manager.validateConfigFile()
-        let duration = Date().timeIntervalSince(startTime)
-        XCTAssertLessThan(duration, 10.0, "Config validation should complete within 10 seconds")
     }
 
     // MARK: - Grab recovery (#625)
