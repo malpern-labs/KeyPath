@@ -51,17 +51,17 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **B2** Scripts | ✅ | #1395. |
 | **B3** Dead Swift | ✅ | Deletion pass merged (#1398, #1406). Function-level Periphery scan completed with 3.8.0; retired unregistered CLI commands and their formatter are removed in this follow-up. Candidate diagnostics are not automatically safe deletions. |
 | **B4** Tests for removed behaviour | ✅ | Dead tests removed and two stale references refreshed (#1420). The historical General Settings reference was refreshed to the existing Nothing default in #1478, retaining tolerances. The combined gate passed 5,524 tests. |
-| **B5** Binary assets | 🟡 | Unused assets removed (#1397). Help asset compression and deduplication are in open PR #1422. Metal snapshot sizing remains open. |
-| **B6** Root and package stragglers | 🟡 | Root cleanup merged (#1395). Process probes moved into Core and the unused wizard screenshot and resource bundle were removed (#1440). Removed the nine unused library products; executable products and internal target dependencies remain unchanged. |
+| **B5** Binary assets | ✅ | Unused assets removed (#1397); help assets compressed/deduplicated (#1422). Metal goldens losslessly recompressed in #1479: 28.7% smaller, identical decoded scanlines, full resolution and tolerances retained. |
+| **B6** Root and package stragglers | ✅ | Root cleanup merged (#1395). Process probes moved into Core and the unused wizard screenshot and resource bundle were removed (#1440). Nine unused library product exports removed in #1475; executable products and internal target dependencies remain unchanged. |
 | **B7** Docs | 🟡 | Public docs republished, archive removed, and runtime architecture page rewritten and published (#1394, #1399, #1402, #1437). The macOS 27 Accessibility screenshot remains. |
 | **P1** Sparkle | ✅ | See row 5. |
 | **P2** Apple Events usage string | ✅ | #1404. Verify the consent prompt on a clean VM. |
-| **P3** Blocking subprocesses | ✅ | `SecCodeCopySelf` replaces the signing shell-out and pipes are drained before waiting (#1404). The migration process probe remains. |
+| **P3** Blocking subprocesses | ✅ | `SecCodeCopySelf` replaces the signing shell-out and pipes are drained before waiting (#1404). Migration discovery is async and bounded, with retryable unknown states and tested stop routing (#1480). The separate system-probe pipe-drain follow-up is still under validation. |
 | **P4** Shell-outs with API replacements | ✅ | Hidden flags, editor launch, function key preference writes, and signals use direct APIs. Spotlight search keeps a cancellable subprocess (#1426). |
 | **P5** `os.Logger` in `AppLogger` | ✅ | Unified log output added (#1427). File logger state is synchronized and queued writes flush (#1445). |
-| **P6** Concurrency leftovers | 🟡 | Feature flags and the app icon cache were synchronized (#1439). Broader Sendable, lock, timer, and actor isolation work remains. |
+| **P6** Concurrency leftovers | 🟡 | Feature flags and the app icon cache were synchronized (#1439). Three main-actor service conformances are compiler checked (#1481). Broader lock, timer, and actor-isolation work remains. |
 | **P7** Liquid Glass | ✅ | System glass in `AppGlassBackground` (#1408), checked on screen in light and dark. |
-| **P7** Other idioms | ⬜ | Color, activation, image drawing, wrappers, and window scenes remain opportunistic. |
+| **P7** Other idioms | 🟡 | Deprecated lockFocus drawing replaced (#1460). Color, activation, wrappers and window-scene follow-ups remain. |
 | **P8** Localization | 🟡 | English and Japanese, a CI-checked catalog, plurals, and localization of text passed to views as `String` merged (#1430–#1433). Accessibility IDs, remaining English values, layout fit, and native-speaker review remain. |
 | **P9** Test isolation | 🟡 | Config migration tests use isolated directories and passed concurrently (#1434). Subprocess test waits are bounded (#1438); concurrent stdout/stderr draining fixes pipe-capacity deadlocks (#1476). Approval-storage and script-action tests use isolated stores (#1478), and standalone smoke and Core lanes passed concurrently (#1446). Broader on-disk state isolation remains. |
 
@@ -74,7 +74,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 - P2: run the clean-VM installation and confirm the Apple Events consent prompt. B7 also tracks the macOS 27 Accessibility screenshot.
 - P8 and P9: finish localization verification and continue isolating shared test state.
-- B5: help asset compression and deduplication are tracked in [#1422](https://github.com/malpern-labs/KeyPath/pull/1422).
+- B5 and B6 are complete: merged asset and package cleanups are linked above.
 
 ---
 
