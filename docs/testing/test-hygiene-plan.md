@@ -755,3 +755,12 @@ arguments; GlobalHotkeyService accepts a defaults dependency with its existing
 standard default. Preference persistence and hotkey recovery tests use unique
 per-test suites and delete only those suites. They no longer change the shared
 preference owner to verify launch logging or hotkey consent recovery.
+
+### November 19: preference isolation validation
+
+The injected-defaults change passed the full safe gate: 5,525 tests, zero Swift
+warnings, with build and snapshot/test execution serialized on the Air.
+PreferencesServicePersistenceTests and GlobalHotkeyPermissionRecoveryTests use
+private per-test suites; ConfigurationManager reads the injected preference owner.
+This does not establish that all other defaults or notification-based tests are
+parallel-safe. Full log: `/private/tmp/keypath-preference-isolation-full-tests.log`.
