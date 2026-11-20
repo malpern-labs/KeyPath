@@ -51,3 +51,21 @@ The full safe gate subsequently passed 5,530 tests with zero Swift warnings
 was deleted; cleanup emitted a hydration-stop-marker warning. Do not describe
 that cleanup as warning-free. Splash show/overlay/hide events were retained in
 `splash-log.log`; these are timing logs, not a new visual screenshot test.
+
+## CI follow-up, November 20
+
+CI rejected four explicit-self formatting sites; the pinned formatter corrected
+those. Its full test lane also stalled in
+`ExternalKanataServiceCommandTests.testCommandWithLargeOutputOnBothStreamsDoesNotHang`
+and the 300-second watchdog terminated the run. Keep that failure as failed.
+The command implementation blocked on stdout while scheduling stderr drainage
+on Swift's cooperative pool. It now delegates to the existing SubprocessRunner,
+which drains both streams on dispatch queues and enforces a 30-second command
+budget. This avoids cooperative-pool starvation without increasing CI timeouts.
+The existing large-output regression is the direct validation target.
+
+The shared-runner follow-up passed all four ExternalKanataServiceCommandTests
+(including the 300 KB-per-stream regression) and the serialized full safe gate:
+5,531 tests, zero Swift warnings, 140 s build / 202 s tests (342 s total).
+Logs: `/private/tmp/keypath-shared-migration-runner-tests.log` and
+`/private/tmp/keypath-shared-migration-runner-full.log`.
