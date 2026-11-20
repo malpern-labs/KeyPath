@@ -30,7 +30,8 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
     var keyInputObserver: NotificationCenter.ObservationToken?
     var healthObserver: OverlayHealthIndicatorObserver?
     weak var hostingView: NSHostingView<LiveKeyboardOverlayView>?
-    private let frameStore = OverlayWindowFrameStore()
+    private let defaults: UserDefaults
+    private let frameStore: OverlayWindowFrameStore
     var hintWindowController: HideHintWindowController?
     var hintBubbleObserver: Task<Void, Never>?
     private var hiddenHintController: OverlayHiddenHintWindowController?
@@ -49,8 +50,8 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
     /// Track if user explicitly hid the overlay via toggle (Cmd+Opt+K or menu)
     /// When true, we won't auto-show on app activation
     private var userExplicitlyHidden: Bool {
-        get { UserDefaults.standard.bool(forKey: DefaultsKey.userExplicitlyHidden) }
-        set { UserDefaults.standard.set(newValue, forKey: DefaultsKey.userExplicitlyHidden) }
+        get { defaults.bool(forKey: DefaultsKey.userExplicitlyHidden) }
+        set { defaults.set(newValue, forKey: DefaultsKey.userExplicitlyHidden) }
     }
 
     /// Title bar height for the overlay window. Returns 0 for borderless, ~28 for titled.
@@ -66,7 +67,7 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
 
     /// Get the currently selected physical keyboard layout from UserDefaults
     private var activeLayout: PhysicalLayout {
-        let layoutId = UserDefaults.standard.string(forKey: LayoutPreferences.layoutIdKey) ?? LayoutPreferences.defaultLayoutId
+        let layoutId = defaults.string(forKey: LayoutPreferences.layoutIdKey) ?? LayoutPreferences.defaultLayoutId
         return PhysicalLayout.find(id: layoutId) ?? .macBookUS
     }
 
@@ -81,7 +82,7 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
     }
 
     var inspectorDebugEnabled: Bool {
-        UserDefaults.standard.bool(forKey: "OverlayInspectorDebug")
+        defaults.bool(forKey: "OverlayInspectorDebug")
     }
 
     /// Timer for smooth inspector reveal animation (windowDidResize doesn't fire continuously)
@@ -100,7 +101,11 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
     }
 
     /// Shared instance for app-wide access
-    static let shared = LiveKeyboardOverlayController()
+    static let shared: LiveKeyboardOverlayController = {
+        let controller = LiveKeyboardOverlayController(defaults: .standard)
+        controller.startObservingApp()
+        return controller
+    }()
 
     let oneShotOverride = OneShotLayerOverrideState(
         timeoutDuration: LiveKeyboardOverlayController.oneShotTimeoutDuration
@@ -117,8 +122,13 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
     var layerRevealWorkItem: DispatchWorkItem?
     var layerConcealWorkItem: DispatchWorkItem?
 
-    override private init() {
+    init(defaults: UserDefaults) {
+        self.defaults = defaults
+        frameStore = OverlayWindowFrameStore(defaults: defaults)
         super.init()
+    }
+
+    private func startObservingApp() {
         checkBuildVersionAndClearCacheIfNeeded()
         setupLayerChangeObserver()
         setupKeyInputObserver()
@@ -135,7 +145,7 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
         // Use git commit + build date as unique identifier (CFBundleVersion is always "0")
         let currentBuild = "\(buildInfo.git)_\(buildInfo.date)"
         let lastBuildKey = "LiveKeyboardOverlay.lastBuildIdentifier"
-        let lastBuild = UserDefaults.standard.string(forKey: lastBuildKey)
+        let lastBuild = defaults.string(forKey: lastBuildKey)
 
         if lastBuild != currentBuild {
             AppLogger.shared.info("🔄 [OverlayController] Build changed: \(lastBuild ?? "none") -> \(currentBuild)")
@@ -145,7 +155,7 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
             viewModel.invalidateLayerMappings()
 
             // Store new build identifier
-            UserDefaults.standard.set(currentBuild, forKey: lastBuildKey)
+            defaults.set(currentBuild, forKey: lastBuildKey)
         } else {
             AppLogger.shared.debug("✅ [OverlayController] Build unchanged: \(currentBuild)")
         }
@@ -172,7 +182,7 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
 
     private func blockOverlayBeforeOnboarding(reason: String) {
         AppLogger.shared.log("⏸️ [OverlayController] Overlay blocked before onboarding completes (\(reason))")
-        UserDefaults.standard.set(false, forKey: DefaultsKey.isVisible)
+        defaults.set(false, forKey: DefaultsKey.isVisible)
         viewModel.stopCapturing()
         dismissHintBubble()
         window?.orderOut(nil)
@@ -181,7 +191,6 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
     /// Restore overlay state from previous session
     /// Only restores if system status is healthy (Kanata running)
     func restoreState() {
-        let defaults = UserDefaults.standard
         guard defaults.bool(forKey: DefaultsKey.isVisible) else { return }
         guard !PreferencesService.shared.overlayShowsOnlyWhileLayerHeld else { return }
         guard canShowOverlay(reason: "restore state") else { return }
@@ -323,7 +332,7 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
             } else {
                 hideWindow()
             }
-            UserDefaults.standard.set(newValue, forKey: DefaultsKey.isVisible)
+            defaults.set(newValue, forKey: DefaultsKey.isVisible)
         }
     }
 

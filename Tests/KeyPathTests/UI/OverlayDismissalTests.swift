@@ -5,15 +5,14 @@ import XCTest
 @MainActor
 final class OverlayDismissalTests: XCTestCase {
     func testInstantCloseRejectsAlreadyQueuedOpeningTick() async throws {
-        let controller = LiveKeyboardOverlayController.shared
-        let previousWindow = controller.window
+        let preferences = try IsolatedPreferenceDefaults()
+        let controller = LiveKeyboardOverlayController(defaults: preferences.defaults)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 300),
                               styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         controller.window = window
         defer {
             controller.finalizeInspectorAnimation()
-            controller.window = previousWindow
             window.close()
         }
         controller.uiState.inspectorReveal = 0
@@ -33,23 +32,18 @@ final class OverlayDismissalTests: XCTestCase {
         XCTAssertFalse(controller.uiState.isInspectorAnimating)
     }
 
-    func testExplicitClosePreventsAutomaticShow() {
-        let controller = LiveKeyboardOverlayController.shared
-        let defaults = UserDefaults.standard
-        let keys = ["LiveKeyboardOverlay.userExplicitlyHidden", "LiveKeyboardOverlay.isVisible"]
-        let saved = keys.map { defaults.object(forKey: $0) }
-        let previousWindow = controller.window
-        controller.window = nil
-        defer {
-            controller.window = previousWindow
-            for (key, value) in zip(keys, saved) {
-                if let value { defaults.set(value, forKey: key) }
-                else { defaults.removeObject(forKey: key) }
-            }
-        }
-        defaults.set(false, forKey: keys[0])
+    func testExplicitClosePreventsAutomaticShowOnlyInItsOwnDomain() throws {
+        let preferences = try IsolatedPreferenceDefaults()
+        let otherPreferences = try IsolatedPreferenceDefaults()
+        let controller = LiveKeyboardOverlayController(defaults: preferences.defaults)
+        let otherController = LiveKeyboardOverlayController(defaults: otherPreferences.defaults)
+
+        XCTAssertTrue(controller.canAutoShow)
+        XCTAssertTrue(otherController.canAutoShow)
         controller.hideExplicitly()
-        XCTAssertTrue(defaults.bool(forKey: keys[0]))
+
+        XCTAssertTrue(preferences.defaults.bool(forKey: "LiveKeyboardOverlay.userExplicitlyHidden"))
         XCTAssertFalse(controller.canAutoShow)
+        XCTAssertTrue(otherController.canAutoShow)
     }
 }
