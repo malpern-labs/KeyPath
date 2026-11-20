@@ -1,5 +1,6 @@
 import Foundation
 @testable import KeyPathAppKit
+import KeyPathRulesCore
 import Testing
 
 /// Tests for QMK layout JSON parsing

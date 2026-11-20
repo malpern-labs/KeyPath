@@ -3,33 +3,33 @@ import Foundation
 // MARK: - Layout Preferences Keys
 
 /// UserDefaults/AppStorage keys for physical layout preferences
-enum LayoutPreferences {
+package enum LayoutPreferences {
     /// Key for storing the selected physical keyboard layout ID
-    static let layoutIdKey = "overlayLayoutId"
+    package static let layoutIdKey = "overlayLayoutId"
 
     /// Default layout ID when none is set
-    static let defaultLayoutId = "macbook-us"
+    package static let defaultLayoutId = "macbook-us"
 
     /// Key for enabling QMK keyboard search (default: true)
-    static let qmkSearchEnabledKey = "qmkSearchEnabled"
+    package static let qmkSearchEnabledKey = "qmkSearchEnabled"
     /// Default value for QMK search enabled flag
-    static let qmkSearchEnabledDefault = true
+    package static let qmkSearchEnabledDefault = true
 }
 
 // MARK: - Layout Categories
 
 /// Categories for organizing physical keyboard layouts in the UI
-enum LayoutCategory: String, CaseIterable, Identifiable {
+package enum LayoutCategory: String, CaseIterable, Identifiable {
     case usStandard = "US Standard"
     case international = "International"
     case ergonomic = "Ergonomic / Split"
     case custom = "Custom"
 
-    var id: String {
+    package var id: String {
         rawValue
     }
 
-    var displayName: String {
+    package var displayName: String {
         switch self {
         case .usStandard: String(localized: "US Standard")
         case .international: String(localized: "International")
@@ -40,53 +40,53 @@ enum LayoutCategory: String, CaseIterable, Identifiable {
 }
 
 /// Represents a single physical key on a keyboard layout
-struct PhysicalKey: Identifiable, Hashable {
+package struct PhysicalKey: Identifiable, Hashable, Sendable {
     /// Sentinel keyCode for keys with no macOS equivalent (layer switches, transparent, macros).
     /// Uses 0xFFFF which is outside the valid macOS virtual keyCode range (0x00–0x7F).
-    static let unmappedKeyCode: UInt16 = 0xFFFF
+    package static let unmappedKeyCode: UInt16 = 0xFFFF
 
     /// Base for placeholder keyCodes assigned to unrecognized keys during QMK import.
     /// Uses 0xF000+ to avoid collision with real macOS keyCodes (0x00–0x7F range).
     /// Range 0xF000–0xFFFE supports up to 4094 placeholder keys per layout.
-    static let placeholderKeyCodeBase: UInt16 = 0xF000
+    package static let placeholderKeyCodeBase: UInt16 = 0xF000
 
     /// Safe placeholder keyCode for a given index, clamped to avoid overflow past unmappedKeyCode.
-    static func placeholderKeyCode(for index: Int) -> UInt16 {
+    package static func placeholderKeyCode(for index: Int) -> UInt16 {
         let clamped = UInt16(clamping: min(max(0, index), 0xFFE))
         return placeholderKeyCodeBase + clamped
     }
 
-    let id: UUID
-    let keyCode: UInt16 // CGEvent key code (matches KeyboardCapture)
-    let label: String // Display label ("A", "Shift", "⌘", "🔅")
-    let x: Double // In keyboard units (0-based)
-    let y: Double
-    let width: Double // 1.0 = standard key
-    let height: Double
-    let rotation: Double // Rotation in degrees (for ergonomic keyboards)
-    let rotationPivotX: Double? // Rotation pivot X (for QMK rotation)
-    let rotationPivotY: Double? // Rotation pivot Y (for QMK rotation)
+    package let id: UUID
+    package let keyCode: UInt16 // CGEvent key code (matches KeyboardCapture)
+    package let label: String // Display label ("A", "Shift", "⌘", "🔅")
+    package let x: Double // In keyboard units (0-based)
+    package let y: Double
+    package let width: Double // 1.0 = standard key
+    package let height: Double
+    package let rotation: Double // Rotation in degrees (for ergonomic keyboards)
+    package let rotationPivotX: Double? // Rotation pivot X (for QMK rotation)
+    package let rotationPivotY: Double? // Rotation pivot Y (for QMK rotation)
 
     // MARK: - Multi-Legend Support (JIS/ISO)
 
     /// Shifted character legend (top position on keycap)
     /// Example: "!" for the "1" key, "@" for "2", etc.
-    let shiftLabel: String?
+    package let shiftLabel: String?
 
     /// Sub-label for alternate input (front/bottom-right on keycap)
     /// Example: Hiragana characters on JIS keyboards ("ぬ" on "1" key)
-    let subLabel: String?
+    package let subLabel: String?
 
     /// Tertiary label for additional legends (front/bottom-left on keycap)
     /// Example: Additional symbols or alternate character sets
-    let tertiaryLabel: String?
+    package let tertiaryLabel: String?
 
     /// Whether this key has multi-legend content requiring special rendering
-    var hasMultipleLegends: Bool {
+    package var hasMultipleLegends: Bool {
         shiftLabel != nil || subLabel != nil || tertiaryLabel != nil
     }
 
-    init(
+    package init(
         id: UUID = UUID(),
         keyCode: UInt16,
         label: String,
@@ -119,7 +119,7 @@ struct PhysicalKey: Identifiable, Hashable {
     /// Computed visual position after applying rotation transform
     /// For keys with rotation, the x/y in QMK format are pre-rotation coordinates
     /// that need to be rotated around the pivot point (rx, ry)
-    var visualX: Double {
+    package var visualX: Double {
         guard rotation != 0, let rx = rotationPivotX, let ry = rotationPivotY else {
             return x
         }
@@ -131,7 +131,7 @@ struct PhysicalKey: Identifiable, Hashable {
         return rotatedX + rx - width / 2
     }
 
-    var visualY: Double {
+    package var visualY: Double {
         guard rotation != 0, let rx = rotationPivotX, let ry = rotationPivotY else {
             return y
         }

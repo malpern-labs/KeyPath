@@ -1,4 +1,5 @@
 import AppKit
+import KeyPathRulesCore
 import SwiftUI
 
 /// A clickable keycap for the simulator keyboard.

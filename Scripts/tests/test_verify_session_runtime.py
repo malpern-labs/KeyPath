@@ -252,6 +252,10 @@ class SessionVerificationTests(unittest.TestCase):
         (app / 'Contents/Resources/KeyPath_KeyPathAppKit.bundle/default.metallib').write_bytes(b'fixture-metallib')
         catalog = app / 'Contents/Resources/KeyPath_KeyPathRulesCore.bundle/rule-collection-catalog.json'
         catalog.write_text('{"collections":[]}')
+        layout_dir = catalog.parent / 'Keyboards'
+        layout_dir.mkdir()
+        for layout_name in ('macbook-us.json', 'ansi-60.json'):
+            (layout_dir / layout_name).write_text('{}')
         (app / 'Contents/Resources/keypath-poster-hor.png').write_bytes(b'fixture-poster')
         sparkle = app / 'Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle'
         sparkle.parent.mkdir(parents=True)

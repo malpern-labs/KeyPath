@@ -1,6 +1,7 @@
 @testable import KeyPathAppKit
 import KeyPathCore
 import KeyPathPermissions
+import KeyPathRulesCore
 import XCTest
 
 final class RegistryKeyboardsTests: XCTestCase {

@@ -2,6 +2,7 @@ import Foundation
 import IOKit
 import IOKit.hid
 import KeyPathCore
+import KeyPathRulesCore
 
 /// Detects the physical keyboard type (ANSI, ISO, JIS) from IOKit.
 /// Used to set smart defaults for the overlay keyboard layout on first launch.

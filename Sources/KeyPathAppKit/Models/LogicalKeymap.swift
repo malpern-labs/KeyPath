@@ -1,4 +1,5 @@
 import Foundation
+import KeyPathRulesCore
 
 struct LogicalKeymap: Identifiable {
     let id: String

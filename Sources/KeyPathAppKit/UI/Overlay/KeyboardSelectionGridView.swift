@@ -1,4 +1,5 @@
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 /// Visual keyboard selection grid component with illustrations, organized by category
