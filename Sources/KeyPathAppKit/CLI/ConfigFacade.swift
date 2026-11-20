@@ -184,7 +184,7 @@ public struct ConfigFacade: Sendable {
         return ReloadResult(
             success: success, response: nil,
             errorMessage: success ? nil : "CLI reload failed",
-            protocol: nil, disposition: success ? .applied : .failed
+            disposition: success ? .applied : .failed
         )
     }
 

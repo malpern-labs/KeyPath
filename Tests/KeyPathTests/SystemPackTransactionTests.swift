@@ -77,7 +77,7 @@ final class SystemPackTransactionTests: KeyPathTestCase {
     }
 
     private static func reload(_ disposition: ReloadDisposition) -> ReloadResult {
-        ReloadResult(success: disposition == .applied, response: nil, errorMessage: "injected \(disposition)", protocol: nil, disposition: disposition)
+        ReloadResult(success: disposition == .applied, response: nil, errorMessage: "injected \(disposition)", disposition: disposition)
     }
 
     @discardableResult

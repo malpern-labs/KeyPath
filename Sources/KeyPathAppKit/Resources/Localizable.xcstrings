@@ -12801,16 +12801,6 @@
         }
       }
     },
-    "Engine control over the worker's Unix-domain socket, owner-checked (ADR-046)" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ワーカーのUnixドメインソケット経由でのエンジン制御（所有者チェックあり、ADR-046）"
-          }
-        }
-      }
-    },
     "Enhanced by" : {
       "localizations" : {
         "ja" : {
@@ -26948,16 +26938,6 @@
         }
       }
     },
-    "Reliable TCP protocol for config reloading (no authentication required - see ADR-013)" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "設定ファイル再読み込み用の信頼性の高いTCPプロトコル（認証不要 - ADR-013を参照）"
-          }
-        }
-      }
-    },
     "Reload delayed: %@" : {
       "localizations" : {
         "ja" : {
@@ -32576,16 +32556,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "TCCデータベースチェック結果:"
-          }
-        }
-      }
-    },
-    "TCP (Reliable)" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "TCP (高信頼)"
           }
         }
       }

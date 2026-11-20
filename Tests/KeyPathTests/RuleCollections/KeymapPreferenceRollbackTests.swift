@@ -22,7 +22,7 @@ final class KeymapPreferenceRollbackTests: KeyPathTestCase {
                 var reloadCount = 0
                 manager.onRulesChanged = {
                     reloadCount += 1
-                    return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+                    return ReloadResult(success: true, response: nil, errorMessage: nil)
                 }
                 _ = await manager.setActiveKeymap(LogicalKeymap.colemak.id, includePunctuation: true)
                 XCTAssertEqual(manager.activeKeymapId, oldID)
@@ -97,7 +97,7 @@ final class KeymapPreferenceRollbackTests: KeyPathTestCase {
     func testPendingSavePersistsTheSelectedKeymapAndPunctuation() async throws {
         try await withManager(blockWrites: false) { manager, preferences in
             manager.onRulesChanged = {
-                ReloadResult(success: false, response: nil, errorMessage: "offline", protocol: nil, disposition: .pending)
+                ReloadResult(success: false, response: nil, errorMessage: "offline", disposition: .pending)
             }
             _ = await manager.setActiveKeymap(LogicalKeymap.dvorak.id, includePunctuation: true)
             XCTAssertEqual(preferences.string(forKey: "activeKeymapId"), LogicalKeymap.dvorak.id)
@@ -227,7 +227,7 @@ final class KeymapPreferenceRollbackTests: KeyPathTestCase {
     }
 
     private static func reload(_ disposition: ReloadDisposition) -> ReloadResult {
-        ReloadResult(success: disposition == .applied, response: nil, errorMessage: "injected \(disposition)", protocol: nil, disposition: disposition)
+        ReloadResult(success: disposition == .applied, response: nil, errorMessage: "injected \(disposition)", disposition: disposition)
     }
 
     private func files(_ manager: RuleCollectionsManager) async throws -> [String: Data] {
