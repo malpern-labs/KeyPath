@@ -807,7 +807,7 @@ extension ServiceLifecycleCoordinator {
     }
 
     private func launchSessionProcess(capabilitiesOnly: Bool) async throws -> (NSRunningApplication, URL, String) {
-        guard !TestEnvironment.isTestHostProcess else {
+        guard !TestEnvironment.isRunningTests else {
             throw KeyPathError.process(.startFailed(reason: "Session application launches are disabled in unit tests"))
         }
         let nonce = UUID().uuidString
