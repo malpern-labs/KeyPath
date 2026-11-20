@@ -105,15 +105,23 @@ struct SessionCapsSelection: Codable, Sendable, Equatable {
 }
 
 @MainActor
-enum SessionCapsSelectionStore {
-    static func save(_ selection: SessionCapsSelection?) throws {
+struct SessionCapsSelectionStore {
+    static let shared = Self(defaults: .standard)
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
+
+    func save(_ selection: SessionCapsSelection?) throws {
         if let selection {
             let data = try JSONEncoder().encode(selection)
             _ = try SessionCapsSelection.decode(data, currentBoot: SessionCapsRuntimeSupport.bootSessionUUID())
-            UserDefaults.standard.set(data, forKey: SessionCapsRuntimeSupport.selectionKey)
+            defaults.set(data, forKey: SessionCapsRuntimeSupport.selectionKey)
         } else {
-            UserDefaults.standard.removeObject(forKey: SessionCapsRuntimeSupport.selectionKey)
-            UserDefaults.standard.removeObject(forKey: SessionCapsRuntimeSupport.selectionNameKey)
+            defaults.removeObject(forKey: SessionCapsRuntimeSupport.selectionKey)
+            defaults.removeObject(forKey: SessionCapsRuntimeSupport.selectionNameKey)
             setDisplaced(nil, name: nil)
         }
     }
@@ -124,34 +132,34 @@ enum SessionCapsSelectionStore {
     /// keyboard, back at the same port in the same boot, gets its choice back
     /// even after automatic setup moved Caps rules to another keyboard.
     /// Cleared by any explicit choice, by turning setup off, and on re-bind.
-    static var displaced: (data: Data, name: String?)? {
-        guard let record = UserDefaults.standard.dictionary(forKey: displacedKey),
+    var displaced: (data: Data, name: String?)? {
+        guard let record = defaults.dictionary(forKey: Self.displacedKey),
               let data = record["selection"] as? Data, data.count <= 4096 else { return nil }
         return (data, record["name"] as? String)
     }
 
-    static func setDisplaced(_ data: Data?, name: String?) {
+    func setDisplaced(_ data: Data?, name: String?) {
         guard let data else {
-            UserDefaults.standard.removeObject(forKey: displacedKey)
+            defaults.removeObject(forKey: Self.displacedKey)
             return
         }
         var record: [String: Any] = ["selection": data]
         if let name { record["name"] = name }
-        UserDefaults.standard.set(record, forKey: displacedKey)
+        defaults.set(record, forKey: Self.displacedKey)
     }
 
     /// Remember what the chosen keyboard is called, for messages after it
     /// disconnects. Display only; the selection alone identifies the device.
     /// An unknown name clears the old one rather than naming the wrong keyboard.
-    static func saveName(_ name: String?) {
+    func saveName(_ name: String?) {
         guard let name, !name.isEmpty, name.utf8.count <= 256 else {
-            UserDefaults.standard.removeObject(forKey: SessionCapsRuntimeSupport.selectionNameKey)
+            defaults.removeObject(forKey: SessionCapsRuntimeSupport.selectionNameKey)
             return
         }
-        UserDefaults.standard.set(name, forKey: SessionCapsRuntimeSupport.selectionNameKey)
+        defaults.set(name, forKey: SessionCapsRuntimeSupport.selectionNameKey)
     }
 
-    static var savedName: String? {
-        UserDefaults.standard.string(forKey: SessionCapsRuntimeSupport.selectionNameKey)
+    var savedName: String? {
+        defaults.string(forKey: SessionCapsRuntimeSupport.selectionNameKey)
     }
 }
