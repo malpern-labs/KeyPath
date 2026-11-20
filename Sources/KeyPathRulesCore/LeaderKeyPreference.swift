@@ -20,6 +20,10 @@ public struct LeaderKeyPreference: Codable, Equatable, Sendable {
         enabled: false
     )
 
+    package init(persistedData: Data?) {
+        self = persistedData.flatMap { try? JSONDecoder().decode(Self.self, from: $0) } ?? .default
+    }
+
     public init(key: String, targetLayer: RuleCollectionLayer, enabled: Bool) {
         self.key = key
         self.targetLayer = targetLayer

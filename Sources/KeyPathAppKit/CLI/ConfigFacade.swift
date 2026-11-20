@@ -110,8 +110,8 @@ public struct ConfigFacade: Sendable {
         // neither in sync with the collection, so `keypath collection`/JSON edits to
         // `selectedOutput` were silently ignored by `keypath apply`. Reconcile both, mirroring
         // the in-process reconcile the app does on load (RuleCollectionsManager). See #889.
-        let previousData = preferenceDefaults.data(forKey: PreferencesService.leaderKeyPreferenceKey)
-        let current = previousData.flatMap { try? JSONDecoder().decode(LeaderKeyPreference.self, from: $0) } ?? .default
+        let previousData = preferenceDefaults.data(forKey: RecoverableRuleWrite.PreferenceRole.leader.key)
+        let current = LeaderKeyPreference(persistedData: previousData)
         let reconcile = LeaderKeyPreference.reconciled(from: collections, current: current)
         if let reconcile {
             AppLogger.shared.log(
@@ -194,7 +194,7 @@ public struct ConfigFacade: Sendable {
     }
 
     private var preferenceDefaults: UserDefaults {
-        preferenceDefaultsOverride?.value ?? PreferencesService.canonicalDefaults
+        preferenceDefaultsOverride?.value ?? RecoverableRuleWrite.PreferenceDefaults.canonical
     }
 
     @MainActor
