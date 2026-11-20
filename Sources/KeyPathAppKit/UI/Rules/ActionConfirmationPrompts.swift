@@ -74,7 +74,7 @@ enum ActionConfirmationPrompts {
         }
         // Cleared when the prompt is answered.
         isShowing = true
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         show()
     }
 

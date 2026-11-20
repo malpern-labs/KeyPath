@@ -132,7 +132,7 @@ enum RuntimeControlHandler {
         uninstall.setAccessibilityIdentifier("cli-uninstall-confirm-button")
         uninstall.hasDestructiveAction = true
         alert.buttons.first?.keyEquivalent = "\u{1b}"
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         // Shown as a window, not modally, so the main actor keeps running. It
         // closes as Cancel after the timeout, or as soon as the keypath command
         // that asked stops waiting (Ctrl-C, its own timeout).
