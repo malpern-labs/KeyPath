@@ -84,24 +84,14 @@ final class FirstSuccessOnboardingGateTests: XCTestCase {
     }
 
     @MainActor
-    func testSessionPostStartRefreshPresentsTourAfterHealthyVerification() async {
-        let defaults = UserDefaults.standard
-        let previousShownValue = defaults.object(
-            forKey: FirstSuccessOnboardingGate.hasShownKey
-        )
-        defaults.set(false, forKey: FirstSuccessOnboardingGate.hasShownKey)
-        defer {
-            if let previousShownValue {
-                defaults.set(previousShownValue, forKey: FirstSuccessOnboardingGate.hasShownKey)
-            } else {
-                defaults.removeObject(forKey: FirstSuccessOnboardingGate.hasShownKey)
-            }
-        }
+    func testSessionPostStartRefreshPresentsTourAfterHealthyVerification() async throws {
+        let preferences = try IsolatedPreferenceDefaults()
 
         var presentationCount = 0
         let view = InstallationWizardView(
             onFirstSuccess: { presentationCount += 1 },
             didShowWelcomePage: true,
+            onboardingDefaults: preferences.defaults,
             postStartStateDetector: {
                 SystemStateResult(
                     state: .active,
@@ -124,24 +114,14 @@ final class FirstSuccessOnboardingGateTests: XCTestCase {
     }
 
     @MainActor
-    func testPostStartRefreshDoesNotRequestOnboardingWhenVerificationIsUnhealthy() async {
-        let defaults = UserDefaults.standard
-        let previousShownValue = defaults.object(
-            forKey: FirstSuccessOnboardingGate.hasShownKey
-        )
-        defaults.set(false, forKey: FirstSuccessOnboardingGate.hasShownKey)
-        defer {
-            if let previousShownValue {
-                defaults.set(previousShownValue, forKey: FirstSuccessOnboardingGate.hasShownKey)
-            } else {
-                defaults.removeObject(forKey: FirstSuccessOnboardingGate.hasShownKey)
-            }
-        }
+    func testPostStartRefreshDoesNotRequestOnboardingWhenVerificationIsUnhealthy() async throws {
+        let preferences = try IsolatedPreferenceDefaults()
 
         var presentationCount = 0
         let view = InstallationWizardView(
             onFirstSuccess: { presentationCount += 1 },
             didShowWelcomePage: true,
+            onboardingDefaults: preferences.defaults,
             postStartStateDetector: {
                 SystemStateResult(
                     state: .serviceNotRunning,
