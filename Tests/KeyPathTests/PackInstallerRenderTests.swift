@@ -23,7 +23,7 @@ final class PackInstallerRenderTests: XCTestCase {
             ]
         )
 
-        let rules = PackInstaller.shared.renderBindings(for: pack, quickSettings: [:])
+        let rules = PackInstaller.testInstaller().renderBindings(for: pack, quickSettings: [:])
 
         XCTAssertEqual(rules.count, 1)
         let rule = rules[0]
@@ -52,7 +52,7 @@ final class PackInstallerRenderTests: XCTestCase {
             ]
         )
 
-        let rules = PackInstaller.shared.renderBindings(for: pack, quickSettings: ["holdTimeout": 180])
+        let rules = PackInstaller.testInstaller().renderBindings(for: pack, quickSettings: ["holdTimeout": 180])
 
         XCTAssertEqual(rules.count, 1)
         let rule = rules[0]
@@ -82,7 +82,7 @@ final class PackInstallerRenderTests: XCTestCase {
             ]
         )
 
-        let rules = PackInstaller.shared.renderBindings(for: pack, quickSettings: [:])
+        let rules = PackInstaller.testInstaller().renderBindings(for: pack, quickSettings: [:])
 
         if case let .dualRole(dr) = rules.first?.behavior {
             XCTAssertEqual(dr.tapTimeout, 200)
@@ -111,7 +111,7 @@ final class PackInstallerRenderTests: XCTestCase {
             ]
         )
 
-        let rules = PackInstaller.shared.renderBindings(for: pack, quickSettings: [:])
+        let rules = PackInstaller.testInstaller().renderBindings(for: pack, quickSettings: [:])
 
         XCTAssertEqual(rules.count, 3)
         XCTAssertEqual(rules[0].input, "a")
@@ -141,7 +141,7 @@ final class PackInstallerRenderTests: XCTestCase {
             ]
         )
 
-        let rules = PackInstaller.shared.renderBindings(for: pack, quickSettings: [:])
+        let rules = PackInstaller.testInstaller().renderBindings(for: pack, quickSettings: [:])
 
         for rule in rules {
             XCTAssertEqual(rule.packSource, "com.keypath.pack.custom-test")
@@ -165,7 +165,7 @@ final class PackInstallerRenderTests: XCTestCase {
             ]
         )
 
-        let rules = PackInstaller.shared.renderBindings(for: pack, quickSettings: [:])
+        let rules = PackInstaller.testInstaller().renderBindings(for: pack, quickSettings: [:])
 
         XCTAssertEqual(rules.first?.title, "My Pack · Q")
     }
@@ -187,7 +187,7 @@ final class PackInstallerRenderTests: XCTestCase {
             ]
         )
 
-        let rules = PackInstaller.shared.renderBindings(for: pack, quickSettings: [:])
+        let rules = PackInstaller.testInstaller().renderBindings(for: pack, quickSettings: [:])
 
         XCTAssertEqual(rules.first?.notes, "This is a note")
     }
@@ -207,7 +207,7 @@ final class PackInstallerRenderTests: XCTestCase {
             bindings: []
         )
 
-        let rules = PackInstaller.shared.renderBindings(for: pack, quickSettings: [:])
+        let rules = PackInstaller.testInstaller().renderBindings(for: pack, quickSettings: [:])
         XCTAssertTrue(rules.isEmpty)
     }
 

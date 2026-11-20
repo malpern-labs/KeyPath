@@ -42,8 +42,8 @@ final class PackInstallPreviewTests: KeyPathTestCase {
     }
 
     func testCleanPackNeedsNoConfirmation() async {
-        let preview = await PackInstaller.shared.admissionPreview(for: bindingPack(inputs: ["f13"]), manager: manager,
-                                                                  installedPackTracker: tracker, profile: allowAll)
+        let preview = await PackInstaller.testInstaller().admissionPreview(for: bindingPack(inputs: ["f13"]), manager: manager,
+                                                                           installedPackTracker: tracker, profile: allowAll)
         XCTAssertFalse(preview.requiresConfirmation)
         XCTAssertTrue(preview.items.isEmpty)
         XCTAssertTrue(preview.summaryLines.isEmpty)
@@ -53,8 +53,8 @@ final class PackInstallPreviewTests: KeyPathTestCase {
     /// reserved Caps key installs in one click and the move is summarised.
     func testPackOnTheReservedCapsKeyInstallsWithANote() async {
         manager.admissionEnvironment = .init(capsIntermediate: "f18")
-        let preview = await PackInstaller.shared.admissionPreview(for: bindingPack(inputs: ["f18"]), manager: manager,
-                                                                  installedPackTracker: tracker, profile: allowAll)
+        let preview = await PackInstaller.testInstaller().admissionPreview(for: bindingPack(inputs: ["f18"]), manager: manager,
+                                                                           installedPackTracker: tracker, profile: allowAll)
         XCTAssertFalse(preview.requiresConfirmation)
         XCTAssertEqual(preview.summaryLines.count, 1)
         XCTAssertTrue(preview.summaryLines[0].contains("Caps Lock will use F19 instead"), preview.summaryLines[0])
@@ -64,8 +64,8 @@ final class PackInstallPreviewTests: KeyPathTestCase {
         let mine = CustomRule(title: "Mine", input: "f13", action: .keystroke(key: "f15"))
         manager.customRules = [mine]
         let pack = bindingPack(inputs: ["f13"])
-        let preview = await PackInstaller.shared.admissionPreview(for: pack, manager: manager,
-                                                                  installedPackTracker: tracker, profile: allowAll)
+        let preview = await PackInstaller.testInstaller().admissionPreview(for: pack, manager: manager,
+                                                                           installedPackTracker: tracker, profile: allowAll)
         XCTAssertTrue(preview.needsChoice)
         XCTAssertFalse(preview.isBlocked)
         XCTAssertEqual(preview.disableOptions.map(\.id), [mine.id])
@@ -74,7 +74,7 @@ final class PackInstallPreviewTests: KeyPathTestCase {
 
         // A checked install stops and hands the preview to the UI.
         do {
-            _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker, admission: .checked)
+            _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker, admission: .checked)
             XCTFail("expected needsReview")
         } catch let PackInstaller.InstallError.needsReview(p) {
             XCTAssertEqual(p.disableOptions.map(\.id), [mine.id])
@@ -91,7 +91,7 @@ final class PackInstallPreviewTests: KeyPathTestCase {
             collectionStore: manager.ruleCollectionStore, customStore: manager.customRulesStore
         )
         let pack = bindingPack(inputs: ["f13"])
-        _ = try await PackInstaller.shared.install(
+        _ = try await PackInstaller.testInstaller().install(
             pack, manager: manager, installedPackTracker: tracker,
             admission: .confirmed(disablingCollections: [], disablingRules: [mine.id], removingPacks: [])
         )
@@ -107,17 +107,17 @@ final class PackInstallPreviewTests: KeyPathTestCase {
                                    isEnabled: true, icon: "star", tags: [], targetLayer: .base,
                                    momentaryActivator: nil, configuration: .list)
         manager.ruleCollections = [other]
-        let preview = await PackInstaller.shared.admissionPreview(for: PackRegistry.homeRowArrows, manager: manager,
-                                                                  installedPackTracker: tracker, profile: allowAll)
+        let preview = await PackInstaller.testInstaller().admissionPreview(for: PackRegistry.homeRowArrows, manager: manager,
+                                                                           installedPackTracker: tracker, profile: allowAll)
         XCTAssertTrue(preview.needsChoice, "\(preview.items)")
         XCTAssertTrue(preview.disableOptions.contains { $0.id == other.id })
         XCTAssertFalse(preview.disableOptions.contains { $0.id == RuleCollectionIdentifier.homeRowArrows })
     }
 
     func testMissingRequiredAppBlocksWithAnInstallLink() async {
-        let preview = await PackInstaller.shared.admissionPreview(for: PackRegistry.kindaVim, manager: manager,
-                                                                  installedPackTracker: tracker, profile: allowAll,
-                                                                  fileExists: { _ in false })
+        let preview = await PackInstaller.testInstaller().admissionPreview(for: PackRegistry.kindaVim, manager: manager,
+                                                                           installedPackTracker: tracker, profile: allowAll,
+                                                                           fileExists: { _ in false })
         XCTAssertTrue(preview.isBlocked)
         XCTAssertEqual(preview.blockingItems.first?.presentation.options.map(\.label), ["Install KindaVim"])
         XCTAssertTrue(preview.disableOptions.isEmpty)
@@ -126,9 +126,9 @@ final class PackInstallPreviewTests: KeyPathTestCase {
     func testDeclaredPackConflictOffersRemovingTheInstalledPack() async throws {
         try await tracker.upsert(InstalledPackRecord(packID: PackRegistry.kindaVim.id, version: "1", installedAt: Date()))
         let vim = try XCTUnwrap(PackRegistry.pack(id: "com.keypath.pack.vim-navigation"))
-        let preview = await PackInstaller.shared.admissionPreview(for: vim, manager: manager,
-                                                                  installedPackTracker: tracker, profile: allowAll,
-                                                                  fileExists: { _ in true })
+        let preview = await PackInstaller.testInstaller().admissionPreview(for: vim, manager: manager,
+                                                                           installedPackTracker: tracker, profile: allowAll,
+                                                                           fileExists: { _ in true })
         XCTAssertTrue(preview.needsChoice, "\(preview.items)")
         XCTAssertEqual(preview.removeOptions.map(\.packID), [PackRegistry.kindaVim.id])
     }
@@ -138,7 +138,7 @@ final class PackInstallPreviewTests: KeyPathTestCase {
         manager.customRules = [mine]
         let pack = bindingPack(inputs: ["f13"])
         // Pack wins silently, as before this phase (onboarding and programmatic callers).
-        _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker, admission: .unchecked)
+        _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker, admission: .unchecked)
         let installedUnchecked: Bool = await tracker.isInstalled(packID: pack.id)
         XCTAssertTrue(installedUnchecked)
     }

@@ -108,7 +108,7 @@ final class GenericPackConfigTests: XCTestCase {
             reloads += 1
             return ReloadResult(success: false, response: nil, errorMessage: "Keyboard not attached", protocol: nil, disposition: .pending)
         }
-        _ = try await PackInstaller.shared.install(
+        _ = try await PackInstaller.testInstaller().install(
             PackRegistry.capsLockToEscape, collectionConfiguration: configuration,
             manager: manager, installedPackTracker: tracker
         )
@@ -237,7 +237,7 @@ final class GenericPackConfigTests: XCTestCase {
             return .applyWithoutProviders
         }
 
-        _ = try await PackInstaller.shared.install(
+        _ = try await PackInstaller.testInstaller().install(
             PackRegistry.capsLockToEscape,
             collectionConfiguration: supportedTapHold(configuration, identityHold: true),
             autoResolveCollectionConflicts: false,
@@ -509,7 +509,7 @@ final class GenericPackConfigTests: XCTestCase {
         )
 
         do {
-            _ = try await PackInstaller.shared.install(
+            _ = try await PackInstaller.testInstaller().install(
                 PackRegistry.capsLockToEscape,
                 collectionConfiguration: onboardingConfiguration,
                 autoResolveCollectionConflicts: false,
@@ -555,7 +555,7 @@ final class GenericPackConfigTests: XCTestCase {
         }
 
         do {
-            _ = try await PackInstaller.shared.install(
+            _ = try await PackInstaller.testInstaller().install(
                 PackRegistry.keystrokeHistory,
                 manager: manager,
                 installedPackTracker: failingTracker
@@ -637,7 +637,7 @@ final class GenericPackConfigTests: XCTestCase {
         }
 
         do {
-            _ = try await PackInstaller.shared.install(
+            _ = try await PackInstaller.testInstaller().install(
                 pack,
                 manager: manager,
                 skipFinalReload: true,
@@ -704,7 +704,7 @@ final class GenericPackConfigTests: XCTestCase {
         configuration.updateSelectedTapOutput("esc")
 
         do {
-            _ = try await PackInstaller.shared.install(
+            _ = try await PackInstaller.testInstaller().install(
                 PackRegistry.capsLockToEscape,
                 collectionConfiguration: configuration,
                 manager: manager,
@@ -791,7 +791,7 @@ final class GenericPackConfigTests: XCTestCase {
         }
 
         do {
-            _ = try await PackInstaller.shared.install(
+            _ = try await PackInstaller.testInstaller().install(
                 supportedLauncherPack,
                 managedDefaultPolicy: .useRecommended,
                 manager: manager,
@@ -887,7 +887,7 @@ final class GenericPackConfigTests: XCTestCase {
         try Data("external directory".utf8).write(to: externalMarker)
 
         do {
-            _ = try await PackInstaller.shared.install(
+            _ = try await PackInstaller.testInstaller().install(
                 supportedLauncherPack,
                 managedDefaultPolicy: .useRecommended,
                 manager: manager,
@@ -956,7 +956,7 @@ final class GenericPackConfigTests: XCTestCase {
             )
         )
 
-        _ = try await PackInstaller.shared.install(
+        _ = try await PackInstaller.testInstaller().install(
             PackRegistry.capsLockToEscape,
             collectionConfiguration: supportedTapHold(configuration, identityHold: true),
             manager: manager,
@@ -967,7 +967,7 @@ final class GenericPackConfigTests: XCTestCase {
                 .configuration.tapHoldPickerConfig?.selectedHoldOutput,
             "rctl"
         )
-        _ = try await PackInstaller.shared.install(
+        _ = try await PackInstaller.testInstaller().install(
             supportedLauncherPack,
             collectionConfiguration: emptyLauncherConfiguration,
             managedDefaultPolicy: .useRecommended,
@@ -1179,7 +1179,7 @@ final class GenericPackConfigTests: XCTestCase {
             PackCollectionSnapshot.remove(for: PackRegistry.launcher.id, configDirectory: fixture.directory)
         }
 
-        let record = try await PackInstaller.shared.install(
+        let record = try await PackInstaller.testInstaller().install(
             supportedLauncherPack,
             manager: manager, installedPackTracker: tracker
         )
@@ -1219,8 +1219,8 @@ final class GenericPackConfigTests: XCTestCase {
             .first { $0.id == RuleCollectionIdentifier.capsLockRemap }?.configuration
 
         // Install then uninstall
-        _ = try await PackInstaller.shared.install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
-        try await PackInstaller.shared.uninstall(packID: PackRegistry.launcher.id, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
+        try await PackInstaller.testInstaller().uninstall(packID: PackRegistry.launcher.id, manager: manager, installedPackTracker: tracker)
 
         // Caps Lock Remap should revert to pre-install state
         let capsCollection = manager.ruleCollections.first { $0.id == RuleCollectionIdentifier.capsLockRemap }
@@ -1260,7 +1260,7 @@ final class GenericPackConfigTests: XCTestCase {
             PackCollectionSnapshot.remove(for: PackRegistry.launcher.id, configDirectory: fixture.directory)
         }
 
-        let installed = try await PackInstaller.shared.install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
+        let installed = try await PackInstaller.testInstaller().install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
 
         let snapshot = installed.managedCollectionSnapshot
         XCTAssertNotNil(snapshot, "Snapshot should exist after install")
@@ -1297,7 +1297,7 @@ final class GenericPackConfigTests: XCTestCase {
         }
 
         // Install launcher — should apply its defaults (auto-approved in test env)
-        let installed = try await PackInstaller.shared.install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
+        let installed = try await PackInstaller.testInstaller().install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
 
         // Verify pack defaults were applied
         let capsCollection = manager.ruleCollections.first { $0.id == RuleCollectionIdentifier.capsLockRemap }
@@ -1353,8 +1353,8 @@ final class GenericPackConfigTests: XCTestCase {
         }
 
         // Install, then uninstall
-        _ = try await PackInstaller.shared.install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
-        try await PackInstaller.shared.uninstall(packID: PackRegistry.launcher.id, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
+        try await PackInstaller.testInstaller().uninstall(packID: PackRegistry.launcher.id, manager: manager, installedPackTracker: tracker)
 
         // Should restore the pre-install custom config, not the pack defaults
         let capsCollection = manager.ruleCollections.first { $0.id == RuleCollectionIdentifier.capsLockRemap }
@@ -1368,10 +1368,9 @@ final class GenericPackConfigTests: XCTestCase {
     @MainActor
     func testKeepMySettingsSkipsConfigOverride() async throws {
         TestEnvironment.forceTestMode = true
-        PackInstaller.testOverrideApplyDefault = false
+        let installer = PackInstaller.testInstaller(applyManagedDefault: false)
         defer {
             TestEnvironment.forceTestMode = false
-            PackInstaller.testOverrideApplyDefault = nil
         }
 
         let (manager, tempDir) = try makeTestManager()
@@ -1396,7 +1395,7 @@ final class GenericPackConfigTests: XCTestCase {
         }
 
         // Install with "Keep My Settings"
-        _ = try await PackInstaller.shared.install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
+        _ = try await installer.install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
 
         // Config should NOT have been overridden — user chose to keep theirs
         let capsCollection = manager.ruleCollections.first { $0.id == RuleCollectionIdentifier.capsLockRemap }
@@ -1414,10 +1413,9 @@ final class GenericPackConfigTests: XCTestCase {
     @MainActor
     func testUseRecommendedManagedDefaultPolicyBypassesCustomizationPrompt() async throws {
         TestEnvironment.forceTestMode = true
-        PackInstaller.testOverrideApplyDefault = false
+        let installer = PackInstaller.testInstaller(applyManagedDefault: false)
         defer {
             TestEnvironment.forceTestMode = false
-            PackInstaller.testOverrideApplyDefault = nil
         }
 
         let (manager, tempDir) = try makeTestManager()
@@ -1442,7 +1440,7 @@ final class GenericPackConfigTests: XCTestCase {
         customCaps.isEnabled = true
         manager.ruleCollections.append(customCaps)
 
-        _ = try await PackInstaller.shared.install(
+        _ = try await installer.install(
             supportedLauncherPack,
             managedDefaultPolicy: .useRecommended,
             manager: manager, installedPackTracker: tracker
@@ -1460,10 +1458,9 @@ final class GenericPackConfigTests: XCTestCase {
     @MainActor
     func testInstallAppliesSilentlyWhenCollectionHasCatalogDefaults() async throws {
         TestEnvironment.forceTestMode = true
-        PackInstaller.testOverrideApplyDefault = false
+        let installer = PackInstaller.testInstaller(applyManagedDefault: false)
         defer {
             TestEnvironment.forceTestMode = false
-            PackInstaller.testOverrideApplyDefault = nil
         }
 
         let (manager, tempDir) = try makeTestManager()
@@ -1481,10 +1478,10 @@ final class GenericPackConfigTests: XCTestCase {
             manager.ruleCollections.append(caps)
         }
 
-        // Install with testOverrideApplyDefault=false (would decline the dialog)
+        // Install with a declined override (would decline the dialog)
         // but the dialog should NOT appear because config matches catalog defaults.
         // The pack's config should be applied silently.
-        _ = try await PackInstaller.shared.install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
+        _ = try await installer.install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
 
         let capsCollection = manager.ruleCollections.first { $0.id == RuleCollectionIdentifier.capsLockRemap }
         XCTAssertEqual(
@@ -1522,7 +1519,7 @@ final class GenericPackConfigTests: XCTestCase {
         let configBefore = manager.ruleCollections
             .first { $0.id == RuleCollectionIdentifier.vallackNavigation }?.configuration
 
-        _ = try await PackInstaller.shared.install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
 
         let navCollection = manager.ruleCollections.first { $0.id == RuleCollectionIdentifier.vallackNavigation }
         XCTAssertTrue(navCollection?.isEnabled ?? false, "Should be enabled after install")
@@ -1546,7 +1543,7 @@ final class GenericPackConfigTests: XCTestCase {
         }
 
         // Install launcher (applies tap=esc, hold=hyper)
-        _ = try await PackInstaller.shared.install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
 
         // Simulate user modifying the config AFTER install
         if let i = manager.ruleCollections.firstIndex(where: { $0.id == RuleCollectionIdentifier.capsLockRemap }) {
@@ -1560,7 +1557,7 @@ final class GenericPackConfigTests: XCTestCase {
         }
 
         // Uninstall — test env auto-approves restore even when modified
-        try await PackInstaller.shared.uninstall(packID: PackRegistry.launcher.id, manager: manager, installedPackTracker: tracker)
+        try await PackInstaller.testInstaller().uninstall(packID: PackRegistry.launcher.id, manager: manager, installedPackTracker: tracker)
 
         // Should have restored the pre-install config (whatever was there before),
         // not kept the user's post-install modification
@@ -1574,10 +1571,9 @@ final class GenericPackConfigTests: XCTestCase {
     @MainActor
     func testUninstallKeepCurrentWhenUserModified() async throws {
         TestEnvironment.forceTestMode = true
-        PackInstaller.testOverrideRestore = false
+        let installer = PackInstaller.testInstaller(restoreManagedDefaults: false)
         defer {
             TestEnvironment.forceTestMode = false
-            PackInstaller.testOverrideRestore = nil
         }
 
         let (manager, tempDir) = try makeTestManager()
@@ -1587,7 +1583,7 @@ final class GenericPackConfigTests: XCTestCase {
         }
 
         // Install launcher (applies tap=esc, hold=hyper)
-        _ = try await PackInstaller.shared.install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
+        _ = try await installer.install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
 
         // Simulate user modifying after install
         if let i = manager.ruleCollections.firstIndex(where: { $0.id == RuleCollectionIdentifier.capsLockRemap }) {
@@ -1603,7 +1599,7 @@ final class GenericPackConfigTests: XCTestCase {
         XCTAssertTrue(regenerated)
 
         // Uninstall with "Keep Current"
-        try await PackInstaller.shared.uninstall(packID: PackRegistry.launcher.id, manager: manager, installedPackTracker: tracker)
+        try await installer.uninstall(packID: PackRegistry.launcher.id, manager: manager, installedPackTracker: tracker)
 
         // User's modification should be preserved
         let capsCollection = manager.ruleCollections.first { $0.id == RuleCollectionIdentifier.capsLockRemap }
@@ -1632,8 +1628,8 @@ final class GenericPackConfigTests: XCTestCase {
         }
 
         // Install both system packs
-        _ = try await PackInstaller.shared.install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
-        _ = try await PackInstaller.shared.install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(PackRegistry.vallackSystem, manager: manager, installedPackTracker: tracker)
+        _ = try await PackInstaller.testInstaller().install(supportedLauncherPack, manager: manager, installedPackTracker: tracker)
 
         // Vallack collections should be enabled
         let navCollection = manager.ruleCollections.first { $0.id == RuleCollectionIdentifier.vallackNavigation }
@@ -1650,7 +1646,7 @@ final class GenericPackConfigTests: XCTestCase {
         XCTAssertEqual(capsCollection?.configuration.tapHoldPickerConfig?.selectedHoldOutput, "hyper")
 
         // Uninstall Launcher — should not affect Vallack collections
-        try await PackInstaller.shared.uninstall(packID: PackRegistry.launcher.id, manager: manager, installedPackTracker: tracker)
+        try await PackInstaller.testInstaller().uninstall(packID: PackRegistry.launcher.id, manager: manager, installedPackTracker: tracker)
 
         let navAfter = manager.ruleCollections.first { $0.id == RuleCollectionIdentifier.vallackNavigation }
         XCTAssertTrue(navAfter?.isEnabled ?? false, "Vallack nav should still be enabled after launcher uninstall")
@@ -1683,7 +1679,7 @@ final class GenericPackConfigTests: XCTestCase {
         }
 
         // Should not crash
-        try await PackInstaller.shared.uninstall(
+        try await PackInstaller.testInstaller().uninstall(
             packID: PackRegistry.launcher.id,
             manager: manager, installedPackTracker: tracker
         )
@@ -1831,7 +1827,7 @@ final class GenericPackConfigTests: XCTestCase {
         let catalog = RuleCollectionCatalog().defaultCollections()
         let caps = try XCTUnwrap(catalog.first { $0.id == RuleCollectionIdentifier.capsLockRemap })
         let escape = try XCTUnwrap(FirstSuccessOnboardingWindowController.escapeOnlyCapsLockConfiguration(from: caps.configuration))
-        _ = try await PackInstaller.shared.install(
+        _ = try await PackInstaller.testInstaller().install(
             PackRegistry.capsLockToEscape, collectionConfiguration: escape,
             manager: manager, skipFinalReload: true, installedPackTracker: tracker
         )
@@ -1855,7 +1851,7 @@ final class GenericPackConfigTests: XCTestCase {
             environment: [:], selectionData: nil, requireSelection: false
         )
         guard case .invalid = rejected.result else { return XCTFail("The old transparent Caps fallback must remain rejected") }
-        _ = try await PackInstaller.shared.install(
+        _ = try await PackInstaller.testInstaller().install(
             PackRegistry.launcher, collectionConfiguration: empty,
             managedDefaultPolicy: .useRecommended, manager: manager, skipFinalReload: true, installedPackTracker: tracker
         )

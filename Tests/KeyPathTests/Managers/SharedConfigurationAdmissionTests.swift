@@ -173,7 +173,7 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
                 .deletingLastPathComponent().appendingPathComponent("installed-packs.json"))
             let result = await coordinator.saveGeneratedConfig(content: "(defcfg)\n(defsrc a)\n(deflayer base b)") {
                 do {
-                    _ = try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+                    _ = try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
                     XCTFail("A callback must not mutate pack metadata inside another save")
                 } catch ConfigurationOperationGate.Failure.recursiveOperation {
                     // Expected before any tracker mutation.
@@ -221,7 +221,7 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
             }
             await self.fulfillment(of: [entered], timeout: 5)
             let install = Task { @MainActor in
-                try await PackInstaller.shared.install(pack, manager: manager, installedPackTracker: tracker)
+                try await PackInstaller.testInstaller().install(pack, manager: manager, installedPackTracker: tracker)
             }
             install.cancel()
             resume?.resume()

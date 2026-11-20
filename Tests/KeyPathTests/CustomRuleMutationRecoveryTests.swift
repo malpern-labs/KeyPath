@@ -371,7 +371,7 @@ final class CustomRuleMutationRecoveryTests: KeyPathTestCase {
                                                  collectionStore: self.manager.ruleCollectionStore, customStore: self.manager.customRulesStore, mutationPermit: permit)
         }
         manager.customRules = []
-        let saved = await PackInstaller.shared.updateTapHold(packID: "test-pack", input: "f20", tap: "esc", manager: manager)
+        let saved = await PackInstaller.testInstaller().updateTapHold(packID: "test-pack", input: "f20", tap: "esc", manager: manager)
         XCTAssertTrue(saved)
         let stored = try await manager.customRulesStore.loadForMutation()
         XCTAssertEqual(stored.count, 1)
