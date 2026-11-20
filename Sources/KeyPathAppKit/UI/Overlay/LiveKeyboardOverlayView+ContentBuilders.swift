@@ -1,4 +1,5 @@
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 extension LiveKeyboardOverlayView {
@@ -95,7 +96,30 @@ extension LiveKeyboardOverlayView {
                 inspectorSection: inspectorSection
             )
         }
+        .focusedSceneValue(\.selectedAssignmentCommands, isEditingLayer ? selectedAssignmentCommands() : nil)
+        .environment(\.overlayAssignmentCommands, isEditingLayer ? assignmentCommands(layer: RuleCollectionLayer(kanataName: viewModel.currentLayerName)) : nil)
+        .overlay(alignment: .topLeading) {
+            if isEditingLayer, let message = assignmentFeedback ?? assignmentSwapSource.map({
+                String(localized: "Choose a key to swap with \($0.label.uppercased()) on \(viewModel.currentLayerName.capitalized). Esc cancels.")
+            }) {
+                Text(message)
+                    .font(.caption)
+                    .padding(5)
+                    .background(.regularMaterial)
+                    .allowsHitTesting(false)
+            }
+        }
+        .onExitCommand {
+            assignmentSwapSource = nil
+            assignmentFeedback = nil
+        }
+        .onChange(of: viewModel.currentLayerName) { _, _ in
+            assignmentSwapSource = nil
+            assignmentFeedback = nil
+        }
         .onChange(of: isEditingLayer, initial: true) { _, editing in
+            assignmentSwapSource = nil
+            assignmentFeedback = nil
             viewModel.selectEditingLayer(editing ? viewModel.currentLayerName : nil)
         }
     }
@@ -183,7 +207,7 @@ extension LiveKeyboardOverlayView {
                     tapHoldIdleLabels: viewModel.tapHoldIdleLabels,
                     holdActiveKeyCodes: viewModel.holdActiveKeyCodes,
                     customIcons: viewModel.customIcons,
-                    onKeyClick: onKeyClick,
+                    onKeyClick: { selectAssignmentKey($0, info: $1) },
                     onKeyDoubleClick: onKeyDoubleClick,
                     onKeyRemap: onKeyRemap,
                     onKeyReset: onKeyReset,

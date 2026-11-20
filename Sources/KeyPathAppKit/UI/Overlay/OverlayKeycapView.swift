@@ -7,6 +7,7 @@ import SwiftUI
 /// Uses layout roles (based on physical properties) for structure,
 /// and optical adjustments (based on label) for visual harmony.
 struct OverlayKeycapView: View {
+    @Environment(\.overlayAssignmentCommands) var assignmentCommands
     let key: PhysicalKey
     let baseLabel: String
     let isPressed: Bool

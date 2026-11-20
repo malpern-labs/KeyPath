@@ -29,6 +29,9 @@ struct LiveKeyboardOverlayView: View {
     /// Callback when health indicator is tapped (to launch wizard)
     var onHealthIndicatorTap: (() -> Void)?
 
+    @State var assignmentSwapSource: PhysicalKey?
+    @State var assignmentFeedback: String?
+
     // MARK: - Environment
 
     @Environment(\.services) var services
