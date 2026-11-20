@@ -12,8 +12,6 @@ final class DeviceSelectionStoreTests: XCTestCase {
 
     override func tearDown() async throws {
         try? FileManager.default.removeItem(at: tempDir)
-        // Reset shared cache to avoid polluting other tests
-        DeviceSelectionCache.shared.reset()
     }
 
     func testSaveAndLoadRoundTrip() async throws {
@@ -67,7 +65,7 @@ final class DeviceSelectionStoreTests: XCTestCase {
         XCTAssertTrue(cache.isEnabled(hash: "0xCC"))
     }
 
-    func testSaveSyncsToSharedCache() async throws {
+    func testSaveSyncsToInjectedCache() async throws {
         let fileURL = tempDir.appendingPathComponent("DeviceSelection.json")
         let cache = DeviceSelectionCache()
         let store = DeviceSelectionStore.testStore(at: fileURL, cache: cache)
@@ -79,7 +77,6 @@ final class DeviceSelectionStoreTests: XCTestCase {
         try await store.saveSelections(selections)
 
         XCTAssertFalse(cache.isEnabled(hash: "0xTEST"))
-        XCTAssertTrue(DeviceSelectionCache.shared.isEnabled(hash: "0xTEST"))
     }
 
     func testCacheConnectedDevicesRoundTrip() {
@@ -115,7 +112,7 @@ final class DeviceSelectionStoreTests: XCTestCase {
         XCTAssertEqual(selection.displayName, "Apple Internal Keyboard")
     }
 
-    func testPrimeSharedCacheFromDiskLoadsSelections() async throws {
+    func testPrimeCacheFromDiskLoadsSelections() async throws {
         let fileURL = tempDir.appendingPathComponent("DeviceSelection.json")
         let store = DeviceSelectionStore.testStore(at: fileURL)
         let selections = [
@@ -123,10 +120,11 @@ final class DeviceSelectionStoreTests: XCTestCase {
         ]
 
         try await store.saveSelections(selections)
-        DeviceSelectionCache.shared.reset()
+        let startupCache = DeviceSelectionCache()
+        XCTAssertTrue(startupCache.isEnabled(hash: "0xSYNC"))
 
-        DeviceSelectionStore.primeSharedCacheFromDisk(fileURL: fileURL)
+        DeviceSelectionStore.primeCacheFromDisk(fileURL: fileURL, cache: startupCache)
 
-        XCTAssertFalse(DeviceSelectionCache.shared.isEnabled(hash: "0xSYNC"))
+        XCTAssertFalse(startupCache.isEnabled(hash: "0xSYNC"))
     }
 }

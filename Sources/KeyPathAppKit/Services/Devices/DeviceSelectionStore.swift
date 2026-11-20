@@ -1,5 +1,6 @@
 import Foundation
 import KeyPathCore
+import Synchronization
 
 /// Persisted selection state for a single device.
 struct DeviceSelection: Codable, Equatable, Sendable {
@@ -25,55 +26,45 @@ struct DeviceGenerationInput: Sendable {
 /// Thread-safe synchronous cache for UI and service-layer device snapshots.
 /// Configuration rendering receives a point-in-time `DeviceGenerationInput`
 /// instead of consulting this mutable cache directly.
-final class DeviceSelectionCache: @unchecked Sendable {
+final class DeviceSelectionCache: Sendable {
     static let shared = DeviceSelectionCache()
 
-    private let lock = NSLock()
-    // Lock protects all mutable state in this cache. Callers must use the public methods only.
-    private var selections: [String: DeviceSelection] = [:]
-    private var connectedDevices: [ConnectedDevice] = []
+    private struct State {
+        var selections: [String: DeviceSelection] = [:]
+        var connectedDevices: [ConnectedDevice] = []
+    }
+
+    private let state = Mutex(State())
 
     /// Update the cache with the latest selections from the store.
     func update(_ newSelections: [DeviceSelection]) {
-        lock.lock()
-        defer { lock.unlock() }
-        selections = Dictionary(newSelections.map { ($0.hash, $0) }, uniquingKeysWith: { _, new in new })
+        let selections = Dictionary(newSelections.map { ($0.hash, $0) }, uniquingKeysWith: { _, new in new })
+        state.withLock { $0.selections = selections }
     }
 
-    /// Update the cached connected device list (from kanata --list).
+    /// Update the cached connected devices (from kanata --list).
     func updateConnectedDevices(_ devices: [ConnectedDevice]) {
-        lock.lock()
-        defer { lock.unlock() }
-        connectedDevices = devices
+        state.withLock { $0.connectedDevices = devices }
     }
 
     /// Get the cached connected devices. Returns empty if never populated.
     func getConnectedDevices() -> [ConnectedDevice] {
-        lock.lock()
-        defer { lock.unlock() }
-        return connectedDevices
+        state.withLock { $0.connectedDevices }
     }
 
     /// Check if a device hash is enabled. Devices not in the cache default to enabled.
     func isEnabled(hash: String) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return selections[hash]?.isEnabled ?? true
+        state.withLock { $0.selections[hash]?.isEnabled ?? true }
     }
 
     /// Get all cached selections.
     func allSelections() -> [DeviceSelection] {
-        lock.lock()
-        defer { lock.unlock() }
-        return Array(selections.values)
+        state.withLock { Array($0.selections.values) }
     }
 
     /// Reset all cached state. Used in tests to avoid pollution.
     func reset() {
-        lock.lock()
-        defer { lock.unlock() }
-        selections = [:]
-        connectedDevices = []
+        state.withLock { $0 = State() }
     }
 }
 
@@ -176,7 +167,10 @@ actor DeviceSelectionStore {
     }
 
     /// Synchronously prime the shared cache before startup tasks can regenerate config.
-    static func primeSharedCacheFromDisk(fileURL: URL? = nil) {
+    static func primeCacheFromDisk(
+        fileURL: URL? = nil,
+        cache: DeviceSelectionCache = .shared
+    ) {
         let fileURL = fileURL ?? URL(
             fileURLWithPath: WizardSystemPaths.userConfigDirectory,
             isDirectory: true
@@ -184,7 +178,7 @@ actor DeviceSelectionStore {
 
         let fileManager = Foundation.FileManager()
         guard fileManager.fileExists(atPath: fileURL.path) else {
-            DeviceSelectionCache.shared.update([])
+            cache.update([])
             return
         }
 
@@ -194,10 +188,10 @@ actor DeviceSelectionStore {
         do {
             let data = try Data(contentsOf: fileURL)
             let selections = try decoder.decode([DeviceSelection].self, from: data)
-            DeviceSelectionCache.shared.update(selections)
+            cache.update(selections)
             AppLogger.shared.log("📂 [DeviceSelectionStore] Primed shared cache with \(selections.count) device selection(s)")
         } catch {
-            DeviceSelectionCache.shared.update([])
+            cache.update([])
             AppLogger.shared.warn("⚠️ [DeviceSelectionStore] Failed to prime shared cache: \(error)")
         }
     }
