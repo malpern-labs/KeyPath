@@ -14,22 +14,21 @@ import KeyPathRulesCore
 final class FaviconFetcher {
     static let shared = FaviconFetcher()
 
-    /// Wrapper to satisfy Swift 6 `Task` sendability requirements when the result contains `NSImage`.
-    private struct FaviconResult: @unchecked Sendable {
+    /// Pending tasks share a result whose image stays on the main actor.
+    @MainActor
+    private final class FaviconResult {
         let image: NSImage?
+
+        init(image: NSImage?) {
+            self.image = image
+        }
     }
 
     // MARK: - Cache Configuration
 
     /// Directory where favicons are cached on disk
     private let cacheDirectory: URL = {
-        guard let appSupport = Foundation.FileManager().urls(
-            for: FileManager.SearchPathDirectory.applicationSupportDirectory,
-            in: FileManager.SearchPathDomainMask.userDomainMask
-        ).first else {
-            fatalError("Application Support directory unavailable")
-        }
-        let faviconDir = appSupport.appendingPathComponent("KeyPath/Favicons", isDirectory: true)
+        let faviconDir = AppPaths.applicationSupportDirectory.appendingPathComponent("Favicons", isDirectory: true)
         // Create directory if it doesn't exist
         try? Foundation.FileManager().createDirectory(at: faviconDir, withIntermediateDirectories: true)
         return faviconDir
