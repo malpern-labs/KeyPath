@@ -392,9 +392,6 @@ struct ActionDispatcherRoutingTests {
     @Test("Dispatches fakekey action")
     @MainActor
     func dispatchesFakekeyAction() throws {
-        FeatureFlags.setSimulatorAndVirtualKeysEnabled(true)
-        defer { FeatureFlags.resetTestOverrides() }
-
         let uri = try #require(KeyPathActionURI(string: "keypath://fakekey/test-key/tap"))
         let result = ActionDispatcher.shared.dispatch(uri)
 
@@ -405,9 +402,6 @@ struct ActionDispatcherRoutingTests {
     @Test("Returns missingTarget for fakekey without name")
     @MainActor
     func returnsMissingTargetForFakekeyWithoutName() throws {
-        FeatureFlags.setSimulatorAndVirtualKeysEnabled(true)
-        defer { FeatureFlags.resetTestOverrides() }
-
         let uri = try #require(KeyPathActionURI(string: "keypath://fakekey"))
         let result = ActionDispatcher.shared.dispatch(uri)
 
@@ -421,16 +415,16 @@ struct ActionDispatcherRoutingTests {
     @Test("Returns failed for fakekey when feature flag disabled")
     @MainActor
     func returnsFailedForFakekeyWhenFeatureDisabled() throws {
-        FeatureFlags.setSimulatorAndVirtualKeysEnabled(false)
-        defer { FeatureFlags.resetTestOverrides() }
+        try FeatureFlags.$testOverrides.withValue(.init()) {
+            FeatureFlags.setSimulatorAndVirtualKeysEnabled(false)
+            let uri = try #require(KeyPathActionURI(string: "keypath://fakekey/test/tap"))
+            let result = ActionDispatcher.shared.dispatch(uri)
 
-        let uri = try #require(KeyPathActionURI(string: "keypath://fakekey/test/tap"))
-        let result = ActionDispatcher.shared.dispatch(uri)
-
-        if case let .failed(action, _) = result {
-            #expect(action == "fakekey")
-        } else {
-            Issue.record("Expected failed result for feature-disabled fakekey action")
+            if case let .failed(action, _) = result {
+                #expect(action == "fakekey")
+            } else {
+                Issue.record("Expected failed result for feature-disabled fakekey action")
+            }
         }
     }
 

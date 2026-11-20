@@ -40,6 +40,5 @@ enum TestSingletonReset {
 
         // Feature flags — in tests these live in FeatureFlags' in-memory
         // override store, never UserDefaults (#896); clear to compiled defaults.
-        FeatureFlags.resetTestOverrides()
     }
 }
