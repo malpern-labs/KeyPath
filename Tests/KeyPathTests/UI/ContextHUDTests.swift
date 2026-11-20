@@ -545,33 +545,45 @@ final class ContextHUDViewModelTests: XCTestCase {
 // MARK: - ContextHUDController Tests
 
 @MainActor
+private struct ContextHUDPreferenceFixture {
+    let suite = "KeyPathTests.ContextHUD.\(UUID().uuidString)"
+    let defaults: UserDefaults
+    let preferences: PreferencesService
+
+    init() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        self.defaults = defaults
+        preferences = PreferencesService(leaderDefaults: defaults, defaults: defaults)
+    }
+
+    func remove() {
+        defaults.removePersistentDomain(forName: suite)
+    }
+}
+
+@MainActor
 final class ContextHUDControllerTests: XCTestCase {
     private var controller: ContextHUDController!
-    private var savedDisplayMode: ContextHUDDisplayMode!
-    private var savedTriggerMode: ContextHUDTriggerMode!
+    private var preferenceFixture: ContextHUDPreferenceFixture!
 
     override func setUp() async throws {
         try await super.setUp()
-        // Save original preferences
-        savedDisplayMode = PreferencesService.shared.contextHUDDisplayMode
-        savedTriggerMode = PreferencesService.shared.contextHUDTriggerMode
-        // Create test controller (no notification observers)
-        controller = ContextHUDController(testMode: true)
+        preferenceFixture = try ContextHUDPreferenceFixture()
+        controller = ContextHUDController(testMode: true, preferences: preferenceFixture.preferences)
     }
 
     override func tearDown() async throws {
-        controller.resetForTesting()
+        controller?.resetForTesting()
         controller = nil
-        // Restore original preferences
-        PreferencesService.shared.contextHUDDisplayMode = savedDisplayMode
-        PreferencesService.shared.contextHUDTriggerMode = savedTriggerMode
+        preferenceFixture?.remove()
+        preferenceFixture = nil
         try await super.tearDown()
     }
 
     // MARK: - Display Mode Gating
 
     func testOverlayOnlyModeBlocksHUD() {
-        PreferencesService.shared.contextHUDDisplayMode = .overlayOnly
+        preferenceFixture.preferences.contextHUDDisplayMode = .overlayOnly
 
         controller.handleLayerChange("nav", source: nil)
 
@@ -580,7 +592,7 @@ final class ContextHUDControllerTests: XCTestCase {
     }
 
     func testHudOnlyModeAllowsHUD() {
-        PreferencesService.shared.contextHUDDisplayMode = .hudOnly
+        preferenceFixture.preferences.contextHUDDisplayMode = .hudOnly
 
         controller.handleLayerChange("nav", source: nil)
 
@@ -588,7 +600,7 @@ final class ContextHUDControllerTests: XCTestCase {
     }
 
     func testBothModeAllowsHUD() {
-        PreferencesService.shared.contextHUDDisplayMode = .both
+        preferenceFixture.preferences.contextHUDDisplayMode = .both
 
         controller.handleLayerChange("nav", source: nil)
 
@@ -598,7 +610,7 @@ final class ContextHUDControllerTests: XCTestCase {
     // MARK: - Layer Change Logic
 
     func testSameLayerSkipped() {
-        PreferencesService.shared.contextHUDDisplayMode = .both
+        preferenceFixture.preferences.contextHUDDisplayMode = .both
 
         controller.handleLayerChange("nav", source: nil)
         XCTAssertEqual(controller.currentPreviousLayer, "nav")
@@ -609,8 +621,8 @@ final class ContextHUDControllerTests: XCTestCase {
     }
 
     func testBaseLayerDismissesInHoldMode() {
-        PreferencesService.shared.contextHUDDisplayMode = .both
-        PreferencesService.shared.contextHUDTriggerMode = .holdToShow
+        preferenceFixture.preferences.contextHUDDisplayMode = .both
+        preferenceFixture.preferences.contextHUDTriggerMode = .holdToShow
 
         // Go to nav first
         controller.handleLayerChange("nav", source: nil)
@@ -622,8 +634,8 @@ final class ContextHUDControllerTests: XCTestCase {
     }
 
     func testBaseLayerKeepsHUDInTapMode() {
-        PreferencesService.shared.contextHUDDisplayMode = .both
-        PreferencesService.shared.contextHUDTriggerMode = .tapToToggle
+        preferenceFixture.preferences.contextHUDDisplayMode = .both
+        preferenceFixture.preferences.contextHUDTriggerMode = .tapToToggle
 
         // Go to nav first
         controller.handleLayerChange("nav", source: nil)
@@ -635,14 +647,14 @@ final class ContextHUDControllerTests: XCTestCase {
     }
 
     func testLayerNameWhitespaceNormalized() {
-        PreferencesService.shared.contextHUDDisplayMode = .both
+        preferenceFixture.preferences.contextHUDDisplayMode = .both
 
         controller.handleLayerChange("  nav  ", source: nil)
         XCTAssertEqual(controller.currentPreviousLayer, "  nav  ")
     }
 
     func testLayerNameCaseInsensitiveComparison() {
-        PreferencesService.shared.contextHUDDisplayMode = .both
+        preferenceFixture.preferences.contextHUDDisplayMode = .both
 
         controller.handleLayerChange("Nav", source: nil)
         XCTAssertEqual(controller.currentPreviousLayer, "Nav")
@@ -655,14 +667,14 @@ final class ContextHUDControllerTests: XCTestCase {
     // MARK: - One-Shot Override
 
     func testPushSourceActivatesOneShot() {
-        PreferencesService.shared.contextHUDDisplayMode = .both
+        preferenceFixture.preferences.contextHUDDisplayMode = .both
 
         controller.handleLayerChange("nav", source: .push)
         XCTAssertEqual(controller.currentPreviousLayer, "nav")
     }
 
     func testPushBaseClearsOneShot() {
-        PreferencesService.shared.contextHUDDisplayMode = .both
+        preferenceFixture.preferences.contextHUDDisplayMode = .both
 
         controller.handleLayerChange("nav", source: .push)
         controller.handleLayerChange("base", source: .push)
@@ -670,8 +682,8 @@ final class ContextHUDControllerTests: XCTestCase {
     }
 
     func testKanataBaseClearsOneShotOverride() {
-        PreferencesService.shared.contextHUDDisplayMode = .both
-        PreferencesService.shared.contextHUDTriggerMode = .tapToToggle
+        preferenceFixture.preferences.contextHUDDisplayMode = .both
+        preferenceFixture.preferences.contextHUDTriggerMode = .tapToToggle
 
         // Activate one-shot for "nav"
         controller.handleLayerChange("nav", source: .push)
@@ -713,7 +725,7 @@ final class ContextHUDControllerTests: XCTestCase {
     // MARK: - Key Input Handling
 
     func testEscDismisses() {
-        PreferencesService.shared.contextHUDDisplayMode = .both
+        preferenceFixture.preferences.contextHUDDisplayMode = .both
 
         // No window visible, but dismiss path is still hit
         controller.handleKeyInput(key: "esc", action: "press")
@@ -721,7 +733,7 @@ final class ContextHUDControllerTests: XCTestCase {
     }
 
     func testEscapeDismisses() {
-        PreferencesService.shared.contextHUDDisplayMode = .both
+        preferenceFixture.preferences.contextHUDDisplayMode = .both
 
         // Kanata may report escape as "escape" instead of "esc"
         controller.handleKeyInput(key: "escape", action: "press")
@@ -729,7 +741,7 @@ final class ContextHUDControllerTests: XCTestCase {
     }
 
     func testReleaseActionIgnored() {
-        PreferencesService.shared.contextHUDDisplayMode = .both
+        preferenceFixture.preferences.contextHUDDisplayMode = .both
 
         // Release events should be ignored
         controller.handleKeyInput(key: "esc", action: "release")
@@ -742,7 +754,7 @@ final class ContextHUDControllerTests: XCTestCase {
     }
 
     func testModifierKeyDoesNotDismissInHoldMode() {
-        PreferencesService.shared.contextHUDTriggerMode = .holdToShow
+        preferenceFixture.preferences.contextHUDTriggerMode = .holdToShow
 
         // Modifier keys should not dismiss
         controller.handleKeyInput(key: "leftshift", action: "press")
@@ -756,39 +768,18 @@ final class ContextHUDControllerTests: XCTestCase {
 
 @MainActor
 final class ContextHUDPreferencesTests: XCTestCase {
-    private var savedDisplayMode: ContextHUDDisplayMode!
-    private var savedTriggerMode: ContextHUDTriggerMode!
-
-    override func setUp() async throws {
-        try await super.setUp()
-        savedDisplayMode = PreferencesService.shared.contextHUDDisplayMode
-        savedTriggerMode = PreferencesService.shared.contextHUDTriggerMode
+    func testDisplayModePersistence() throws {
+        let fixture = try ContextHUDPreferenceFixture()
+        defer { fixture.remove() }
+        fixture.preferences.contextHUDDisplayMode = .hudOnly
+        XCTAssertEqual(fixture.defaults.string(forKey: "KeyPath.ContextHUD.DisplayMode"), "hudOnly")
     }
 
-    override func tearDown() async throws {
-        PreferencesService.shared.contextHUDDisplayMode = savedDisplayMode
-        PreferencesService.shared.contextHUDTriggerMode = savedTriggerMode
-        try await super.tearDown()
-    }
-
-    func testDisplayModePersistence() async {
-        for _ in 0 ..< 20 {
-            PreferencesService.shared.contextHUDDisplayMode = .hudOnly
-            let stored = UserDefaults.standard.string(forKey: "KeyPath.ContextHUD.DisplayMode")
-            if stored == "hudOnly" { return }
-            await Task.yield()
-        }
-        XCTFail("Display mode did not persist as hudOnly after retries")
-    }
-
-    func testTriggerModePersistence() async {
-        for _ in 0 ..< 20 {
-            PreferencesService.shared.contextHUDTriggerMode = .tapToToggle
-            let stored = UserDefaults.standard.string(forKey: "KeyPath.ContextHUD.TriggerMode")
-            if stored == "tapToToggle" { return }
-            await Task.yield()
-        }
-        XCTFail("Trigger mode did not persist as tapToToggle after retries")
+    func testTriggerModePersistence() throws {
+        let fixture = try ContextHUDPreferenceFixture()
+        defer { fixture.remove() }
+        fixture.preferences.contextHUDTriggerMode = .tapToToggle
+        XCTAssertEqual(fixture.defaults.string(forKey: "KeyPath.ContextHUD.TriggerMode"), "tapToToggle")
     }
 
     func testDisplayModeAllCasesExist() {

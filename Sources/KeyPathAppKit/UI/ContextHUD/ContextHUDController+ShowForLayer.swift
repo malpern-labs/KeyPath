@@ -8,7 +8,7 @@ import SwiftUI
 extension ContextHUDController {
     func showForLayer(_ layerName: String) {
         if let frontBundle = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
-           PreferencesService.shared.overlaySuppressedBundleIDs.contains(frontBundle)
+           preferences.overlaySuppressedBundleIDs.contains(frontBundle)
         {
             dismiss()
             return
