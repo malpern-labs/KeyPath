@@ -1,5 +1,6 @@
 import Foundation
 import KeyPathCore
+import KeyPathRulesCore
 
 /// Service for importing QMK keyboard layouts from URLs or files
 actor QMKImportService {

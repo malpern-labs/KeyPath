@@ -50,6 +50,6 @@ enum LayoutCatalog {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        return repoRoot.appendingPathComponent("Sources/KeyPathAppKit/Resources/Keyboards", isDirectory: true)
+        return repoRoot.appendingPathComponent("Sources/KeyPathRulesCore/Resources/Keyboards", isDirectory: true)
     }
 }

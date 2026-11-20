@@ -10,6 +10,7 @@
 // behind the user's "Show all keys" toggle.
 
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 @MainActor

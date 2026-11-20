@@ -3,20 +3,20 @@ import KeyPathCore
 
 /// Parser for QMK-style keyboard layout JSON files
 /// Format reference: https://docs.qmk.fm/reference_info_json
-enum QMKLayoutParser {
+package enum QMKLayoutParser {
     // MARK: - JSON Types
 
     /// Root structure of a QMK info.json file
-    struct QMKKeyboardInfo: Decodable {
-        let id: String
-        let name: String
-        let layouts: [String: QMKLayoutDefinition]
+    package struct QMKKeyboardInfo: Decodable {
+        package let id: String
+        package let name: String
+        package let layouts: [String: QMKLayoutDefinition]
 
         // Metadata fields (optional for backward compatibility)
-        let manufacturer: String?
-        let url: String?
-        let maintainer: String?
-        let features: QMKFeatures?
+        package let manufacturer: String?
+        package let url: String?
+        package let maintainer: String?
+        package let features: QMKFeatures?
 
         /// Custom coding keys to handle missing fields
         enum CodingKeys: String, CodingKey {
@@ -30,7 +30,7 @@ enum QMKLayoutParser {
             case features
         }
 
-        init(from decoder: Decoder) throws {
+        package init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
 
             // Handle id (may not exist in real QMK JSON, derive from context)
@@ -59,19 +59,19 @@ enum QMKLayoutParser {
     }
 
     /// QMK features object (for extracting tags)
-    struct QMKFeatures: Decodable {
-        let bootmagic: Bool?
-        let extrakey: Bool?
-        let nkro: Bool?
-        let oled: Bool?
-        let rgblight: Bool?
-        let rgb_matrix: Bool?
+    package struct QMKFeatures: Decodable {
+        package let bootmagic: Bool?
+        package let extrakey: Bool?
+        package let nkro: Bool?
+        package let oled: Bool?
+        package let rgblight: Bool?
+        package let rgb_matrix: Bool?
 
         /// Split keyboard support
-        let split: QMKSplit?
+        package let split: QMKSplit?
 
         /// Extract tags from features
-        var tags: [String] {
+        package var tags: [String] {
             var result: [String] = []
             if split?.enabled == true {
                 result.append("split")
@@ -87,31 +87,31 @@ enum QMKLayoutParser {
     }
 
     /// QMK split keyboard configuration
-    struct QMKSplit: Decodable {
-        let enabled: Bool?
+    package struct QMKSplit: Decodable {
+        package let enabled: Bool?
     }
 
-    struct QMKLayoutDefinition: Decodable {
-        let layout: [QMKKey]
+    package struct QMKLayoutDefinition: Decodable {
+        package let layout: [QMKKey]
     }
 
-    struct QMKKey: Decodable {
-        let row: Int
-        let col: Int
-        let x: Double
-        let y: Double
-        let w: Double? // Width, defaults to 1
-        let h: Double? // Height, defaults to 1
-        let r: Double? // Rotation in degrees
-        let rx: Double? // Rotation pivot X
-        let ry: Double? // Rotation pivot Y
-        let keyCode: UInt16? // macOS CGEvent key code (optional for backward compatibility)
-        let label: String? // Display label (optional for backward compatibility)
+    package struct QMKKey: Decodable {
+        package let row: Int
+        package let col: Int
+        package let x: Double
+        package let y: Double
+        package let w: Double? // Width, defaults to 1
+        package let h: Double? // Height, defaults to 1
+        package let r: Double? // Rotation in degrees
+        package let rx: Double? // Rotation pivot X
+        package let ry: Double? // Rotation pivot Y
+        package let keyCode: UInt16? // macOS CGEvent key code (optional for backward compatibility)
+        package let label: String? // Display label (optional for backward compatibility)
 
         // Multi-legend support (JIS/ISO keyboards)
-        let shiftLabel: String? // Shifted character (top position)
-        let subLabel: String? // Alternate input legend (front/bottom-right, e.g., hiragana)
-        let tertiaryLabel: String? // Additional legend (front/bottom-left)
+        package let shiftLabel: String? // Shifted character (top position)
+        package let subLabel: String? // Alternate input legend (front/bottom-right, e.g., hiragana)
+        package let tertiaryLabel: String? // Additional legend (front/bottom-left)
 
         enum CodingKeys: String, CodingKey {
             case row, col, x, y, w, h, r, rx, ry
@@ -119,7 +119,7 @@ enum QMKLayoutParser {
             case matrix // QMK API uses "matrix": [row, col] instead of separate row/col
         }
 
-        init(from decoder: Decoder) throws {
+        package init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             x = try container.decode(Double.self, forKey: .x)
             y = try container.decode(Double.self, forKey: .y)
@@ -155,16 +155,16 @@ enum QMKLayoutParser {
     // MARK: - Validation Constants
 
     /// Period for rotation normalization (degrees); output is clamped to ±180°
-    static let rotationNormalizationPeriod: Double = 360.0
+    package static let rotationNormalizationPeriod: Double = 360.0
 
     /// Minimum allowed key size (prevents zero-size or negative-size keys)
-    static let minimumKeySize: Double = 0.1
+    package static let minimumKeySize: Double = 0.1
 
     /// Maximum allowed key size (sanity check for malformed data)
-    static let maximumKeySize: Double = 20.0
+    package static let maximumKeySize: Double = 20.0
 
     /// Maximum allowed coordinate value (sanity check)
-    static let maximumCoordinate: Double = 100.0
+    package static let maximumCoordinate: Double = 100.0
 
     // MARK: - Parsing
 
@@ -175,7 +175,7 @@ enum QMKLayoutParser {
     ///   - idOverride: Optional ID to use instead of the one in the JSON
     ///   - nameOverride: Optional name to use instead of the one in the JSON
     /// - Returns: PhysicalLayout or nil if parsing fails
-    static func parse(
+    package static func parse(
         data: Data,
         keyMapping: (_ row: Int, _ col: Int) -> (keyCode: UInt16, label: String)?,
         idOverride: String? = nil,
@@ -266,7 +266,7 @@ enum QMKLayoutParser {
     /// Parse a QMK layout using row-based ordering to infer keyCodes.
     /// Groups keys by row, sorts left-to-right, assigns keyCodes by position.
     /// This works for any standard staggered QMK keyboard regardless of matrix wiring.
-    static func parseByPosition(
+    package static func parseByPosition(
         data: Data,
         idOverride: String? = nil,
         nameOverride: String? = nil
@@ -287,7 +287,7 @@ enum QMKLayoutParser {
     ///   - idOverride: Optional ID override
     ///   - nameOverride: Optional name override
     /// - Returns: ParseResult with high match ratio, or nil if parsing fails
-    static func parseWithKeymap(
+    package static func parseWithKeymap(
         data: Data,
         keymapTokens: [String],
         idOverride: String? = nil,
@@ -389,7 +389,7 @@ enum QMKLayoutParser {
     }
 
     /// Abbreviate a compound keycode token for display (e.g., "MO(1)" → "L1", "LT(2, KC_SPC)" → "L2")
-    static func abbreviateToken(_ token: String) -> String {
+    package static func abbreviateToken(_ token: String) -> String {
         let t = token.trimmingCharacters(in: .whitespacesAndNewlines)
         if t.hasPrefix("MO(") {
             let num = String(t.dropFirst(3).dropLast()).trimmingCharacters(in: .whitespaces)
@@ -419,18 +419,18 @@ enum QMKLayoutParser {
     }
 
     /// Result of position-based parsing, includes match quality info
-    struct ParseResult {
-        let layout: PhysicalLayout
+    package struct ParseResult {
+        package let layout: PhysicalLayout
         /// Fraction of keys that matched a known position (0.0–1.0)
-        let matchRatio: Double
-        let totalKeys: Int
-        let unmatchedKeys: Int
+        package let matchRatio: Double
+        package let totalKeys: Int
+        package let unmatchedKeys: Int
 
-        var isHighQuality: Bool {
+        package var isHighQuality: Bool {
             matchRatio >= 0.9
         }
 
-        var isUsable: Bool {
+        package var isUsable: Bool {
             matchRatio >= 0.5
         }
     }
@@ -438,7 +438,7 @@ enum QMKLayoutParser {
     /// Parse with full result including match quality metrics.
     /// Uses row-based ordering: groups keys by y into rows, sorts left-to-right,
     /// assigns keyCodes by position index using ANSI templates.
-    static func parseByPositionWithQuality(
+    package static func parseByPositionWithQuality(
         data: Data,
         idOverride: String? = nil,
         nameOverride: String? = nil
@@ -526,7 +526,7 @@ enum QMKLayoutParser {
     // MARK: - Validation Helpers
 
     /// Clamp key size to valid range
-    static func clampKeySize(_ size: Double) -> Double {
+    package static func clampKeySize(_ size: Double) -> Double {
         if size <= 0 || size.isNaN {
             return minimumKeySize
         }
@@ -534,7 +534,7 @@ enum QMKLayoutParser {
     }
 
     /// Normalize rotation to the -180°...180° range
-    static func clampRotation(_ degrees: Double) -> Double {
+    package static func clampRotation(_ degrees: Double) -> Double {
         if degrees.isNaN || degrees.isInfinite {
             return 0.0
         }
@@ -554,13 +554,13 @@ enum QMKLayoutParser {
     ///   - idOverride: Optional ID to use instead of the one in the JSON
     ///   - nameOverride: Optional name to use instead of the one in the JSON
     /// - Returns: PhysicalLayout or nil if loading fails
-    static func loadFromBundle(
+    package static func loadFromBundle(
         filename: String,
         keyMapping: @escaping (_ row: Int, _ col: Int) -> (keyCode: UInt16, label: String)?,
         idOverride: String? = nil,
         nameOverride: String? = nil
     ) -> PhysicalLayout? {
-        guard let url = KeyPathAppKitResources.url(forResource: filename, withExtension: "json") else {
+        guard let url = PhysicalLayoutLoader.bundledJSON(named: filename) else {
             AppLogger.shared.error("⚠️ [QMKLayoutParser] Could not find \(filename).json in bundle")
             return nil
         }

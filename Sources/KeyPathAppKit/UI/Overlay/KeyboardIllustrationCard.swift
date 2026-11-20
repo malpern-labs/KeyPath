@@ -1,4 +1,5 @@
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 /// Individual keyboard illustration card with image and label
