@@ -2,6 +2,7 @@ import AppKit
 import KeyPathCore
 import KeyPathPermissions
 import KeyPathPluginKit
+import KeyPathRulesCore
 import KeyPathWizardCore
 import SwiftUI
 

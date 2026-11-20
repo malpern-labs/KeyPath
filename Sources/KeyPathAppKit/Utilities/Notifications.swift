@@ -97,3 +97,20 @@ final class SettingsNavigationCoordinator {
         pendingRequest = nil
     }
 }
+
+public extension Notification.Name {
+    /// Posted when user should navigate to App Rules tab in drawer
+    static let switchToAppRulesTab = Notification.Name("switchToAppRulesTab")
+    /// Posted when Mapper should open the app condition picker (for "New Rule" from App Rules tab)
+    static let openMapperAppConditionPicker = Notification.Name("openMapperAppConditionPicker")
+    /// Posted when overlay should open with mapper tab selected (from Settings)
+    static let openOverlayWithMapper = Notification.Name("openOverlayWithMapper")
+    /// Posted when overlay view should switch to mapper tab
+    static let switchToMapperTab = Notification.Name("switchToMapperTab")
+    /// Posted when overlay should open with mapper tab and preset values for editing
+    /// UserInfo: inputKey (String), outputKey (String), optional shiftedOutputKey (String), optionally appBundleId (String)
+    static let openOverlayWithMapperPreset = Notification.Name("openOverlayWithMapperPreset")
+    /// Posted to set the app condition on the mapper (for adding a rule to a specific app)
+    /// UserInfo: bundleId (String), displayName (String)
+    static let mapperSetAppCondition = Notification.Name("mapperSetAppCondition")
+}
