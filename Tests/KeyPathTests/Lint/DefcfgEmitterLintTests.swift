@@ -40,7 +40,7 @@ final class DefcfgEmitterLintTests: XCTestCase {
         for case let url as URL in enumerator where url.pathExtension == "swift" {
             // Path-suffix match so a rename/move of the canonical emitter breaks this
             // test loudly instead of silently flagging the emitter itself.
-            if url.path.hasSuffix("Infrastructure/Config/KanataDefcfg.swift") { continue }
+            if url.path.hasSuffix("KeyPathRulesCore/KanataDefcfg.swift") { continue }
             guard let contents = try? String(contentsOf: url, encoding: .utf8) else { continue }
             guard contents.contains("(defcfg") else { continue }
 

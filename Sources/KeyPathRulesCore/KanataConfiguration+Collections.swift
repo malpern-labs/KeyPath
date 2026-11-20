@@ -1,7 +1,5 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
-import Network
 
 extension KanataConfiguration {
     /// Get the system default collections (macOS Function Keys enabled by default)

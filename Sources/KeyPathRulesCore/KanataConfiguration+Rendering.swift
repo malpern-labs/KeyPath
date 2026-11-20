@@ -1,7 +1,5 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
-import Network
 
 extension KanataConfiguration {
     // MARK: - Rendering helpers

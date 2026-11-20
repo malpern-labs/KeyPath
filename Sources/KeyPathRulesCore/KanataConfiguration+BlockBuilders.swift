@@ -1,7 +1,5 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
-import Network
 
 extension KanataConfiguration {
     // MARK: - Block builders
@@ -12,23 +10,23 @@ extension KanataConfiguration {
         let oneShotLayers: Set<RuleCollectionLayer>
     }
 
-    struct CollectionBlock {
+    package struct CollectionBlock {
         let metadata: [String]
         let entries: [LayerEntry]
     }
 
-    struct LayerEntry {
+    package struct LayerEntry {
         let sourceKey: String
         let baseOutput: String
         let layerOutputs: [RuleCollectionLayer: String]
     }
 
-    struct AliasDefinition {
-        let aliasName: String
-        let definition: String
-        let comment: String?
+    package struct AliasDefinition {
+        package let aliasName: String
+        package let definition: String
+        package let comment: String?
 
-        init(aliasName: String, definition: String, comment: String? = nil) {
+        package init(aliasName: String, definition: String, comment: String? = nil) {
             self.aliasName = aliasName
             self.definition = definition
             self.comment = comment
@@ -36,19 +34,19 @@ extension KanataConfiguration {
     }
 
     /// Represents a chord mapping (simultaneous key presses)
-    struct ChordMapping {
+    package struct ChordMapping {
         let inputKeys: String // Space-separated keys, e.g., "lsft rsft"
         let output: String // Output action, e.g., "caps"
         let description: String?
     }
 
-    static func buildCollectionBlocks(
+    package static func buildCollectionBlocks(
         from collections: [RuleCollection],
         leaderKeyPreference: LeaderKeyPreference?,
         navActivationMode: ContextHUDTriggerMode = .tapToToggle,
         navHoldDelayMs: Int = 200,
         connectedDevices: [ConnectedDevice] = [],
-        physicalLayout: PhysicalLayout = .macBookUS,
+        navigationKeyCodes: [UInt16],
         globalRequirePriorIdleMs: Int = 0
     ) -> ([CollectionBlock], [AliasDefinition], [RuleCollectionLayer], [ChordMapping]) {
         var blocks: [CollectionBlock] = []
@@ -363,7 +361,7 @@ extension KanataConfiguration {
                 let extraKeys = Self.navigationUnmappedKeys(
                     excluding: mappedKeys,
                     skipping: keysToSkip,
-                    layout: physicalLayout
+                    keyCodes: navigationKeyCodes
                 )
                 let blockedEntries = extraKeys.map { key in
                     let layerOutput = wrapWithOneShotExit(
@@ -486,7 +484,7 @@ extension KanataConfiguration {
         )
     }
 
-    static func effectiveMappings(for collection: RuleCollection) -> [KeyMapping] {
+    package static func effectiveMappings(for collection: RuleCollection) -> [KeyMapping] {
         switch collection.configuration {
         case let .homeRowMods(config):
             generateHomeRowModsMappings(from: config)
@@ -521,7 +519,7 @@ extension KanataConfiguration {
     /// blocks config writes when collections overlap. This function catches edge
     /// cases that slip past (e.g., aliases generated from non-mapping paths).
     /// It logs warnings so the root cause is visible in diagnostics.
-    static func deduplicateAliases(_ aliases: [AliasDefinition]) -> [AliasDefinition] {
+    package static func deduplicateAliases(_ aliases: [AliasDefinition]) -> [AliasDefinition] {
         var seen: [String: Int] = [:]
         var result: [AliasDefinition] = []
 
@@ -618,11 +616,11 @@ extension KanataConfiguration {
     /// - Parameters:
     ///   - mappedKeys: Keys that are already mapped (will not be blocked)
     ///   - extraSkips: Additional keys to skip (e.g., layer activator key)
-    ///   - layout: The physical keyboard layout to use for determining available keys
+    ///   - keyCodes: Key codes on the selected physical keyboard
     static func navigationUnmappedKeys(
         excluding mappedKeys: Set<String>,
         skipping extraSkips: Set<String> = [],
-        layout: PhysicalLayout = .macBookUS
+        keyCodes: [UInt16]
     ) -> [String] {
         // Skip modifier/utility keys and any explicitly provided skips (e.g., activator key)
         let defaultSkips: Set = [
@@ -632,10 +630,8 @@ extension KanataConfiguration {
         ]
         let skip = defaultSkips.union(extraSkips)
 
-        let keys = layout.keys.compactMap { key -> String? in
-            // Skip invalid keycodes (e.g., Touch ID, layer keys)
-            guard key.keyCode != PhysicalKey.unmappedKeyCode else { return nil }
-            let name = KanataKeyCodeMap.overlayName(for: key.keyCode).lowercased()
+        let keys = keyCodes.compactMap { keyCode -> String? in
+            let name = KanataKeyCodeMap.overlayName(for: keyCode).lowercased()
             // Skip unknown keycodes
             guard !name.hasPrefix("unknown-") else { return nil }
             // Early skip via the raw kanata name (covers defaults like "leftmeta").
@@ -697,7 +693,7 @@ extension KanataConfiguration {
     /// detection to catch alias-name collisions from key sanitization (#462) — e.g.
     /// `caps-lock` and `caps_lock` both producing `beh_base_caps_lock`. Returns
     /// empty for simple key outputs, which emit no alias.
-    static func generatedAliasNames(for mapping: KeyMapping, layer: RuleCollectionLayer) -> [String] {
+    package static func generatedAliasNames(for mapping: KeyMapping, layer: RuleCollectionLayer) -> [String] {
         var names: [String] = []
         let trimmedOutput = mapping.action.kanataOutput.trimmingCharacters(in: .whitespacesAndNewlines)
         if mapping.behavior != nil {
