@@ -22,7 +22,9 @@ extension OverlayInspectorPanel {
                 onHealthTap: onHealthTap,
                 fadeAmount: fadeAmount,
                 onKeySelected: onKeySelected,
-                layerKeyMap: layerKeyMap
+                layerKeyMap: layerKeyMap,
+                editingLayer: editingLayer,
+                onRemapApplied: onRemapApplied
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } else {

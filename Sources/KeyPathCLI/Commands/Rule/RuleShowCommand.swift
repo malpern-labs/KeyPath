@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathRulesCore
 
 struct RuleShow: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -15,9 +15,8 @@ struct RuleShow: AsyncParsableCommand {
 
     mutating func run() async throws {
         let ctx = globals.outputContext
-        let facade = RulesFacade()
 
-        guard let rule = await facade.showRule(input: input) else {
+        guard let rule = await CustomRulesStore.shared.showRule(input: input) else {
             let error = CLIError.notFound("Rule", query: input, listCommand: "keypath rule list")
             CLIOutput.writeError(error, context: ctx)
             throw error.code.exitCode

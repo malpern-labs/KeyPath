@@ -19,26 +19,10 @@ public enum TestEnvironment {
     /// - `SWIFTPM_MODULECACHE_OVERRIDE` (formerly checked by AppRestarter) — a
     ///   SwiftPM build setting any SwiftPM shell can carry, not a test marker;
     ///   in-process signals cover every real test invocation
-    /// - the generic `CI` env var — set by various tools/editors
+    /// - CI provider variables — a real app or CLI can run in the same job
     public static var isRunningTests: Bool {
         detectionSignals.contains(where: \.present)
     }
-
-    /// True only when this process is an actual test host: an XCTest bundle is
-    /// loaded, the XCTest harness env is present, the explicit SWIFT_TEST opt-in
-    /// is set, or the process is a known test runner. Unlike `isRunningTests`,
-    /// this excludes the broad `ci-environment` signal, so a REAL KeyPath.app
-    /// launched inside a CI job (installed-app/smoke QA) does not match. Use this
-    /// for gates that must not fire for real app launches on CI — e.g. skipping
-    /// rule-collection bootstrap in RuntimeCoordinator (#922).
-    public static var isTestHostProcess: Bool {
-        detectionSignals.contains { $0.present && $0.name != "ci-environment" }
-    }
-
-    /// Specific CI systems only, NOT the generic "CI" env var — that one is too
-    /// common (set by various tools, editors, etc.) and causes false positives
-    /// when inherited from a user's shell environment.
-    private static let ciIndicators = ["GITHUB_ACTIONS", "TRAVIS", "CIRCLE_CI", "JENKINS_URL"]
 
     /// The named signals behind `isRunningTests`, in evaluation order. Shared
     /// with `logEnvironmentStatus()` and the detection regression tests so the
@@ -68,8 +52,7 @@ public enum TestEnvironment {
                 "test-process-name",
                 processName.contains("xctest") || processName.contains("KeyPathPackageTests")
                     || processName.contains("swift-test") || processName.contains("swiftpm-testing")
-            ),
-            ("ci-environment", ciIndicators.contains { env[$0] != nil })
+            )
         ]
     }
 
@@ -77,36 +60,6 @@ public enum TestEnvironment {
     /// default warning output. Set `KEYPATH_TEST_VERBOSE_LOGS=1` to show them.
     public static var shouldQuietExpectedTestDiagnostics: Bool {
         isRunningTests && ProcessInfo.processInfo.environment["KEYPATH_TEST_VERBOSE_LOGS"] != "1"
-    }
-
-    /// Force test mode (for manual testing)
-    /// Thread-safe: Uses atomic access pattern to avoid MainActor isolation issues
-    private static let _forceTestModeLock = NSLock()
-    private nonisolated(unsafe) static var _forceTestMode: Bool = false
-
-    @MainActor public static var forceTestMode: Bool {
-        get {
-            _forceTestModeLock.lock()
-            defer { _forceTestModeLock.unlock() }
-            return _forceTestMode
-        }
-        set {
-            _forceTestModeLock.lock()
-            _forceTestMode = newValue
-            _forceTestModeLock.unlock()
-
-            if newValue {
-                AppLogger.shared.log("🧪 [TestEnvironment] Force test mode enabled")
-            }
-        }
-    }
-
-    /// Combined check for any test-related behavior
-    /// Thread-safe: Can be called from any thread
-    public static var isTestMode: Bool {
-        _forceTestModeLock.lock()
-        defer { _forceTestModeLock.unlock() }
-        return _forceTestMode || isRunningTests
     }
 
     /// Log test environment status

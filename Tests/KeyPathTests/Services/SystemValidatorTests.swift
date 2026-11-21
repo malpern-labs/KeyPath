@@ -10,12 +10,14 @@ import Testing
 struct SystemValidatorTests {
     @Test("SystemSnapshot has fresh timestamp")
     func snapshotFreshness() async {
-        let validator = SystemValidator()
+        let validator = SystemValidator(runtimeEvidence: { (false, false) })
 
         let snapshot = await validator.checkSystem()
 
         // Snapshot should be fresh (< 1 second old)
         #expect(snapshot.age < 1.0)
+        #expect(snapshot.captureStatus == .complete)
+        #expect(!snapshot.health.kanataRunning)
 
         // Should not crash on validate()
         snapshot.validate()
@@ -25,8 +27,7 @@ struct SystemValidatorTests {
     func cachedPermissionReadsStillCheckRuntimeReadiness() async {
         let runtime = StoppedRuntimeProbe()
         let validator = SystemValidator(
-            appSessionReady: { await runtime.isRunning() },
-            useTestSnapshot: false
+            runtimeEvidence: { await (runtime.isRunning(), false) }
         )
 
         let first = await validator.checkSystem(freshness: .cached)

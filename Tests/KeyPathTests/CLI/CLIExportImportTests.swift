@@ -1,19 +1,21 @@
-@testable import KeyPathAppKit
 import KeyPathRulesCore
 @preconcurrency import XCTest
 
 @MainActor
 final class CLIExportImportTests: XCTestCase {
-    private let facade = CollectionsFacade()
-    private var originalCollections: [RuleCollection] = []
+    private var facade: CollectionsFacade!
+    private var fixture: CLIStoreFixture!
 
     override func setUp() async throws {
         try await super.setUp()
-        originalCollections = await RuleCollectionStore.shared.loadCollections()
+        fixture = try CLIStoreFixture()
+        facade = CollectionsFacade(store: fixture.collections)
     }
 
     override func tearDown() async throws {
-        try await RuleCollectionStore.shared.saveCollections(originalCollections)
+        facade = nil
+        try fixture?.remove()
+        fixture = nil
         try await super.tearDown()
     }
 
@@ -53,7 +55,7 @@ final class CLIExportImportTests: XCTestCase {
         config.timing.requirePriorIdleMs = 120
         config.oppositeHandMode = .press
 
-        var collections = await RuleCollectionStore.shared.loadCollections()
+        var collections = await fixture.collections.loadCollections()
         collections.append(RuleCollection(
             name: "Exportable HRM",
             summary: "Config-backed",
@@ -61,7 +63,7 @@ final class CLIExportImportTests: XCTestCase {
             mappings: [],
             configuration: .homeRowMods(config)
         ))
-        try await RuleCollectionStore.shared.saveCollections(collections)
+        try await fixture.collections.saveCollections(collections)
 
         let exportedResult = try await facade.exportCollection(nameOrId: "Exportable HRM")
         let exported = try XCTUnwrap(exportedResult)
@@ -79,7 +81,7 @@ final class CLIExportImportTests: XCTestCase {
     }
 
     func testExportCollectionResolvesHomeRowAlias() async throws {
-        var collections = await RuleCollectionStore.shared.loadCollections()
+        var collections = await fixture.collections.loadCollections()
         collections.append(RuleCollection(
             id: RuleCollectionIdentifier.homeRowMods,
             name: "Home Row Mods",
@@ -88,7 +90,7 @@ final class CLIExportImportTests: XCTestCase {
             mappings: [],
             configuration: .homeRowMods(HomeRowModsConfig())
         ))
-        try await RuleCollectionStore.shared.saveCollections(collections)
+        try await fixture.collections.saveCollections(collections)
 
         let exported = try await facade.exportCollection(nameOrId: "home-row")
         XCTAssertEqual(exported?.name, "Home Row Mods")

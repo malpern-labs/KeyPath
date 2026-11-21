@@ -8,22 +8,7 @@ import KeyPathCore
 /// Session events cannot distinguish another keyboard's native press of the
 /// intermediate key: the reservation is an eligibility declaration, never a
 /// device-attribution claim.
-enum SessionCapsRuntimeSupport {
-    typealias Policy = SessionCapsMappingPolicy
-    enum Refusal: Error { case selection, bootIdentity, physicalKeysHeld, configIdentity, liveOwner }
-
-    static func experimentalDevice(environment: [String: String] = ProcessInfo.processInfo.environment) throws -> Policy.DeviceIdentity? {
-        #if DEBUG
-            guard let raw = environment["KEYPATH_EXPERIMENTAL_MANAGED_CAPS_DEVICE"] else { return nil }
-            guard environment["KEYPATH_EXPERIMENTAL_MANAGED_CAPS_RESERVE_F18"] == "1", raw.utf8.count <= 4096 else { throw Refusal.selection }
-            let device = try JSONDecoder().decode(Policy.DeviceIdentity.self, from: Data(raw.utf8))
-            _ = try SessionCapsHIDUtilTransport.selector(device)
-            return device
-        #else
-            return nil
-        #endif
-    }
-
+extension SessionCapsRuntimeSupport {
     /// Worker failure meaning "the reloaded profile needs a restart": it
     /// uses the reserved key, or no longer runs as managed Caps.
     static let profileChangedReason = "managed-caps-profile-changed"
@@ -56,7 +41,6 @@ enum SessionCapsRuntimeSupport {
     /// Display name of the chosen keyboard, kept so messages can name it
     /// after it disconnects. Never used to identify a device.
     static let selectionNameKey = "keypath.session.caps.selection.name.v1"
-    static let automaticSetupDisabledKey = "keypath.session.caps.automatic.disabled"
     /// Advanced compatibility mode. The normal rule scope is every keyboard.
     static let selectedKeyboardOnlyKey = "keypath.session.caps.selected.only"
 
@@ -70,23 +54,6 @@ enum SessionCapsRuntimeSupport {
 
     static let allIntermediateKey = "keypath.session.caps.all.intermediate"
     static let excludedKeyboardsKey = "keypath.session.caps.excluded.keyboards.v1"
-    static let selectionKey = "keypath.session.caps.selection.v1"
-    static let selectionEnvironmentKey = "KEYPATH_SESSION_CAPS_SELECTION"
-    /// What the app passes when it launched the worker without managed Caps.
-    /// The worker then never falls back to the saved selection, which the
-    /// app may have declined (for example when no intermediate was free).
-    static let noSelection = "none"
-    private static let allPrefix = "all:"
-
-    static func allKeyboardLaunchValue(intermediateUsage: UInt32) -> String {
-        "\(allPrefix)\(intermediateUsage)"
-    }
-
-    static func allKeyboardIntermediate(environment: [String: String] = ProcessInfo.processInfo.environment) -> UInt32? {
-        guard let value = environment[selectionEnvironmentKey], value.hasPrefix(allPrefix),
-              let usage = UInt32(value.dropFirst(allPrefix.count)), SessionCapsIntermediate.isCandidate(usage) else { return nil }
-        return usage
-    }
 
     /// An exception follows the physical keyboard at its serial or port, not
     /// a boot-scoped IORegistry entry. The encoded tuple is unambiguous even
@@ -100,144 +67,6 @@ enum SessionCapsRuntimeSupport {
 
     static func excludedKeyboardIDs(defaults: UserDefaults = .standard) -> Set<String> {
         Set((defaults.stringArray(forKey: excludedKeyboardsKey) ?? []).filter { $0.utf8.count <= 4096 })
-    }
-
-    private static func selectionSource(_ environment: [String: String], _ selectionData: Data?) -> Data? {
-        guard let passed = environment[selectionEnvironmentKey] else { return selectionData }
-        return passed == noSelection ? nil : Data(passed.utf8)
-    }
-
-    static func selectedDevice(environment: [String: String] = ProcessInfo.processInfo.environment,
-                               selectionData: Data? = UserDefaults.standard.data(forKey: selectionKey),
-                               registryEntryExists: (UInt64) throws -> Bool = SessionCapsHIDUtilTransport.registryEntryExists) throws -> Policy.DeviceIdentity?
-    {
-        try selected(environment: environment, selectionData: selectionData, registryEntryExists: registryEntryExists)?.device
-    }
-
-    static func selected(environment: [String: String] = ProcessInfo.processInfo.environment,
-                         selectionData: Data? = UserDefaults.standard.data(forKey: selectionKey),
-                         registryEntryExists: (UInt64) throws -> Bool = SessionCapsHIDUtilTransport.registryEntryExists) throws -> SessionCapsSelection?
-    {
-        #if DEBUG
-            if environment["KEYPATH_EXPERIMENTAL_MANAGED_CAPS_DEVICE"] != nil {
-                return try experimentalDevice(environment: environment).map {
-                    try SessionCapsSelection(device: $0, bootSessionUUID: bootSessionUUID())
-                }
-            }
-        #endif
-        guard let data = selectionSource(environment, selectionData) else { return nil }
-        let selection = try SessionCapsSelection.decode(data, currentBoot: bootSessionUUID())
-        // Boot-valid consent still belongs to one registry instance. Let the
-        // existing automatic-setup policy rediscover after a disconnect instead
-        // of passing a stale registry ID to the next worker.
-        guard try registryEntryExists(selection.device.registryEntryID) else { throw Refusal.selection }
-        return selection
-    }
-
-    /// The saved (or launch-supplied) intermediate, without verifying the
-    /// keyboard is connected. Used only to order the choice.
-    static func preferredIntermediate(environment: [String: String] = ProcessInfo.processInfo.environment,
-                                      selectionData: Data? = UserDefaults.standard.data(forKey: selectionKey)) -> UInt32
-    {
-        if let all = allKeyboardIntermediate(environment: environment) { return all }
-        #if DEBUG
-            if environment["KEYPATH_EXPERIMENTAL_MANAGED_CAPS_DEVICE"] != nil { return SessionCapsIntermediate.defaultUsage }
-        #endif
-        let data = selectionSource(environment, selectionData)
-        guard let data, let boot = try? bootSessionUUID(),
-              let selection = try? SessionCapsSelection.decode(data, currentBoot: boot)
-        else {
-            return SessionCapsIntermediate.defaultUsage
-        }
-        return selection.intermediateUsage
-    }
-
-    static func validate(configPath: String, runtimeHost: KanataRuntimeHost,
-                         environment: [String: String] = ProcessInfo.processInfo.environment,
-                         selectionData: Data? = UserDefaults.standard.data(forKey: selectionKey),
-                         requireSelection: Bool = true,
-                         automaticSetupDisabled: Bool = UserDefaults.standard.bool(forKey: automaticSetupDisabledKey)) -> (result: KanataHostBridgeValidationResult, managedCaps: Bool)
-    {
-        let admission = admit(configPath: configPath, runtimeHost: runtimeHost, environment: environment,
-                              selectionData: selectionData, requireSelection: requireSelection,
-                              automaticSetupDisabled: automaticSetupDisabled)
-        return (admission.result, admission.managedCaps)
-    }
-
-    struct Admission: Sendable {
-        let result: KanataHostBridgeValidationResult
-        let managedCaps: Bool
-        /// The intermediate the profile was admitted with. It differs from the
-        /// saved one when the profile or `occupied` took the saved key.
-        let intermediateUsage: UInt32
-        /// The profile needs managed Caps but no keyboard is usable (none
-        /// chosen, the chosen one disconnected, or setup is off). It runs
-        /// with Caps Lock passing through unchanged; its other rules work.
-        var capsPaused = false
-    }
-
-    /// `occupied` names keys something else already uses (see
-    /// `occupiedIntermediates`). With `rechoose`, a saved intermediate the
-    /// profile uses or that is occupied is replaced by the next free one; the
-    /// worker passes false so it runs exactly the key its parent chose.
-    static func admit(configPath: String, runtimeHost: KanataRuntimeHost,
-                      environment: [String: String] = ProcessInfo.processInfo.environment,
-                      selectionData: Data? = UserDefaults.standard.data(forKey: selectionKey),
-                      requireSelection: Bool = true, occupied: Set<UInt32> = [], rechoose: Bool = true,
-                      automaticSetupDisabled: Bool = UserDefaults.standard.bool(forKey: automaticSetupDisabledKey)) -> Admission
-    {
-        let usages = SessionKeyMap.sessionOutputUsages
-        let preferred = preferredIntermediate(environment: environment, selectionData: selectionData)
-        let legacy = KanataHostBridge.validateSessionConfig(runtimeHost: runtimeHost, configPath: configPath, supportedUsages: usages)
-        if case .valid = legacy { return Admission(result: legacy, managedCaps: false, intermediateUsage: preferred) }
-        // Parse eligibility before consent so stale setup cannot disguise an
-        // unrelated syntax or unsupported-action error. This acquires no mapping.
-        var checked: [UInt32: KanataHostBridgeValidationResult] = [:]
-        func managed(_ usage: UInt32) -> KanataHostBridgeValidationResult {
-            if let result = checked[usage] { return result }
-            let result = KanataHostBridge.validateSessionConfig(runtimeHost: runtimeHost, configPath: configPath,
-                                                                supportedUsages: usages, managedCaps: true,
-                                                                reservedUsage: usage)
-            checked[usage] = result
-            return result
-        }
-        var chosen = preferred
-        let preferredValid = if case .valid = managed(preferred) { true } else { false }
-        // Only a profile with physical Caps can be managed; skip re-parsing
-        // every candidate for one that failed for another reason.
-        let mentionsCaps = !preferredValid
-            && ((try? String(contentsOfFile: configPath, encoding: .utf8))?.lowercased().contains("caps") ?? true)
-        if rechoose, mentionsCaps || occupied.contains(preferred) {
-            // A rule that uses the saved key, or another app that took it,
-            // moves the reservation instead of refusing the profile.
-            if let next = SessionCapsIntermediate.choose(preferred: preferred, occupied: occupied, acceptsProfile: {
-                if case .valid = managed($0) { true } else { false }
-            }) {
-                chosen = next
-            } else if preferredValid {
-                return Admission(
-                    result: .invalid(reason: String(localized: "every key KeyPath can reserve for Caps Lock (F13\u{2013}F20) is already in use by your rules, another app, or a keyboard shortcut")),
-                    managedCaps: false,
-                    intermediateUsage: preferred
-                )
-            }
-        }
-        let canManage = (!automaticSetupDisabled
-            && (!requireSelection || allKeyboardIntermediate(environment: environment) != nil))
-            || (try? selected(environment: environment, selectionData: selectionData)) != nil
-        if canManage {
-            guard case .valid = managed(chosen) else { return Admission(result: legacy, managedCaps: false, intermediateUsage: preferred) }
-            return Admission(result: .valid, managedCaps: true, intermediateUsage: chosen)
-        }
-        // No usable keyboard. Physical Caps Lock is never mapped, so no key is
-        // reserved; the profile only has to parse under some candidate.
-        let parses = if case .valid = managed(chosen) { true } else {
-            SessionCapsIntermediate.choose(preferred: preferred, occupied: [], acceptsProfile: {
-                if case .valid = managed($0) { true } else { false }
-            }) != nil
-        }
-        guard parses else { return Admission(result: legacy, managedCaps: false, intermediateUsage: preferred) }
-        return Admission(result: .valid, managedCaps: false, intermediateUsage: preferred, capsPaused: true)
     }
 
     /// Pool keys already used elsewhere: in any keyboard service's
@@ -328,16 +157,6 @@ enum SessionCapsRuntimeSupport {
 
     static func journalDirectory(configPath: String = KeyPathConstants.Config.mainConfigPath) -> URL {
         URL(fileURLWithPath: configPath).deletingLastPathComponent().appendingPathComponent(".session-caps-mapping", isDirectory: true)
-    }
-
-    static func bootSessionUUID() throws -> String {
-        var bytes = [CChar](repeating: 0, count: 128)
-        var length = bytes.count
-        guard sysctlbyname("kern.bootsessionuuid", &bytes, &length, nil, 0) == 0,
-              length > 1, length <= bytes.count else { throw Refusal.bootIdentity }
-        let value = String(decoding: bytes.prefix(length - 1).map { UInt8(bitPattern: $0) }, as: UTF8.self)
-        guard UUID(uuidString: value) != nil else { throw Refusal.bootIdentity }
-        return value
     }
 
     /// All representable keys must be up in HID state, excluding Caps Lock’s

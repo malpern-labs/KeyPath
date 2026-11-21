@@ -1,7 +1,7 @@
 import Foundation
 @testable import KeyPathAppKit
 @testable import KeyPathCore
-import KeyPathRulesCore
+@testable import KeyPathRulesCore
 @preconcurrency import XCTest
 
 @MainActor
@@ -18,6 +18,17 @@ final class ConfigurationServiceSavePipelineTests: KeyPathTestCase {
     override func tearDown() async throws {
         try? FileManager.default.removeItem(at: tempDirectory)
         try await super.tearDown()
+    }
+
+    func testGenerationUsesInjectedLeaderPreferenceWhenNoExplicitPreferenceIsSupplied() async throws {
+        let service = ConfigurationService(
+            configDirectory: tempDirectory.path,
+            fallbackLeaderPreference: { LeaderKeyPreference(key: "space", targetLayer: .navigation, enabled: true) }
+        )
+
+        let generated = try await service.generateConfiguration(ruleCollections: [])
+
+        XCTAssertTrue(generated.content.contains("layer_nav_spc"))
     }
 
     // MARK: - Conflict Rejection Tests
@@ -817,34 +828,6 @@ final class ConfigurationServiceSavePipelineTests: KeyPathTestCase {
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
-    }
-
-    // MARK: - Kanata Error Parsing Tests
-
-    func testParseKanataErrors_ExtractsHelpLines() {
-        let output = """
-        [ERROR] Could not parse configuration
-        help: Unknown key in defsrc: "hangeul"
-        """
-        let errors = configService.parseKanataErrors(output)
-        XCTAssertTrue(errors.count >= 2, "Should extract both ERROR and help lines")
-        XCTAssertTrue(errors.contains(where: { $0.contains("hangeul") }))
-    }
-
-    func testParseKanataErrors_HandlesMultipleHelpLines() {
-        let output = """
-        [ERROR] Multiple issues found
-        help: Unknown key: "foo"
-        help: Missing layer definition
-        """
-        let errors = configService.parseKanataErrors(output)
-        XCTAssertTrue(errors.count >= 3)
-    }
-
-    func testParseKanataErrors_ReturnsEmptyForCleanOutput() {
-        let output = ""
-        let errors = configService.parseKanataErrors(output)
-        XCTAssertTrue(errors.isEmpty)
     }
 
     // MARK: - StripManagedRepeat Tests

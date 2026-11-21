@@ -43,7 +43,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
 
     func testInterruptedCLIRawWriteRestoresCanonicalLeaderAndConfig() throws {
         let config = directory.appendingPathComponent("keypath.kbd")
-        try RecoverableRuleWrite.durableWrite(Data("before-config".utf8), config)
+        try DurableRuleFile.write(Data("before-config".utf8), config)
         let before = LeaderKeyPreference.default
         let after = LeaderKeyPreference(key: "tab", targetLayer: .navigation, enabled: true)
         let beforeData = try JSONEncoder().encode(before)
@@ -109,7 +109,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
             )],
             writeFile: { data, url in
                 writes += 1
-                try RecoverableRuleWrite.durableWrite(data, url)
+                try DurableRuleFile.write(data, url)
                 if writes == 1 {
                     try self.defaults.set(JSONEncoder().encode(newer),
                                           forKey: PreferencesService.leaderKeyPreferenceKey)
@@ -128,7 +128,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
         let pendingData = try Data(contentsOf: RecoverableRuleWrite.journalURL(directory))
         var journal = try JSONDecoder().decode(RecoverableRuleWrite.Journal.self, from: pendingData)
         journal.committed = true
-        try RecoverableRuleWrite.durableWrite(
+        try DurableRuleFile.write(
             JSONEncoder().encode(journal), RecoverableRuleWrite.journalURL(directory)
         )
         try defaults.set(JSONEncoder().encode(newer), forKey: PreferencesService.leaderKeyPreferenceKey)
@@ -176,7 +176,6 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
                     success: disposition == .applied,
                     response: nil,
                     errorMessage: disposition == .rejected ? "rejected" : nil,
-                    protocol: nil,
                     disposition: disposition
                 )
             }
@@ -222,7 +221,6 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
                     success: disposition == .applied,
                     response: nil,
                     errorMessage: disposition == .rejected ? "rejected" : nil,
-                    protocol: nil,
                     disposition: disposition
                 )
             }
@@ -358,7 +356,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
         manager.onError = { errors.append($0) }
         manager.onRulesChanged = {
             reloadCount += 1
-            return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
+            return ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .applied)
         }
 
         await manager.updateLeaderKey("tab")
@@ -378,7 +376,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
         let newer = LeaderKeyPreference(key: "f17", targetLayer: .navigation, enabled: true)
         try defaults.set(JSONEncoder().encode(newer), forKey: PreferencesService.leaderKeyPreferenceKey)
         manager.onRulesChanged = {
-            ReloadResult(success: false, response: nil, errorMessage: "rejected", protocol: nil, disposition: .rejected)
+            ReloadResult(success: false, response: nil, errorMessage: "rejected", disposition: .rejected)
         }
 
         await manager.updateLeaderKey("tab")
@@ -400,7 +398,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
         }
         manager.onRulesChanged = {
             reloadCount += 1
-            return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
+            return ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .applied)
         }
 
         await manager.updateLeaderKey("tab")
@@ -436,7 +434,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
 
         let (recoveringManager, _) = try await makeManager(at: directory)
         recoveringManager.onRulesChanged = {
-            ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
+            ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .applied)
         }
         await recoveringManager.bootstrap()
 
@@ -501,7 +499,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
     @MainActor
     private func makeManager(
         at directory: URL,
-        deviceSelectionStore: DeviceSelectionStore = .shared,
+        deviceSelectionStore: DeviceSelectionStore? = nil,
         synchronizePreferences: @escaping @Sendable (RecoverableRuleWrite.PreferenceDefaults) -> Bool = { $0.value.synchronize() }
     ) async throws -> (RuleCollectionsManager, ConfigurationService) {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

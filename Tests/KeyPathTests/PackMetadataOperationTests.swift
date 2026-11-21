@@ -1,5 +1,6 @@
 import Foundation
 @testable import KeyPathAppKit
+import KeyPathCore
 import KeyPathRulesCore
 @preconcurrency import XCTest
 
@@ -102,7 +103,7 @@ final class PackMetadataOperationTests: KeyPathTestCase {
                     let restored = try Data(contentsOf: sourceURL)
                     XCTAssertEqual(restored, original)
                 } catch { XCTFail("Could not read restored source: \(error)") }
-                return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
+                return ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .applied)
             }
             let record = try await PackInstaller.testInstaller().reconcileInstallRecord(for: pack, manager: fixture.manager, installedPackTracker: fixture.tracker)
             XCTAssertNil(record)
@@ -183,7 +184,6 @@ final class PackMetadataOperationTests: KeyPathTestCase {
             success: false,
             response: nil,
             errorMessage: "Unexpected reload",
-            protocol: nil,
             disposition: .failed
         ) }
         let tracker = InstalledPackTracker(fileURL: directory.appendingPathComponent("installed-packs.json"))

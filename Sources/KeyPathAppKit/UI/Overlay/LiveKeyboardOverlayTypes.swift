@@ -1,6 +1,7 @@
 import AppKit
 import KeyPathCore
 import KeyPathInstallationWizard
+import KeyPathRulesCore
 import SwiftUI
 
 // MARK: - Overlay State Groups
@@ -158,6 +159,37 @@ final class OverlayWindow: NSWindow {
 
     override var canBecomeMain: Bool {
         Self.isAccessibilityTestMode
+    }
+
+    /// Borderless overlay windows need an explicit responder for the native Edit
+    /// menu. Text controls earlier in the responder chain still own their Undo.
+    let remapUndoManager = UndoManager()
+    weak var assignmentMenuSource: OverlayAssignmentMenuBridge.MenuSource?
+
+    override func becomeKey() {
+        super.becomeKey()
+        Task { OverlayAssignmentMenu.shared.refresh() }
+    }
+
+    override func resignKey() {
+        super.resignKey()
+        Task { OverlayAssignmentMenu.shared.refresh() }
+    }
+
+    @objc(undo:)
+    func undoOverlayRemap(_: Any?) {
+        guard isKeyWindow else { return }
+        remapUndoManager.undo()
+    }
+
+    override func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
+        if item.action == #selector(undoOverlayRemap(_:)) {
+            if let menuItem = item as? NSMenuItem {
+                menuItem.title = remapUndoManager.undoMenuItemTitle
+            }
+            return isKeyWindow && remapUndoManager.canUndo
+        }
+        return super.validateUserInterfaceItem(item)
     }
 
     override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {

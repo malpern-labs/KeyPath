@@ -1,4 +1,5 @@
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 /// Sheet for importing Karabiner-Elements configurations into KeyPath rule collections.

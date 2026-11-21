@@ -1,5 +1,6 @@
 import AppKit
 @testable import KeyPathAppKit
+import KeyPathRulesCore
 import SwiftUI
 import XCTest
 

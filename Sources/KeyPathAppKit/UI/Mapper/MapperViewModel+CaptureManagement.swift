@@ -69,9 +69,12 @@ extension MapperViewModel {
                 viewModel.multiTapFinalizeTimer = Timer.scheduledTimer(
                     withTimeInterval: viewModel.sequenceFinalizeDelay,
                     repeats: false
-                ) { [weak viewModel] _ in
-                    Task { @MainActor in
-                        viewModel?.finalizeMultiTapSequence()
+                ) { [weak viewModel] timer in
+                    let timerID = ObjectIdentifier(timer)
+                    // This timer is scheduled on the main actor's run loop.
+                    MainActor.assumeIsolated {
+                        guard let viewModel, viewModel.multiTapFinalizeTimer.map(ObjectIdentifier.init) == timerID else { return }
+                        viewModel.finalizeMultiTapSequence()
                     }
                 }
             }
@@ -324,9 +327,12 @@ extension MapperViewModel {
                 viewModel.finalizeTimer = Timer.scheduledTimer(
                     withTimeInterval: viewModel.sequenceFinalizeDelay,
                     repeats: false
-                ) { [weak viewModel] _ in
-                    Task { @MainActor in
-                        viewModel?.finalizeCapture()
+                ) { [weak viewModel] timer in
+                    let timerID = ObjectIdentifier(timer)
+                    // This timer is scheduled on the main actor's run loop.
+                    MainActor.assumeIsolated {
+                        guard let viewModel, viewModel.finalizeTimer.map(ObjectIdentifier.init) == timerID else { return }
+                        viewModel.finalizeCapture()
                     }
                 }
             }

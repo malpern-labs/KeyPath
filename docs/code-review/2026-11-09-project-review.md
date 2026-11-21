@@ -12,9 +12,9 @@ need a running system to confirm, are marked *unconfirmed*. `External/kanata`
 was not checked out, so statements about the engine's TCP command set come from
 ADR-046 and the Swift client, not the fork's source.
 
-## Status (updated 2026-11-19)
+## Status (updated 2026-11-20)
 
-Verified against `master` through [#1478](https://github.com/malpern-labs/KeyPath/pull/1478). O5 is complete. The findings below this status section describe the original review.
+Verified against `master` at `d3690c8d` through [#1580](https://github.com/malpern-labs/KeyPath/pull/1580). The findings below this status section describe the original review.
 
 Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 tracked privately
 
@@ -43,10 +43,10 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **O6** Plugin system | ✅ | Downloads removed (#1407); Insights linked into the app (#1411). |
 | **O7** Metal stage and first-run onboarding | ✅ | Keep the full Metal onboarding experience. Implementation simplifications can proceed when they preserve the first-run visuals and interactions. |
 | **O7** Packs | ✅ | Owner decision: keep the gallery and pack installation/dependency features. Remove only proven dead code around them; do not replace packs with built-in presets. |
-| **O7** CLI split | 🟡 | Measured a signed release baseline. The read-only config path now uses Core (#1517). A broader target split and comparative build measurements remain open. |
+| **O7** CLI split | 🟡 | Rule and collection operations and CLI backup and restore are now in Rules Core (#1563, #1569). Direct `KeyPathAppKit` imports in CLI sources fell from 57 to 19. The full executable still links AppKit. Signed release and Debug build baselines are recorded below. |
 | **O8** Unimplemented flags, wording, public-docs lint | ✅ | #1405. |
 | **O8** CLI link and service ownership | ✅ | New links install under `~/.local/bin` and uninstall removes matching links. `AGENTS.md` documents when to use `ServiceContainer` or a singleton (#1429). |
-| **O8** Test-mode checks and lint ratchets | 🟡 | Retired lint tests and passwordless sudo test mode (#1428). Replacing remaining production `TestEnvironment` checks with injected dependencies is open. |
+| **O8** Test-mode checks and lint ratchets | 🟡 | Retired lint tests and passwordless sudo test mode (#1428). Unified the parser (#1566), scoped keyboard-recognition fixtures (#1570), and required explicit test-host evidence before routing ordinary app launches into fixtures (#1577). The remaining audit covers test behavior embedded in production services. |
 | **B1** Dead view and images | ✅ | #1398. |
 | **B2** Scripts | ✅ | #1395. |
 | **B3** Dead Swift | ✅ | Deletion pass merged (#1398, #1406). Function-level Periphery scan completed with 3.8.0; retired unregistered CLI commands and their formatter are removed in this follow-up. Candidate diagnostics are not automatically safe deletions. |
@@ -59,11 +59,11 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 | **P3** Blocking subprocesses | ✅ | `SecCodeCopySelf` replaces the signing shell-out and pipes are drained before waiting (#1404). Migration discovery is async and bounded, with retryable unknown states and tested stop routing (#1480). System probes also drain both output pipes concurrently (#1483); the serialized full gate passed 5,534 tests. Latest-master deployment and live verification remain separate release checks. |
 | **P4** Shell-outs with API replacements | ✅ | Hidden flags, editor launch, function key preference writes, and signals use direct APIs. Spotlight search keeps a cancellable subprocess (#1426). |
 | **P5** `os.Logger` in `AppLogger` | ✅ | Unified log output added (#1427). File logger state is synchronized and queued writes flush (#1445). |
-| **P6** Concurrency leftovers | 🟡 | Feature flags and the app icon cache were synchronized (#1439). Three main-actor service conformances are compiler checked (#1481), and capability caches use checked mutex state (#1487). Palette search focus and simulator feedback now use cancellable view tasks in this follow-up; the full safe gate passed 5,526 tests with zero Swift warnings. Broader lock, timer, and actor-isolation work remains. |
+| **P6** Concurrency leftovers | 🟡 | Feature flags and the app icon cache were synchronized (#1439). Three main-actor service conformances are compiler checked (#1481). Capability caches and several runtime callbacks are compiler checked (#1487, #1571). Duplicate configuration watcher code is gone (#1572). Subprocess launch and cancellation are serialized (#1574). Overlay expiry and view timers now respect their current owners (#1579). Live overlay timing and remaining framework handoffs are open. |
 | **P7** Liquid Glass | ✅ | System glass in `AppGlassBackground` (#1408), checked on screen in light and dark. |
 | **P7** Other idioms | ✅ | Deprecated drawing and activation replaced (#1460, #1508). The window and wrapper audit removed an unused control and records the behavior each remaining bridge supports (#1509). Color conversion stays with individual surface changes. |
-| **P8** Localization | 🟡 | English and Japanese, a CI-checked catalog, plurals, and localization of text passed to views as `String` merged (#1430–#1433). Accessibility IDs, remaining English values, layout fit, and native-speaker review remain. |
-| **P9** Test isolation | 🟡 | Config migration tests use isolated directories and passed concurrently (#1434). Subprocess test waits are bounded (#1438); concurrent stdout/stderr draining fixes pipe-capacity deadlocks (#1476). Approval-storage and script-action tests use isolated stores (#1478), and standalone smoke and Core lanes passed concurrently (#1446). Broader on-disk state isolation remains. |
+| **P8** Localization | 🟡 | English and Japanese share a CI-checked catalog (#1430–#1433). The five overlay translations in #1578 cover the remaining active entries at that revision, verified by Xcode catalog compilation (3,477 of 3,477). Signed builds verified the virtual-key prompt and four Settings screens. An independent review of all 3,679 Japanese strings (ChatGPT, November 21) found 12 blocking issues; 11 are fixed and approved on re-review. The Japanese name of the macOS 27 Accessibility pane matches Apple's (checked November 21). Broader live layout remains. |
+| **P9** Test isolation | 🟡 | Migration, approval-storage and script-action tests use isolated stores (#1434, #1478). Task-scoped capability inputs and isolated keyboard-recognition indexes and notification centers are merged (#1564, #1570). CLI collection and import stores, QMK fetch fixtures, and overlay snapshot output are isolated (#1580). The local full safe gate passed 5,540 tests with zero Swift warnings. The remaining audit covers shared mutable state within one test process. |
 
 ### Also done since the review (not in its list)
 
@@ -72,13 +72,13 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 ### Open follow-ups
 
-- B7: the live homepage and setup page now send 1.0.1 users to the tag-pinned guide (#1520). GitHub Pages published commit `0b5a2052`, and both pages returned HTTP 200 with the new copy and links. Put macOS 27+ and Apple Silicon alongside the session-runtime download when its release artifact is live. Link one versioned cleanup guide from setup and uninstall. Draft #1507 still needs a representative rehearsal with the legacy helper active. Keep cleanup manual under [ADR-047](../adr/adr-047-pre-release-cleanup.md). Revisit automatic migration if tester evidence shows the manual path is a recurring barrier.
+- B7: The live homepage and setup page send 1.0.1 users to the tag-pinned guide (#1520). Both published pages returned HTTP 200 after the update. The original notarized 1.0.1 installer passed Gatekeeper on a disposable macOS 26.5.2 guest and reached its background-item approval prompt. The active-helper cleanup portion of draft #1507 still needs a rehearsal after approval. When the session-runtime release is live, put macOS 27+ and Apple Silicon alongside its download and link the manual cleanup guide from setup and uninstall. Revisit automatic migration if tester evidence shows the manual path is a recurring barrier. See [ADR-047](../adr/adr-047-pre-release-cleanup.md).
 
-- O7b: retain packs and their existing features. The plain and JSON output of `keypath config path` matched the prior CLI after #1517 moved path resolution into Core. See the [CLI compile-boundary evaluation](#cli-compile-boundary-evaluation) for the remaining extraction criteria.
-- O8c: replace remaining implicit test-mode behavior with scoped dependencies where appropriate, retaining safeguards against real system operations in tests.
-- P6: finish the ownership audit and owner-lifetime checks. BuildInfo #1493, watcher/HID session and biometric ownership #1494, diagnostic callback synchronization #1495, checked preference ownership #1497, CLI spinner cancellation #1505, and device cache ownership #1511 have merged. Investigation timestamps preserve the existing formatter behind checked synchronization (#1515). The mapper now cancels a delayed reset when its control disappears or the selected mapping changes (#1519). Remaining framework and timer boundaries still need audit.
-- P8: finish localization layout, copy, and native-language review. The Japanese virtual-key confirmation fit on the macOS 27.2.1 test guest. This covers one prompt at the tested window size.
-- P9: the pack/collection fixtures now own their tracker, legacy snapshots and preference domains in this follow-up. Seven affected suites passed 165 checks both serially and with two XCTest workers. The unused wizard restart helper was removed and fake app-control routing is scoped per test facade (#1499). Overlay style fixtures passed 96 checks serially and with two XCTest workers (#1510). Wizard handoff and frame persistence passed 15 focused checks (#1512). Keyboard layout selection and Caps Lock automatic setup now use isolated inputs in tests (#1514). Other shared preference fixtures and broad in-process parallel qualification remain open.
+- O7b: Keep the pack gallery, installation, and dependency features. Rules Core owns the read-only rule, collection, and pack catalog paths and the simulator (#1532, #1543, #1546, #1548). The simulator passed 35 focused tests, including four that run the bundled simulator. Seven comparisons against the preceding CLI matched stdout, stderr and exit status. System inspection and logs moved to CLI Support (#1568). Layout resources, backup storage, and generation inputs moved to Rules Core (#1565, #1586). The full CLI still links KeyPathAppKit for its remaining commands. See the [CLI compile-boundary evaluation](#cli-compile-boundary-evaluation).
+- O8c: The installer pack decisions and validator snapshots use scoped test inputs (#1523, #1525). The unused forced test mode was removed (#1528), and its full safe suite passed 5,529 tests. Removing the unused file-validation route and shared validation-host override preserved the real parser path in 165 focused tests (#1547). Audit the remaining implicit fixture behavior and retain the safeguards against real system actions during tests.
+- P6: The mapper cancels delayed resets when the selection changes (#1519, #1540). Stale layer-indicator and tooltip callbacks respect their current window (#1526, #1534). Favicon completion and engine timeout cleanup follow their owning operation (#1538, #1549). In 85 focused tests, the timeout change preserved a replacement connection and its buffer. Capture teardown (#1567) and the overlay window's ownership of sizing and hint work (#1587) merged. The latter passed 51 focused tests and 5,548 full local checks. Live overlay and capture teardown verification remains. The Layout Tracer compiler trial is recorded below.
+- P8: The Japanese virtual-key confirmation and General Settings stable-update label fit in signed macOS 27.2.1 builds. Settings option cards and Status actions use language-independent IDs (#1535). Xcode compiled eight additional Japanese translations (#1536) and localized the Stable and Beta channel labels (#1542). #1578 added the Japanese remap and navigation labels. The signed guest captured General Settings, Status, Home Row Mods and Repair in Japanese. An independent review of all 3,679 Japanese strings and the permission prompts (ChatGPT through the Codex CLI, November 21) found 12 blocking issues: two swapped menu labels, an unnumbered placeholder reorder, two gesture instructions, three uses of ウインドウ for a reporting period, a shared Start key, a stale setup path, a KindaVim term and the Accessibility pane name. Eleven are fixed (the Vim keycap now has its own key, `vim.keycap.line-start`) and the re-review approved them. Its 33 minor suggestions were then applied too: wording, consistent terms (設定, 上段, 受付時間, 修飾キー, オペレータ, スペースバー in prose), numbered placeholders, and own keys for the Vim Open keycap, the Delete key name and the numpad Operators heading. A second review approved all 87 changed strings. Apple's own macOS 27.3 string tables (SecurityPrivacyExtension, TCC and the authorization prompt, key `ACCESSIBILITY`) give that pane as デバイスの制御とデータへのアクセス in Japanese, which KeyPath already uses, so the reviewer's アクセシビリティ (the pre-macOS 27 name) was not applied. Live layout for onboarding and the overlay remains.
+- P9: Pack and collection tests, Caps Lock selection, leader recovery, the overlay window and onboarding fixtures use isolated test state (#1514, #1521, #1523, #1527, #1531). A safe-runner qualification on master `c2550766` passed 4,734 XCTest invocations with two worker processes plus 844 Swift Testing checks. A focused media-key test reproduced a comment-parsing error on the baseline and candidate. The fix passed all five media tests locally (#1533). #1580 isolates CLI writes and QMK fetch fixtures and fixes the navigation-layer snapshot setup. Device-selection writes now use their own configuration directory (#1585). At overlay candidate `f51656e5`, 83 scoped CLI, device-selection and rule-write cases passed with two XCTest worker processes, with zero failures or skips in the XML report. Seven Swift Testing rule-mutation checks also passed five repetitions in one process. Broader same-process coverage remains open, and CI still runs one full Swift lane.
 
 P2's normal usage prompt passed on a fresh macOS 27 guest. B7's current permission
 screenshot is published at gh-pages `99a2200b6`: the public guide returned HTTP
@@ -294,6 +294,21 @@ linked AppKit, SwiftUI, WebKit, Metal, MetalKit, and Sparkle. The first
 invocations was 18.6 ms. These are comparison measurements from one build and
 one machine. The first sample may include operating-system work on the new
 binary, and the run did not measure incremental compilation.
+
+The Air Debug comparison at master `7e781f8f` used Xcode 27.2 (27B52),
+four build jobs and separate SwiftPM scratch directories. Package resolution
+completed before timing. These are individual wall-clock samples.
+
+| Build target | Clean | Warm, no changes | Warm, CLI source edit |
+|---|---:|---:|---:|
+| Complete `keypath-cli` product | 114.48 s | 2.52 s | 2.97 s |
+| Existing `KeyPathCLIHelp` target | 22.84 s | 2.76 s | — |
+
+The edit was a comment in the CLI config-path command, reverted after timing.
+The full Debug executable still directly links AppKit, SwiftUI, Metal,
+MetalKit, Sparkle, and WebKit. The help target shows what a much smaller
+dependency graph costs to build. A future split needs to demonstrate which
+of the difference it can recover while keeping the full command surface.
 
 Keep the existing commands and pack features. A new umbrella engine target
 would still pull in app code if it carried the current facades wholesale.
@@ -578,9 +593,13 @@ Remaining work:
 - Reconcile delayed UI callbacks and timers with their owning view/window
   lifetimes. Convert only callbacks that require cancellation, and test closing
   or replacing the owner while a callback is pending.
-- Default main-actor isolation remains an optional compile-boundary experiment,
-  not a demonstrated correctness requirement. Check the current toolchain and
-  a leaf target before adopting it across UI targets.
+- On November 20, Apple Swift 6.4.2 compiled the Layout Tracer module with
+  both isolation settings, targeting macOS 27.0. Four existing downstream
+  Swift Testing files type-checked with the current setting. Default
+  main-actor isolation made synchronous document import and result access
+  actor-isolated, and those callers failed to type-check. Keep explicit
+  isolation at UI boundaries until the pure layout and file APIs can stay
+  nonisolated.
 
 ### P7. SwiftUI and AppKit idioms
 

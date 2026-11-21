@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathCore
 
 struct LayerCurrent: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -12,12 +12,8 @@ struct LayerCurrent: AsyncParsableCommand {
 
     mutating func run() async throws {
         let ctx = globals.outputContext
-        let facade = ConfigFacade()
 
-        let layer: String
-        do {
-            layer = try await facade.tcpGetCurrentLayer()
-        } catch {
+        guard let layer = try? await RuntimeControl.requestEngine(.layer).layer else {
             let cliError = CLIError.serviceUnreachable()
             CLIOutput.writeError(cliError, context: ctx)
             throw cliError.code.exitCode

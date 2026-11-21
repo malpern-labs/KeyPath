@@ -8,9 +8,6 @@ import XCTest
 final class ConfigRoundTripTests: XCTestCase {
     @MainActor
     func testRuleCollections_SaveLoadRoundTrip_ProducesIdenticalConfig() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("roundtrip-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -44,9 +41,6 @@ final class ConfigRoundTripTests: XCTestCase {
 
     @MainActor
     func testCustomRules_SaveLoadRoundTrip_PreservesAllFields() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("roundtrip-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -77,9 +71,6 @@ final class ConfigRoundTripTests: XCTestCase {
 
     @MainActor
     func testFullPipeline_SaveLoadSave_ProducesIdenticalFile() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("roundtrip-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)

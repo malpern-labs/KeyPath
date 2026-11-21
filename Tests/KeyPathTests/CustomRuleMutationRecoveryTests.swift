@@ -1,5 +1,6 @@
 import Foundation
 @testable import KeyPathAppKit
+@testable import KeyPathCLISupport
 import KeyPathRulesCore
 import Observation
 @preconcurrency import XCTest
@@ -42,7 +43,7 @@ final class CustomRuleMutationRecoveryTests: KeyPathTestCase {
     }
 
     private static func reload(_ disposition: ReloadDisposition) -> ReloadResult {
-        ReloadResult(success: disposition == .applied, response: nil, errorMessage: "injected \(disposition)", protocol: nil, disposition: disposition)
+        ReloadResult(success: disposition == .applied, response: nil, errorMessage: "injected \(disposition)", disposition: disposition)
     }
 
     private func assertRejectedMutationRestores(_ mutate: @MainActor () async -> Void) async throws {
@@ -130,6 +131,164 @@ final class CustomRuleMutationRecoveryTests: KeyPathTestCase {
         XCTAssertFalse(result.success)
         XCTAssertEqual(reloads, 1)
         XCTAssertEqual(try files(), before)
+    }
+
+    func testRemapRuleIdentityIsScopedToTheEditingLayer() {
+        let base = manager.customRules[0]
+        let next = manager.makeCustomRule(input: base.input, output: "f18", layer: .navigation)
+        XCTAssertNotEqual(next.id, base.id)
+        XCTAssertEqual(next.targetLayer, .navigation)
+        manager.customRules.append(next)
+        XCTAssertEqual(manager.getCustomRule(forInput: base.input, layer: .base)?.id, base.id)
+        XCTAssertEqual(manager.makeCustomRule(input: base.input, output: "f17", layer: .navigation).id, next.id)
+    }
+
+    func testExternalRuleRefreshMakesCLIAssignmentEligibleWithoutAnEditorWrite() async throws {
+        let before = manager.committedCustomRules
+        try await CLIConfigurationOperation.run(configDirectory: directory.path) { operation in
+            _ = try await operation.rules.addSimpleRemap(input: "f13", output: "f14")
+        }
+        let persistedFiles = try files()
+        XCTAssertEqual(manager.committedCustomRules, before)
+        let refreshed = await manager.refreshExternallyAppliedRules()
+        XCTAssertTrue(refreshed)
+        let assignment = RuleCollectionsManager.assignmentRule(input: "f13", layer: .base, in: manager.committedCustomRules)
+        XCTAssertEqual(assignment?.action, .keystroke(key: "f14"))
+        XCTAssertEqual(try files(), persistedFiles)
+        let refreshedAgain = await manager.refreshExternallyAppliedRules()
+        XCTAssertFalse(refreshedAgain)
+    }
+
+    func testSwapAndUndoKeepBothSlotsAndTheirCompleteAssignments() async throws {
+        manager.onRulesChanged = { Self.reload(.applied) }
+        let first = try XCTUnwrap(manager.customRules.first)
+        let second = CustomRule(
+            input: "f13", action: .keystroke(key: "f14"),
+            shiftedOutput: "f15",
+            createdAt: Date(timeIntervalSince1970: 55),
+            behavior: .dualRole(DualRoleBehavior(tapAction: .keystroke(key: "f14"), holdAction: .keystroke(key: "lctl"), tapTimeout: 180, holdTimeout: 240))
+        )
+        let added = await manager.saveCustomRule(second)
+        XCTAssertTrue(added)
+        let before = manager.customRules
+        let result = await manager.editAssignments(.swap(first.input, second.input), layer: .base)
+        let undo = try XCTUnwrap(result.undo)
+        XCTAssertEqual(manager.customRules[0].id, first.id)
+        XCTAssertEqual(manager.customRules[0].behavior, second.behavior)
+        XCTAssertEqual(manager.customRules[0].shiftedOutput, second.shiftedOutput)
+        XCTAssertEqual(manager.customRules[1].id, second.id)
+        XCTAssertEqual(manager.customRules[1].action, first.action)
+        let restored = await manager.undoRemap(undo)
+        XCTAssertTrue(restored)
+        XCTAssertEqual(manager.customRules, before)
+    }
+
+    func testPasteAssignmentUsesDestinationLayerAndCanBeUndone() async throws {
+        manager.onRulesChanged = { Self.reload(.applied) }
+        let source = try XCTUnwrap(manager.customRules.first)
+        let assignment = try XCTUnwrap(KeyAssignment(rule: source))
+        let data = try JSONEncoder().encode(assignment)
+        let copied = try JSONDecoder().decode(KeyAssignment.self, from: data)
+        let result = await manager.editAssignments(.paste(copied, "f13"), layer: .navigation)
+        let undo = try XCTUnwrap(result.undo)
+        XCTAssertEqual(manager.customRules.first, source)
+        XCTAssertEqual(manager.customRules.last?.targetLayer, .navigation)
+        XCTAssertEqual(manager.customRules.last?.action, source.action)
+        XCTAssertNotEqual(manager.customRules.last?.id, source.id)
+        let restored = await manager.undoRemap(undo)
+        XCTAssertTrue(restored)
+        XCTAssertEqual(manager.customRules, [source])
+    }
+
+    func testClipboardPreservesStructuredMacrosAndExistingLayerSwitches() throws {
+        let macro = MacroBehavior(text: "Hello!", source: .text)
+        let source = CustomRule(input: "f13", action: .keystroke(key: "f14"), behavior: .macro(macro))
+        let destination = CustomRule(input: "f15", action: .keystroke(key: "f16"), targetLayer: .navigation)
+        let encoded = try JSONEncoder().encode(XCTUnwrap(KeyAssignment(rule: source)))
+        let copied = try JSONDecoder().decode(KeyAssignment.self, from: encoded)
+        XCTAssertTrue(copied.isSupported)
+        XCTAssertEqual(copied.applied(to: destination).behavior, .macro(macro))
+        let layerSwitch = CustomRule(input: "f13", action: .rawKanata("(layer-switch nav)"))
+        let assignment = try XCTUnwrap(KeyAssignment(rule: layerSwitch))
+        XCTAssertEqual(assignment.applied(to: destination).action, .activateLayer(name: "nav"))
+    }
+
+    func testClipboardRejectsRawExpressionsAndUnknownVersions() throws {
+        let raw = CustomRule(input: "f13", action: .rawKanata("(cmd example)"))
+        XCTAssertNil(KeyAssignment(rule: raw))
+        let unsafe = CustomRule(input: "f13", action: .openFolder(path: "a\"b", name: nil))
+        XCTAssertNil(KeyAssignment(rule: unsafe))
+        let source = try XCTUnwrap(manager.customRules.first)
+        let data = try JSONEncoder().encode(XCTUnwrap(KeyAssignment(rule: source)))
+        var serialized = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        serialized["version"] = 2
+        let future = try JSONDecoder().decode(KeyAssignment.self, from: JSONSerialization.data(withJSONObject: serialized))
+        XCTAssertFalse(future.isSupported)
+    }
+
+    func testRemapUndoRestoresConflictingRuleAndKeepsInterveningEdit() async throws {
+        let original = manager.customRules[0]
+        manager.onRulesChanged = { Self.reload(.applied) }
+        let candidate = CustomRule(input: original.input, action: .keystroke(key: "f18"), createdAt: Date(timeIntervalSince1970: 43.5))
+        let saved = await manager.saveRemap(candidate)
+        let undo = try XCTUnwrap(saved.undo)
+        XCTAssertEqual(manager.customRules.first { $0.id == original.id }?.isEnabled, false)
+
+        let unrelated = CustomRule(input: "f13", action: .keystroke(key: "f14"), createdAt: Date(timeIntervalSince1970: 44))
+        let added = await manager.saveCustomRule(unrelated)
+        XCTAssertTrue(added)
+        let undone = await manager.undoRemap(undo)
+        XCTAssertTrue(undone)
+        let stored = try await manager.customRulesStore.loadForMutation()
+        XCTAssertEqual(stored, [original, unrelated])
+    }
+
+    func testRemapUndoIncludesCollectionChangedDuringSave() async throws {
+        manager.onRulesChanged = { Self.reload(.applied) }
+        let group = RuleCollection(
+            name: "Test collection", summary: "", category: .custom,
+            mappings: [KeyMapping(input: "f15", action: .keystroke(key: "f16"))]
+        )
+        let added = await manager.addCollection(group)
+        XCTAssertTrue(added)
+
+        // Model a collection being disabled by conflict resolution after save starts.
+        let manager = manager!
+        manager.onBeforeSave = { [weak manager] in
+            guard let manager, let index = manager.ruleCollections.firstIndex(where: { $0.id == group.id }) else { return }
+            manager.ruleCollections[index].isEnabled = false
+        }
+        let saved = await manager.saveRemap(CustomRule(input: "f13", action: .keystroke(key: "f14")))
+        manager.onBeforeSave = nil
+        let undo = try XCTUnwrap(saved.undo)
+        XCTAssertEqual(manager.ruleCollections.first { $0.id == group.id }?.isEnabled, false)
+
+        let undone = await manager.undoRemap(undo)
+        XCTAssertTrue(undone)
+        let stored = try await manager.ruleCollectionStore.loadForMutation()
+        XCTAssertEqual(stored.first { $0.id == group.id }, group)
+    }
+
+    func testRemapUndoPreservesNewerEditToTheSameRule() async throws {
+        manager.onRulesChanged = { Self.reload(.applied) }
+        var candidate = manager.makeCustomRule(input: "f20", output: "f18", layer: .base)
+        let saved = await manager.saveRemap(candidate)
+        let undo = try XCTUnwrap(saved.undo)
+
+        candidate.action = .keystroke(key: "f17")
+        let updated = await manager.saveCustomRule(candidate)
+        XCTAssertTrue(updated)
+        let undone = await manager.undoRemap(undo)
+        XCTAssertFalse(undone)
+        XCTAssertEqual(manager.customRules, [candidate])
+    }
+
+    func testRejectedRemapProducesNoUndo() async throws {
+        try await assertRejectedMutationRestores {
+            let result = await self.manager.saveRemap(CustomRule(input: "f13", action: .keystroke(key: "f14")))
+            XCTAssertFalse(result.saved)
+            XCTAssertNil(result.undo)
+        }
     }
 
     func testRejectedSaveRestoresFilesAndReportsFailure() async throws {

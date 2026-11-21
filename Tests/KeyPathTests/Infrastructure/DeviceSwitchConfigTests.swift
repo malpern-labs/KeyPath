@@ -290,16 +290,12 @@ final class DeviceSwitchConfigTests: XCTestCase {
         XCTAssertEqual(configWithout, configWith, "nil deviceOverrides should produce identical config")
     }
 
-    func testFullConfigEmptyCacheWithOverrides_UsesDefault() {
-        // When device cache is empty, overrides should be silently skipped.
+    func testFullConfigWithoutConnectedDevices_UsesDefault() {
+        // With no connected devices in the generation input, overrides are skipped.
         // The switch alias is still emitted with only the default case — this is
         // intentional: the code path doesn't special-case empty caches to avoid
         // complexity. The degenerate (switch () default break) is functionally
         // equivalent to a plain output and Kanata handles it correctly.
-        let cache = DeviceSelectionCache.shared
-        cache.reset() // Ensure empty
-        defer { cache.reset() }
-
         let mapping = KeyMapping(
             input: "a",
             action: .keystroke(key: "b"),
@@ -317,7 +313,7 @@ final class DeviceSwitchConfigTests: XCTestCase {
         // Switch alias emitted with only default case (no device-specific cases)
         assertContains(config, "dev_base_a")
         assertContains(config, "() b break")
-        XCTAssertFalse(config.contains("((device"), "Empty cache should produce no device cases")
+        XCTAssertFalse(config.contains("((device"), "An empty device input should produce no device cases")
     }
 
     // MARK: - Integration with buildCollectionBlocks
@@ -341,7 +337,8 @@ final class DeviceSwitchConfigTests: XCTestCase {
         let (_, aliases, _, _) = KanataConfiguration.buildCollectionBlocks(
             from: [collection],
             leaderKeyPreference: nil,
-            connectedDevices: [device0, device1]
+            connectedDevices: [device0, device1],
+            navigationKeyCodes: []
         )
 
         let deviceAlias = aliases.first(where: { $0.aliasName.hasPrefix("dev_") })
@@ -363,7 +360,8 @@ final class DeviceSwitchConfigTests: XCTestCase {
 
         let (_, aliases, _, _) = KanataConfiguration.buildCollectionBlocks(
             from: [collection],
-            leaderKeyPreference: nil
+            leaderKeyPreference: nil,
+            navigationKeyCodes: []
         )
 
         let deviceAlias = aliases.first(where: { $0.aliasName.hasPrefix("dev_") })

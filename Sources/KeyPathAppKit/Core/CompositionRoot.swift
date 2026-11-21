@@ -2,6 +2,7 @@ import AppKit
 import KeyPathCore
 import KeyPathPermissions
 import KeyPathPluginKit
+import KeyPathRulesCore
 import KeyPathWizardCore
 import SwiftUI
 
@@ -48,10 +49,11 @@ enum CompositionRoot {
         )
 
         // Phase 4: MVVM - Initialize services and RuntimeCoordinator via composition root
-        let configurationService = ConfigurationService(
+        let configurationService = ConfigurationService.forApp(
             configDirectory: KeyPathConstants.Config.directory
         )
         let manager = RuntimeCoordinator(injectedConfigurationService: configurationService)
+        manager.serviceLifecycleCoordinator.registerRuntimeProviders()
         let viewModel = KanataViewModel(manager: manager)
         let serviceContainer = ServiceContainer()
         AppLogger.shared.debug(
@@ -96,9 +98,6 @@ enum CompositionRoot {
         // probes and session workers never serve it).
         if !isOneShotProbeMode {
             RuntimeControlServer.shared.start(handler: RuntimeControlHandler.make(for: manager))
-            // This process launches the worker, so the engine admits it (ADR-046);
-            // in-app facade calls (App Intents) talk to the engine directly.
-            ConfigFacade.engineAccess = .direct
         }
 
         // Schedule deferred startup services

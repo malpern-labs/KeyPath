@@ -8,7 +8,7 @@ class ServiceHealthMonitorTests: XCTestCase {
 
     override func setUp() async throws {
         try await super.setUp()
-        monitor = ServiceHealthMonitor()
+        monitor = ServiceHealthMonitor(notificationCenter: NotificationCenter(), engineHealthProbe: { true })
     }
 
     override func tearDown() async throws {
@@ -28,12 +28,21 @@ class ServiceHealthMonitorTests: XCTestCase {
     }
 
     func testCheckServiceHealth_ProcessRunning() async {
-        // The TCP probe is skipped under tests and reports healthy.
         let status = ProcessHealthStatus(isRunning: true, pid: 1234)
         let healthStatus = await monitor.checkServiceHealth(processStatus: status)
 
         XCTAssertTrue(healthStatus.isHealthy)
         XCTAssertFalse(healthStatus.shouldRestart)
+    }
+
+    func testCheckServiceHealth_ProcessRunningButEngineUnavailable() async {
+        let monitor = ServiceHealthMonitor(notificationCenter: NotificationCenter(), engineHealthProbe: { false })
+        let status = ProcessHealthStatus(isRunning: true, pid: 1234)
+        let healthStatus = await monitor.checkServiceHealth(processStatus: status)
+
+        XCTAssertFalse(healthStatus.isHealthy)
+        XCTAssertTrue(healthStatus.shouldRestart)
+        XCTAssertEqual(healthStatus.reason, "TCP health check failed")
     }
 
     // MARK: - Grab-recovery guard (#625)

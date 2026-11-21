@@ -1,5 +1,6 @@
 import AppKit
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 // MARK: - Native Drag View
@@ -121,6 +122,10 @@ private extension View {
     }
 }
 
+extension EnvironmentValues {
+    @Entry var overlayLayerShortcutsEnabled = false
+}
+
 struct OverlayDragHeader: View {
     @Environment(\.services) private var services
     let isDark: Bool
@@ -160,6 +165,8 @@ struct OverlayDragHeader: View {
     /// Callback when a layer is deleted
     var onDeleteLayer: ((String) -> Void)?
 
+    @Environment(\.overlayLayerShortcutsEnabled) var layerShortcutsEnabled
+    @State private var layerShortcutMonitor: Any?
     @State var isLayerPickerOpen = false
     @State var availableLayers: [String] = ["base", "nav"]
     /// Whether the layer pill is expanded (showing name) or collapsed (icon only)
@@ -328,6 +335,27 @@ struct OverlayDragHeader: View {
         .frame(height: height)
         .clipped()
         .background(DragHandleTexture(isDark: isDark))
+        .onChange(of: shortcutContext, initial: true) { _, context in
+            stopLayerShortcutMonitor()
+            guard context.enabled else { return }
+            layerShortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                guard event.modifierFlags.intersection([.command, .shift, .control, .option]) == [.command, .shift]
+                else { return event }
+                let offset: Int
+                switch event.keyCode {
+                case 33: offset = -1
+                case 30: offset = 1
+                default: return event
+                }
+                let handled = MainActor.assumeIsolated {
+                    guard NSApp.keyWindow is OverlayWindow else { return false }
+                    stepLayer(by: offset)
+                    return true
+                }
+                return handled ? nil : event
+            }
+        }
+        .onDisappear { stopLayerShortcutMonitor() }
         .contentShape(Rectangle())
         .onAppear {
             refreshAvailableLayers()
@@ -381,6 +409,30 @@ struct OverlayDragHeader: View {
         let installed = await InstalledPackTracker.shared
             .isInstalled(packID: PackRegistry.kindaVim.id)
         await MainActor.run { kindaVimPackInstalled = installed }
+    }
+
+    private struct ShortcutContext: Equatable {
+        let enabled: Bool
+        let layer: String
+        let layers: [String]
+    }
+
+    private var shortcutContext: ShortcutContext {
+        ShortcutContext(enabled: layerShortcutsEnabled, layer: currentLayerName, layers: availableLayers)
+    }
+
+    private func stopLayerShortcutMonitor() {
+        if let layerShortcutMonitor {
+            NSEvent.removeMonitor(layerShortcutMonitor)
+            self.layerShortcutMonitor = nil
+        }
+    }
+
+    func stepLayer(by offset: Int) {
+        guard !availableLayers.isEmpty else { return }
+        let index = availableLayers.firstIndex(of: currentLayerName.lowercased()) ?? 0
+        let next = (index + offset + availableLayers.count) % availableLayers.count
+        onLayerSelected(availableLayers[next])
     }
 
     private func refreshAvailableLayers() {
@@ -542,7 +594,7 @@ struct OverlayDragHeader: View {
 
     /// Whether the layer pill should show the full name (expanded state, hovering, or picker open)
     private var shouldShowLayerName: Bool {
-        isLayerPillExpanded || isHoveringLayerPill || isLayerPickerOpen
+        layerShortcutsEnabled || isLayerPillExpanded || isHoveringLayerPill || isLayerPickerOpen
     }
 
     /// Background opacity for layer pill - brightens slightly on hover
@@ -645,6 +697,13 @@ struct OverlayDragHeader: View {
         .help("Current layer: \(layerDisplayName). Click to see available layers.")
         .accessibilityIdentifier("overlay-layer-indicator")
         .accessibilityLabel("Current layer: \(layerDisplayName). Click to see available layers.")
+        .onDisappear {
+            layerGracePeriodTimer?.invalidate()
+            layerGracePeriodTimer = nil
+            layerCollapseTimer?.invalidate()
+            layerCollapseTimer = nil
+            isHoveringLayerPill = false
+        }
         .accessibilityValue(layerDisplayName)
     }
 
@@ -657,6 +716,7 @@ struct OverlayDragHeader: View {
         if hovering {
             // Mouse entered - cancel collapse and expand immediately
             layerCollapseTimer?.invalidate()
+            layerCollapseTimer = nil
             isHoveringLayerPill = true
 
             // If collapsed, expand with animation
@@ -668,7 +728,9 @@ struct OverlayDragHeader: View {
         } else {
             // Mouse left - start grace period before actually marking as not hovering
             layerGracePeriodTimer = Timer.scheduledTimer(withTimeInterval: layerPillGracePeriod, repeats: false) { _ in
-                Task { @MainActor in
+                // Scheduled on the main run loop. Handle the tick before a later hover.
+                MainActor.assumeIsolated {
+                    layerGracePeriodTimer = nil
                     isHoveringLayerPill = false
                     // Schedule collapse with longer delay since user was engaged
                     scheduleLayerPillCollapse(delay: layerPillHoverCollapseDelay)
@@ -686,6 +748,7 @@ struct OverlayDragHeader: View {
         // Cancel any timers
         layerCollapseTimer?.invalidate()
         layerGracePeriodTimer?.invalidate()
+        layerGracePeriodTimer = nil
 
         // Expand the pill to show the new layer name
         withAnimation(layerPillSpring) {
@@ -703,7 +766,8 @@ struct OverlayDragHeader: View {
 
         // Schedule collapse
         layerCollapseTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { _ in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
+                layerCollapseTimer = nil
                 // Don't collapse if hovering or picker is open
                 guard !isHoveringLayerPill, !isLayerPickerOpen else { return }
                 withAnimation(layerPillSpring) {

@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import KeyPathCLISupport
 import KeyPathCore
 import KeyPathInstallationWizard
 import KeyPathWizardCore
@@ -58,6 +59,15 @@ enum RuntimeControlHandler {
                 answer = await response(ok: result.isSuccess, operation: .reload,
                                         status: manager.currentRuntimeStatusInternal(),
                                         lastError: result.isSuccess ? nil : result.errorMessage)
+                if result.isSuccess {
+                    // The CLI may hold the source-write lease until it receives this
+                    // response. Refresh under that lease boundary outside the request.
+                    Task { [weak manager] in
+                        guard let manager, await manager.ruleCollectionsManager.refreshExternallyAppliedRules() else { return }
+                        manager.refreshRuleMappings()
+                        NotificationCenter.default.post(name: .ruleCollectionsChanged, object: nil)
+                    }
+                }
             case .layer:
                 answer.layer = try await client.requestCurrentLayerName()
             case .layers:

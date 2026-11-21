@@ -930,6 +930,88 @@ extension RuleCollectionsManager {
         }
     }
 
+    struct RemapUndo: Sendable {
+        let before: RuleStateSnapshot
+        let after: RuleStateSnapshot
+    }
+
+    struct RemapSaveOutcome: Sendable {
+        let saved: Bool
+        let undo: RemapUndo?
+        static let failed = Self(saved: false, undo: nil)
+    }
+
+    func saveRemap(_ rule: CustomRule) async -> RemapSaveOutcome {
+        await withRuleMutation(failure: RemapSaveOutcome.failed) { [self] permit in
+            guard let before = await recoverAndSnapshotRuleState(mutationPermit: permit),
+                  await updateCustomRuleInMemory(rule, autoResolveConflicts: true, mutationPermit: permit)
+            else { return .failed }
+            let result = await commitRuleMutationResult(snapshot: before, mutationPermit: permit)
+            return await remapSaveOutcome(before: before, result: result)
+        }
+    }
+
+    func remapSaveOutcome(before: RuleStateSnapshot, result: SaveResult) async -> RemapSaveOutcome {
+        guard result.success, result.reloadResult?.isSuccess == true
+        else { return RemapSaveOutcome(saved: result.success, undo: nil) }
+        // The save owner can resolve another conflict while staging the configuration.
+        var after = snapshotRuleState()
+        guard let persistedRules = try? await customRulesStore.rulesInPersistenceFormat(after.customRules)
+        else { return RemapSaveOutcome(saved: true, undo: nil) }
+        after.customRules = persistedRules
+        let undo = before != after ? RemapUndo(before: before, after: after) : nil
+        return RemapSaveOutcome(saved: true, undo: undo)
+    }
+
+    func undoRemap(_ undo: RemapUndo) async -> Bool {
+        await withRuleMutation(failure: false) { [self] permit in
+            guard let current = await recoverAndSnapshotRuleState(mutationPermit: permit),
+                  let rules = Self.revertingRemapChanges(current.customRules, before: undo.before.customRules, after: undo.after.customRules),
+                  let collections = Self.revertingRemapChanges(current.collections, before: undo.before.collections, after: undo.after.collections)
+            else { return false }
+            customRules = rules
+            ruleCollections = collections
+
+            let restoredRules = rules.filter { $0.isEnabled && !current.customRules.contains($0) }
+            let restoredCollections = collections.filter { $0.isEnabled && !current.collections.contains($0) }
+            guard !restoredRules.contains(where: { conflictInfo(for: $0) != nil }),
+                  !restoredCollections.contains(where: { conflictInfo(for: $0) != nil })
+            else {
+                customRules = current.customRules
+                ruleCollections = current.collections
+                return false
+            }
+            refreshLayerIndicatorState()
+            return await commitRuleMutationResult(
+                snapshot: current, resolvesMappingConflicts: false, mutationPermit: permit
+            ).success
+        }
+    }
+
+    static func revertingRemapChanges<Item: Identifiable & Equatable>(
+        _ current: [Item], before: [Item], after: [Item]
+    ) -> [Item]? {
+        var restored = current
+        for id in Set(before.map(\.id) + after.map(\.id)) {
+            let previous = before.first { $0.id == id }
+            let saved = after.first { $0.id == id }
+            guard previous != saved else { continue }
+            let index = restored.firstIndex { $0.id == id }
+            guard index.map({ restored[$0] }) == saved else { return nil }
+            if let index {
+                if let previous { restored[index] = previous }
+                else { restored.remove(at: index) }
+            } else if let previous {
+                let nextID = before.drop(while: { $0.id != id }).dropFirst().first { item in
+                    restored.contains { $0.id == item.id }
+                }?.id
+                let insertion = restored.firstIndex { $0.id == nextID } ?? restored.endIndex
+                restored.insert(previous, at: insertion)
+            }
+        }
+        return restored
+    }
+
     /// Prepare the intended rule state under admission. Persistence belongs to the
     /// caller so the mapper can retain its transaction through runtime recovery.
     func updateCustomRuleInMemory(_ rule: CustomRule, autoResolveConflicts: Bool = false,
@@ -1047,10 +1129,10 @@ extension RuleCollectionsManager {
     }
 
     /// Create or update a custom rule for the given input/output
-    func makeCustomRule(input: String, output: String) -> CustomRule {
+    func makeCustomRule(input: String, output: String, layer: RuleCollectionLayer? = nil) -> CustomRule {
         let action: KeyAction = output.hasPrefix("(") ? .rawKanata(output) : .keystroke(key: output)
         if let existing = customRules.first(where: {
-            $0.input.caseInsensitiveCompare(input) == .orderedSame
+            $0.input.caseInsensitiveCompare(input) == .orderedSame && (layer == nil || $0.targetLayer == layer)
         }) {
             return CustomRule(
                 id: existing.id,
@@ -1061,16 +1143,19 @@ extension RuleCollectionsManager {
                 isEnabled: true,
                 notes: existing.notes,
                 createdAt: existing.createdAt,
+                targetLayer: layer ?? existing.targetLayer,
                 deviceOverrides: existing.deviceOverrides
             )
         } else {
-            return CustomRule(input: input, action: action)
+            return CustomRule(input: input, action: action, targetLayer: layer ?? .base)
         }
     }
 
     /// Get existing custom rule for the given input key, if any
-    func getCustomRule(forInput input: String) -> CustomRule? {
-        customRules.first { $0.input.caseInsensitiveCompare(input) == .orderedSame }
+    func getCustomRule(forInput input: String, layer: RuleCollectionLayer? = nil) -> CustomRule? {
+        customRules.first {
+            $0.input.caseInsensitiveCompare(input) == .orderedSame && (layer == nil || $0.targetLayer == layer)
+        }
     }
 }
 

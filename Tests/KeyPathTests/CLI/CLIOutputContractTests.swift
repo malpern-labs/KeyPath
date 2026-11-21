@@ -1,8 +1,9 @@
 @testable import KeyPathAppKit
-import KeyPathCLISupport
+@testable import KeyPathCLISupport
 import KeyPathCore
 @testable import KeyPathInstallationWizard
 import KeyPathPermissions
+import KeyPathRulesCore
 import KeyPathWizardCore
 import XCTest
 

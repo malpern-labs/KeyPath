@@ -37,6 +37,10 @@
 
 ### 5a. Build cache warming ✅
 **Done:** Added `cache-warm.yml` — runs `swift build` on push to master, keeping `.build` cache warm for PR jobs.
+**Removed (2026-11-20):** PR jobs now build in the persistent `swiftpm-scratch`, and every job's checkout
+runs `git clean -ffdx`, which deleted the `.build` this workflow produced. Kanata rebuilds incrementally
+in about a second because its cargo target persists on the runner. The workflow ran 92 times in one day
+(2.3 hours of the only `swiftpm-safe` runner) and delayed PR test runs without speeding any of them up.
 
 ### 5b. Disk cleanup cron ✅
 **Done:** Weekly LaunchAgent (`com.keypath.runner-cleanup`) on Mini prunes `.build` dirs older than 7 days and test artifacts older than 3 days. Runs Sundays at 3am.

@@ -3,6 +3,7 @@ import Foundation
 import KeyPathCore
 import KeyPathInstallationWizard
 import KeyPathPermissions
+import KeyPathRulesCore
 import KeyPathWizardCore
 import Observation
 
@@ -88,9 +89,10 @@ final class ServiceLifecycleCoordinator {
     }
 
     #if DEBUG
-        /// Lifecycle tests inject session operations without launching an application.
-        nonisolated(unsafe) static var testSessionStart: (@MainActor (String) async -> Bool)?
-        nonisolated(unsafe) static var testSessionStop: (@MainActor () async -> Bool)?
+        // Keep default test-host operations inert. An explicit nil lets a lifecycle
+        // test exercise the real path, which still refuses worker launches in tests.
+        @ObservationIgnored var testSessionStart: (@MainActor (String) async -> Bool)?
+        @ObservationIgnored var testSessionStop: (@MainActor () async -> Bool)?
         var testSessionCurrentReport: (() -> SessionRuntimeReport?)?
         var testSessionCapabilityProbe: (() async -> PermissionOracle.RuntimeKeyAccess?)?
         var testSessionConfigurationValidation: (() -> KanataHostBridgeValidationResult)?
@@ -217,6 +219,12 @@ final class ServiceLifecycleCoordinator {
     // MARK: - Init
 
     init() {
+        #if DEBUG
+            if TestEnvironment.isRunningTests {
+                testSessionStart = { _ in false }
+                testSessionStop = { true }
+            }
+        #endif
         for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification,
                      NSWorkspace.sessionDidBecomeActiveNotification]
         {
@@ -228,6 +236,11 @@ final class ServiceLifecycleCoordinator {
                 }
             })
         }
+    }
+
+    /// The app's composition root binds the runtime that owns the worker.
+    /// Additional coordinator instances must leave process-wide providers alone.
+    func registerRuntimeProviders() {
         ServiceHealthChecker.shared.configureSessionReadinessProvider { [weak self] in
             guard let report = await self?.currentSessionReport() else {
                 return KanataRuntimeReadiness(isRunning: false, isResponding: false, inputCaptureReady: false)
@@ -390,7 +403,7 @@ final class ServiceLifecycleCoordinator {
         #if DEBUG
             if let validate = testSessionConfigurationValidation {
                 result = validate()
-            } else if TestEnvironment.isTestHostProcess {
+            } else if TestEnvironment.isRunningTests {
                 result = .valid
             } else {
                 result = readSessionConfigurationAdmission()
@@ -459,7 +472,7 @@ final class ServiceLifecycleCoordinator {
                 return
             }
         #endif
-        guard !TestEnvironment.isTestHostProcess,
+        guard !TestEnvironment.isRunningTests,
               SessionCapsRuntimeSupport.selectedKeyboardOnly(),
               SessionCapsRuntimeSupport.validate(configPath: KeyPathConstants.Config.mainConfigPath,
                                                  runtimeHost: .current(), requireSelection: false).managedCaps,
@@ -519,7 +532,7 @@ final class ServiceLifecycleCoordinator {
         isStartingKanata = true
         defer { isStartingKanata = false }
         #if DEBUG
-            if let start = Self.testSessionStart {
+            if let start = testSessionStart {
                 let result = await start(reason)
                 guard sessionStartIsCurrent(generation) else {
                     // The seam represents a launch that can complete after
@@ -544,7 +557,7 @@ final class ServiceLifecycleCoordinator {
             }
         }
         #if DEBUG
-            if let stop = Self.testSessionStop { return await stop() }
+            if let stop = testSessionStop { return await stop() }
         #endif
         return await stopSessionRuntime()
     }

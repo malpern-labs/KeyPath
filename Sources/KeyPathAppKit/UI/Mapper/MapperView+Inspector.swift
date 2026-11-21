@@ -158,7 +158,7 @@ struct MapperInspectorPanel: View {
         case "ret": return String(localized: "Return")
         case "esc": return String(localized: "Escape")
         case "tab": return String(localized: "Tab")
-        case "bspc": return String(localized: "Delete")
+        case "bspc": return String(localized: "key.name.delete", defaultValue: "Delete", comment: "Name of the Delete key")
         default: return token.count == 1 ? token.uppercased() : token
         }
     }

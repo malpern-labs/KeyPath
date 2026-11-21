@@ -1,5 +1,6 @@
 import Foundation
 @testable import KeyPathAppKit
+import KeyPathRulesCore
 import XCTest
 
 final class RecoverableRuleWriteTests: XCTestCase {
@@ -71,7 +72,7 @@ final class RecoverableRuleWriteTests: XCTestCase {
             try fixture { directory, files, old, new in
                 var writes = 0
                 XCTAssertThrowsError(try RecoverableRuleWrite.apply(files: files, contents: new, directory: directory) { data, url in
-                    try RecoverableRuleWrite.durableWrite(data, url)
+                    try DurableRuleFile.write(data, url)
                     writes += 1
                     if writes == failAfter { throw Injected.write }
                 }) { error in
@@ -122,7 +123,7 @@ final class RecoverableRuleWriteTests: XCTestCase {
                 writes += 1
                 if writes == 2 { throw Injected.write }
                 if writes == 3 { throw Injected.rollback }
-                try RecoverableRuleWrite.durableWrite(data, url)
+                try DurableRuleFile.write(data, url)
             }) { error in
                 guard let failure = error as? RecoverableRuleWrite.WriteFailure else { return XCTFail("Missing recovery error") }
                 XCTAssertNotNil(failure.recoveryError)

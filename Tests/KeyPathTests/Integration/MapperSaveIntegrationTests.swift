@@ -11,8 +11,6 @@ import XCTest
 final class MapperSaveIntegrationTests: XCTestCase {
     @MainActor
     private func createTestEnvironment() async throws -> (RuleCollectionsManager, URL) {
-        TestEnvironment.forceTestMode = true
-
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("mapper-integration-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -38,9 +36,6 @@ final class MapperSaveIntegrationTests: XCTestCase {
 
     @MainActor
     func testSaveCustomRule_GeneratesConfig() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try await createTestEnvironment()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -56,9 +51,6 @@ final class MapperSaveIntegrationTests: XCTestCase {
 
     @MainActor
     func testSaveCustomRule_WithShiftedOutput_GeneratesConfig() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try await createTestEnvironment()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -76,9 +68,6 @@ final class MapperSaveIntegrationTests: XCTestCase {
 
     @MainActor
     func testSaveMultipleRules_AllAppearInConfig() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try await createTestEnvironment()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -102,9 +91,6 @@ final class MapperSaveIntegrationTests: XCTestCase {
 
     @MainActor
     func testDeleteCustomRule_RegeneratesConfigWithout() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try await createTestEnvironment()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -133,9 +119,6 @@ final class MapperSaveIntegrationTests: XCTestCase {
 
     @MainActor
     func testSaveCustomRule_UpdatesLabelMap() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try await createTestEnvironment()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -152,9 +135,6 @@ final class MapperSaveIntegrationTests: XCTestCase {
 
     @MainActor
     func testPackAndCustomRuleCombined_GeneratesValidConfig() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try await createTestEnvironment()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -185,9 +165,6 @@ final class MapperSaveIntegrationTests: XCTestCase {
 
     @MainActor
     func testSaveCustomRule_PostsNotification() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try await createTestEnvironment()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 

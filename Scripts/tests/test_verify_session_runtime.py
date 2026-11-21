@@ -247,9 +247,16 @@ class SessionVerificationTests(unittest.TestCase):
 
     def test_shell_retains_trust_and_delegates_runtime_failures(self):
         app = self.base / 'KeyPath App.app'
-        for bundle in ('KeyPath_KeyPath.bundle', 'KeyPath_KeyPathAppKit.bundle'):
+        for bundle in ('KeyPath_KeyPath.bundle', 'KeyPath_KeyPathAppKit.bundle', 'KeyPath_KeyPathRulesCore.bundle'):
             (app / 'Contents/Resources' / bundle).mkdir(parents=True)
         (app / 'Contents/Resources/KeyPath_KeyPathAppKit.bundle/default.metallib').write_bytes(b'fixture-metallib')
+        catalog = app / 'Contents/Resources/KeyPath_KeyPathRulesCore.bundle/rule-collection-catalog.json'
+        catalog.write_text('{"collections":[]}')
+        layout_dir = catalog.parent / 'Keyboards'
+        layout_dir.mkdir()
+        for layout_name in ('macbook-us.json', 'ansi-60.json'):
+            (layout_dir / layout_name).write_text('{}')
+        (app / 'Contents/Resources/keypath-poster-hor.png').write_bytes(b'fixture-poster')
         sparkle = app / 'Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle'
         sparkle.parent.mkdir(parents=True)
         sparkle.touch()
@@ -326,6 +333,25 @@ class SessionVerificationTests(unittest.TestCase):
         flat = app / 'Contents/Resources/KeyPath_KeyPathAppKit.bundle/default.metallib'
         native = flat.parent / 'Contents/Resources/default.metallib'
         native.parent.mkdir(parents=True)
+        native_catalog = catalog.parent / 'Contents/Resources' / catalog.name
+        native_catalog.parent.mkdir(parents=True)
+        for native_layout, contents, accepted in ((False, None, False),
+                                                   (False, b'', False),
+                                                   (True, b'{"collections":[]}', True)):
+            with self.subTest(native_catalog=native_layout, catalog_contents=contents):
+                catalog.unlink(missing_ok=True)
+                native_catalog.unlink(missing_ok=True)
+                log.unlink(missing_ok=True)
+                if contents is not None:
+                    (native_catalog if native_layout else catalog).write_bytes(contents)
+                result = subprocess.run(['/bin/bash', str(script)],
+                                        env=dict(environment, CHECK_RUNTIME='0'),
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0 if accepted else 1, result.stderr)
+                if not accepted:
+                    self.assertIn('rule collection catalog is missing or empty', result.stderr)
+                    self.assertFalse(log.exists())
+
         layouts = [('flat', b'compiled-fixture', None, True),
                    ('native', None, b'compiled-fixture', True),
                    ('native_with_empty_flat', b'', b'compiled-fixture', True),

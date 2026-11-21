@@ -60,6 +60,7 @@ let package = Package(
             name: "KeyPathRulesCore",
             dependencies: ["KeyPathCore"],
             path: "Sources/KeyPathRulesCore",
+            resources: [.copy("Resources/rule-collection-catalog.json"), .copy("Resources/Keyboards")],
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
@@ -83,16 +84,17 @@ let package = Package(
         ),
         .target(
             name: "KeyPathCLISupport",
-            dependencies: ["KeyPathInstallationWizard"],
+            dependencies: ["KeyPathCore", "KeyPathInstallationWizard", "KeyPathPermissions", "KeyPathRulesCore", "KeyPathWizardCore"],
             path: "Sources/KeyPathCLISupport",
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
         ),
-        // Foundation-only CLI argument and presentation contracts.
+        // CLI presentation and session-client commands independent of the app library.
         .target(
             name: "KeyPathCLICommon",
             dependencies: [
+                "KeyPathCore",
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ],
             path: "Sources/KeyPathCLICommon",
@@ -260,6 +262,8 @@ let package = Package(
             dependencies: [
                 "KeyPathAppKit",
                 "KeyPathCLI",
+                "KeyPathCLICommon",
+                "KeyPathCLISupport",
                 "KeyPathCore",
                 "KeyPathInsights",
                 "KeyPathPermissions",

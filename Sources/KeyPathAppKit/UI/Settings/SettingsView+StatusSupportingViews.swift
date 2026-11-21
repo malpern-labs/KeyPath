@@ -7,7 +7,7 @@ struct PermissionStatusRow: View {
     let status: PermissionOracle.Status?
     let isKanata: Bool
     let onTap: (() -> Void)?
-    var identifier: String?
+    let identifier: String
 
     var body: some View {
         Button(action: { onTap?() }) {
@@ -34,7 +34,7 @@ struct PermissionStatusRow: View {
         }
         .buttonStyle(.plain)
         .disabled(onTap == nil)
-        .accessibilityIdentifier(identifier ?? "settings-status-action-button-\(title.lowercased().replacingOccurrences(of: " ", with: "-"))")
+        .accessibilityIdentifier(identifier)
         .accessibilityLabel(title)
         .accessibilityValue(accessibilityValue)
     }
@@ -98,9 +98,9 @@ struct StatusDetailAction: Identifiable {
     let id = UUID()
     let title: String
     let icon: String?
-    let handler: () -> Void
-    var identifier: String?
+    let identifier: String
     var accessibilityTitle: String?
+    let handler: () -> Void
 }
 
 struct StatusDetail: Identifiable {
@@ -190,7 +190,7 @@ struct StatusDetailRow: View {
                             }
                         }
                         .settingsAction()
-                        .accessibilityIdentifier(action.identifier ?? "status-action-\(action.title.lowercased().replacingOccurrences(of: " ", with: "-"))")
+                        .accessibilityIdentifier(action.identifier)
                         .accessibilityLabel(action.accessibilityTitle ?? action.title)
                         .accessibilityValue(detail.message)
                     }

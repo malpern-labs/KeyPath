@@ -1,5 +1,6 @@
 import Foundation
 import KeyPathCore
+import KeyPathRulesCore
 import Observation
 
 /// A window-scoped bridge from KeyPath's existing privacy-safe Kanata events

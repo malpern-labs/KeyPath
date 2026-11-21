@@ -390,7 +390,6 @@ final class DeploymentScriptContractTests: XCTestCase {
     func testSwiftPMWorkflowsRequireInteractiveSafeRunner() throws {
         let root = repositoryRoot()
         let ci = try contents(of: root.appendingPathComponent(".github/workflows/ci.yml"))
-        let cacheWarm = try contents(of: root.appendingPathComponent(".github/workflows/cache-warm.yml"))
         let coverage = try contents(of: root.appendingPathComponent(".github/workflows/coverage.yml"))
         let runnerHealth = try contents(of: root.appendingPathComponent(".github/workflows/runner-health.yml"))
         let installer = try contents(of: root.appendingPathComponent("Scripts/install-ci-runner-service.sh"))
@@ -413,7 +412,6 @@ final class DeploymentScriptContractTests: XCTestCase {
                        "Both required jobs move to the hosted image together; each runs-on should start with fromJSON(\(hostedChoice) || …).")
         XCTAssertFalse(ci.contains(safeRunner),
                        "A literal safe-runner job in ci.yml would bypass the single-job check above.")
-        XCTAssertTrue(cacheWarm.contains(safeRunner))
         XCTAssertEqual(
             coverage.components(separatedBy: safeRunner).count - 1,
             2,

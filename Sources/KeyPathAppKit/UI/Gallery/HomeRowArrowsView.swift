@@ -120,6 +120,7 @@ struct HomeRowArrowsView: View {
     private var presetCards: some View {
         HStack(spacing: 8) {
             SettingsOptionCard(
+                identifier: "settings-option-inverted-t",
                 icon: "arrow.up.and.down.and.arrow.left.and.right",
                 title: String(localized: "Inverted-T"),
                 subtitle: String(localized: "Arrow key layout"),
@@ -129,6 +130,7 @@ struct HomeRowArrowsView: View {
                 onSelectPreset("inverted-t")
             }
             SettingsOptionCard(
+                identifier: "settings-option-vim-style",
                 icon: "chevron.left.forwardslash.chevron.right",
                 title: String(localized: "Vim-Style"),
                 subtitle: String(localized: "HJKL layout"),

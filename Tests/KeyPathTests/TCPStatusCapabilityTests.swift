@@ -12,6 +12,12 @@ private extension KanataTCPClient {
 }
 
 final class TCPStatusCapabilityTests: XCTestCase {
+    func testSessionClientKeepsItsNormalTimeoutInTestHost() async {
+        let client = KanataTCPClient()
+        let timeout = await client.timeout
+        XCTAssertEqual(timeout, 5.0)
+    }
+
     func testUnadvertisedStatusRefusedBeforeOpeningConnection() async throws {
         let client = KanataTCPClient(port: 1, timeout: 0.1)
         await client.seedBundledCapabilities()

@@ -2,6 +2,7 @@ import AppKit
 import KeyPathCore
 import KeyPathInstallationWizard
 import KeyPathPermissions
+import KeyPathRulesCore
 import KeyPathWizardCore
 import SwiftUI
 
@@ -9,6 +10,7 @@ import SwiftUI
 
 struct StatusSettingsTabView: View {
     @Environment(KanataViewModel.self) var kanataManager
+    @Environment(\.services) private var services
     @State private var autoDetectController = AutoDetectKeyboardController.shared
 
     @State var wizardInitialPage: WizardPage? // nil = don't show wizard
@@ -414,7 +416,7 @@ struct StatusSettingsTabView: View {
         if let last = lastDuplicateScan, Date().timeIntervalSince(last) < 60 { return }
         lastDuplicateScan = Date()
         Task { @MainActor in
-            let duplicates = await DuplicateAppDetector.detectDuplicateAppCopies()
+            let duplicates = await services.scanForDuplicateApps()
             guard duplicates != duplicateAppCopies else { return }
             duplicateAppCopies = duplicates
         }

@@ -1,18 +1,6 @@
 import Foundation
 import KeyPathCore
-
-/// The three shortcut-list values that affect generated Kanata configuration.
-/// A mutation captures this immutable candidate before it writes any defaults.
-struct ShortcutListGenerationInput: Sendable, Equatable {
-    let triggerMode: ContextHUDTriggerMode
-    let holdDelayPreset: ContextHUDHoldDelayPreset
-    let customHoldDelayMs: Int
-
-    var holdDelayMs: Int {
-        holdDelayPreset.milliseconds ?? customHoldDelayMs
-    }
-}
-
+import KeyPathRulesCore
 import Observation
 
 /// Key label display style for modifier and action keys on the keyboard visualization.
@@ -63,20 +51,6 @@ public enum UnmappedLayerKeyStyle: String, CaseIterable, Sendable {
     }
 }
 
-/// Communication protocol for Kanata integration
-/// TCP is the only supported protocol (Kanata v1.9.0 - see ADR-013)
-enum CommunicationProtocol: String, CaseIterable {
-    case tcp
-
-    var displayName: String {
-        String(localized: "TCP (Reliable)")
-    }
-
-    var description: String {
-        String(localized: "Reliable TCP protocol for config reloading (no authentication required - see ADR-013)")
-    }
-}
-
 /// What appears while a layer is active: the keyboard overlay, the shortcut list, both, or nothing.
 enum ContextHUDDisplayMode: String, CaseIterable {
     case overlayOnly
@@ -94,21 +68,15 @@ enum ContextHUDDisplayMode: String, CaseIterable {
     }
 }
 
-/// How the overlay/HUD is triggered when the modifier (Hyper/Meh) is activated
-public enum ContextHUDTriggerMode: String, CaseIterable, Sendable {
-    /// Show while holding modifier, dismiss on release
-    case holdToShow
-    /// Tap modifier to toggle visibility on/off
-    case tapToToggle
-
-    public var displayName: String {
+public extension ContextHUDTriggerMode {
+    var displayName: String {
         switch self {
         case .holdToShow: String(localized: "Hold to Show")
         case .tapToToggle: String(localized: "Tap to Toggle")
         }
     }
 
-    public var description: String {
+    var description: String {
         switch self {
         case .holdToShow: String(localized: "Appears while holding, dismisses on release")
         case .tapToToggle: String(localized: "Tap to show, tap again or press Esc to dismiss")
@@ -116,28 +84,13 @@ public enum ContextHUDTriggerMode: String, CaseIterable, Sendable {
     }
 }
 
-/// Hold-duration presets for triggering the Shortcut List/navigation layer.
-public enum ContextHUDHoldDelayPreset: String, CaseIterable, Sendable {
-    case short
-    case medium
-    case long
-    case custom
-
-    public var displayName: String {
+public extension ContextHUDHoldDelayPreset {
+    var displayName: String {
         switch self {
         case .short: String(localized: "Short")
         case .medium: String(localized: "Medium")
         case .long: String(localized: "Long")
         case .custom: String(localized: "Custom")
-        }
-    }
-
-    var milliseconds: Int? {
-        switch self {
-        case .short: 150
-        case .medium: 200
-        case .long: 300
-        case .custom: nil
         }
     }
 }
@@ -178,19 +131,7 @@ final class PreferencesService: Sendable {
 
     static let shared = PreferencesService()
 
-    nonisolated static var canonicalDefaults: UserDefaults {
-        TestEnvironment.isRunningTests
-            ? .standard
-            : canonicalDefaults(using: UserDefaults(suiteName: "com.keypath.KeyPath"))
-    }
-
-    /// The suite can be unavailable during early app launch. Preferences must
-    /// still initialize so launchd does not restart the app in a crash loop.
-    nonisolated static func canonicalDefaults(using suiteDefaults: UserDefaults?) -> UserDefaults {
-        suiteDefaults ?? .standard
-    }
-
-    nonisolated static let leaderKeyPreferenceKey = "KeyPath.LeaderKey.Preference"
+    nonisolated static let leaderKeyPreferenceKey = RecoverableRuleWrite.PreferenceRole.leader.key
     private let defaults: UserDefaults
     private let leaderDefaults: UserDefaults
     var persistenceDefaults: UserDefaults {
@@ -199,18 +140,6 @@ final class PreferencesService: Sendable {
 
     private var suppressLeaderPersistence = false
     private var suppressShortcutListPersistence = false
-
-    // MARK: - Communication Protocol Configuration
-
-    /// Communication protocol preference (always TCP)
-    var communicationProtocol: CommunicationProtocol {
-        didSet {
-            defaults.set(communicationProtocol.rawValue, forKey: Keys.communicationProtocol)
-            AppLogger.shared.log(
-                "🔧 [PreferencesService] Communication protocol: \(communicationProtocol.rawValue)"
-            )
-        }
-    }
 
     /// Whether user notifications are enabled
     var notificationsEnabled: Bool {
@@ -339,10 +268,10 @@ final class PreferencesService: Sendable {
         suppressLeaderPersistence = false
     }
 
-    func reloadLeaderKeyPreference(from defaults: UserDefaults = PreferencesService.canonicalDefaults) {
-        let value = defaults.data(forKey: Self.leaderKeyPreferenceKey)
-            .flatMap { try? JSONDecoder().decode(LeaderKeyPreference.self, from: $0) } ?? .default
-        stageLeaderKeyPreference(value)
+    func reloadLeaderKeyPreference(from defaults: UserDefaults = RecoverableRuleWrite.PreferenceDefaults.canonical) {
+        stageLeaderKeyPreference(
+            LeaderKeyPreference(persistedData: defaults.data(forKey: Self.leaderKeyPreferenceKey))
+        )
     }
 
     // MARK: - Education Hints
@@ -434,14 +363,11 @@ final class PreferencesService: Sendable {
     /// retained write settles. This intentionally avoids emitting the legacy
     /// notification-driven regeneration path.
     func reloadShortcutListGenerationInput(from defaults: UserDefaults? = nil) {
-        let source = defaults ?? leaderDefaults
-        let trigger = source.string(forKey: Keys.contextHUDTriggerMode) ?? Defaults.contextHUDTriggerMode.rawValue
-        let preset = source.string(forKey: Keys.contextHUDHoldDelayPreset) ?? Defaults.contextHUDHoldDelayPreset.rawValue
-        let custom = source.object(forKey: Keys.contextHUDHoldDelayCustomMs) as? Int ?? Defaults.contextHUDHoldDelayCustomMs
+        let input = ShortcutListGenerationInput(persistedIn: defaults ?? leaderDefaults)
         stageShortcutListGenerationInput(ShortcutListGenerationInput(
-            triggerMode: ContextHUDTriggerMode(rawValue: trigger) ?? Defaults.contextHUDTriggerMode,
-            holdDelayPreset: ContextHUDHoldDelayPreset(rawValue: preset) ?? Defaults.contextHUDHoldDelayPreset,
-            customHoldDelayMs: Self.clampedContextHUDHoldDelayCustomMs(custom)
+            triggerMode: input.triggerMode,
+            holdDelayPreset: input.holdDelayPreset,
+            customHoldDelayMs: Self.clampedContextHUDHoldDelayCustomMs(input.customHoldDelayMs)
         ))
     }
 
@@ -480,7 +406,6 @@ final class PreferencesService: Sendable {
     // MARK: - Keys
 
     private enum Keys {
-        static let communicationProtocol = "KeyPath.Communication.Protocol"
         static let notificationsEnabled = "KeyPath.Notifications.Enabled"
         static let applyMappingsDuringRecording = "KeyPath.Recording.ApplyMappingsDuringRecording"
         static let isSequenceMode = "KeyPath.Recording.IsSequenceMode"
@@ -488,9 +413,9 @@ final class PreferencesService: Sendable {
         static let accessibilityTestMode = "KeyPath.Testing.AccessibilityTestMode"
         static let leaderKeyPreference = PreferencesService.leaderKeyPreferenceKey
         static let contextHUDDisplayMode = "KeyPath.ContextHUD.DisplayMode"
-        static let contextHUDTriggerMode = "KeyPath.ContextHUD.TriggerMode"
-        static let contextHUDHoldDelayPreset = "KeyPath.ContextHUD.HoldDelayPreset"
-        static let contextHUDHoldDelayCustomMs = "KeyPath.ContextHUD.HoldDelayCustomMs"
+        static let contextHUDTriggerMode = RecoverableRuleWrite.PreferenceRole.contextHUDTriggerMode.key
+        static let contextHUDHoldDelayPreset = RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayPreset.key
+        static let contextHUDHoldDelayCustomMs = RecoverableRuleWrite.PreferenceRole.contextHUDHoldDelayCustomMs.key
         static let kindaVimLeaderHUDMode = "KeyPath.KindaVim.LeaderHUDMode"
         static let neovimReferenceTopics = "KeyPath.Neovim.ReferenceTopics"
         static let neovimReferenceTopicsVersion = "KeyPath.Neovim.ReferenceTopicsVersion"
@@ -506,7 +431,6 @@ final class PreferencesService: Sendable {
     // MARK: - Defaults
 
     private enum Defaults {
-        static let communicationProtocol = CommunicationProtocol.tcp // TCP is only protocol
         static let notificationsEnabled = true
         static let applyMappingsDuringRecording = true
         static let isSequenceMode = true
@@ -524,9 +448,9 @@ final class PreferencesService: Sendable {
         // Nothing pops up on a layer hold unless the user picks it: holding Space to
         // type must not flash a window for people who never asked for one.
         static let contextHUDDisplayMode = ContextHUDDisplayMode.none
-        static let contextHUDTriggerMode = ContextHUDTriggerMode.holdToShow
-        static let contextHUDHoldDelayPreset = ContextHUDHoldDelayPreset.long
-        static let contextHUDHoldDelayCustomMs = 200
+        static let contextHUDTriggerMode = ShortcutListGenerationInput.defaultTriggerMode
+        static let contextHUDHoldDelayPreset = ShortcutListGenerationInput.defaultHoldDelayPreset
+        static let contextHUDHoldDelayCustomMs = ShortcutListGenerationInput.defaultCustomHoldDelayMs
         static let kindaVimLeaderHUDMode = KindaVimLeaderHUDMode.off
         static let neovimReferenceTopics = NeovimTerminalCategory.defaultRawValues
         static let neovimReferenceTopicsVersion = 2
@@ -542,7 +466,7 @@ final class PreferencesService: Sendable {
     // MARK: - Initialization
 
     init(
-        leaderDefaults: UserDefaults = PreferencesService.canonicalDefaults,
+        leaderDefaults: UserDefaults = RecoverableRuleWrite.PreferenceDefaults.canonical,
         defaults: UserDefaults = .standard
     ) {
         self.defaults = defaults
@@ -552,11 +476,6 @@ final class PreferencesService: Sendable {
         defaults.removeObject(forKey: "KeyPath.Security.ConfigCommandActionsEnabled")
 
         // Load stored preferences or use defaults
-        let protocolString =
-            defaults.string(forKey: Keys.communicationProtocol)
-                ?? Defaults.communicationProtocol.rawValue
-        communicationProtocol =
-            CommunicationProtocol(rawValue: protocolString) ?? Defaults.communicationProtocol
 
         notificationsEnabled =
             defaults.object(forKey: Keys.notificationsEnabled) as? Bool
@@ -598,13 +517,9 @@ final class PreferencesService: Sendable {
                 ?? Defaults.accessibilityTestMode
 
         // Leader key preference
-        if let data = leaderDefaults.data(forKey: Keys.leaderKeyPreference),
-           let stored = try? JSONDecoder().decode(LeaderKeyPreference.self, from: data)
-        {
-            leaderKeyPreference = stored
-        } else {
-            leaderKeyPreference = .default
-        }
+        leaderKeyPreference = LeaderKeyPreference(
+            persistedData: leaderDefaults.data(forKey: Keys.leaderKeyPreference)
+        )
 
         // Education hints
         overlayHiddenHintShowCount =
@@ -663,35 +578,13 @@ final class PreferencesService: Sendable {
         defaults.set(Defaults.neovimReferenceTopicsVersion, forKey: Keys.neovimReferenceTopicsVersion)
 
         AppLogger.shared.log(
-            "🔧 [PreferencesService] Initialized - Protocol: \(communicationProtocol.rawValue), Verbose logging: \(verboseKanataLogging)"
+            "🔧 [PreferencesService] Initialized - Verbose logging: \(verboseKanataLogging)"
         )
-    }
-
-    // MARK: - Public Interface
-
-    /// Reset all communication settings to defaults
-    func resetCommunicationSettings() {
-        communicationProtocol = Defaults.communicationProtocol
-        AppLogger.shared.log("🔧 [PreferencesService] All communication settings reset to defaults")
-    }
-
-    /// Get current communication configuration as string for logging
-    var communicationConfigDescription: String {
-        String(localized: "Engine control over the worker's Unix-domain socket, owner-checked (ADR-046)")
     }
 }
 
 private extension PreferencesService {
     nonisolated static func clampedContextHUDHoldDelayCustomMs(_ delay: Int) -> Int {
         min(max(delay, 100), 2000)
-    }
-}
-
-// MARK: - Convenience Extensions
-
-extension PreferencesService {
-    /// Get the currently preferred communication protocol (always TCP)
-    var preferredProtocol: CommunicationProtocol {
-        communicationProtocol
     }
 }

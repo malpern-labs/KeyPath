@@ -1,4 +1,5 @@
 @testable import KeyPathAppKit
+@testable import KeyPathRulesCore
 import XCTest
 
 // MARK: - Key Translator Tests

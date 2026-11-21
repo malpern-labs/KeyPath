@@ -5,6 +5,7 @@ import SwiftUI
 struct SettingsOptionCard: View {
     static let settingsRowWidth: CGFloat = SettingsDesign.optionWidth
 
+    let identifier: String
     let icon: String
     let title: String
     let subtitle: String
@@ -64,6 +65,6 @@ struct SettingsOptionCard: View {
             isHovered = hovering
             onHoverChanged?(hovering)
         }
-        .accessibilityIdentifier("settings-option-\(title.lowercased().replacingOccurrences(of: " ", with: "-"))")
+        .accessibilityIdentifier(identifier)
     }
 }

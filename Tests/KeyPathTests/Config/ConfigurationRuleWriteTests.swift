@@ -1,7 +1,7 @@
 import Foundation
 @testable import KeyPathAppKit
 import KeyPathCore
-import KeyPathRulesCore
+@testable import KeyPathRulesCore
 @preconcurrency import XCTest
 
 @MainActor
@@ -174,7 +174,7 @@ final class ConfigurationRuleWriteTests: KeyPathTestCase {
         // Model the previous release's output: same rules, different generator text.
         let olderOutput = try String(contentsOf: configURL, encoding: .utf8) + "\n;; older generator output\n"
         try olderOutput.write(to: configURL, atomically: true, encoding: .utf8)
-        try Data(ConfigurationService.managedFingerprint(olderOutput).utf8)
+        try Data(KanataConfiguration.managedFingerprint(olderOutput).utf8)
             .write(to: service.managedConfigFingerprintURL)
 
         try await service.saveRuleState(
@@ -184,7 +184,7 @@ final class ConfigurationRuleWriteTests: KeyPathTestCase {
         let saved = try String(contentsOf: configURL, encoding: .utf8)
         XCTAssertFalse(saved.contains("older generator output"))
         XCTAssertEqual(try String(contentsOf: service.managedConfigFingerprintURL, encoding: .utf8),
-                       ConfigurationService.managedFingerprint(saved))
+                       KanataConfiguration.managedFingerprint(saved))
     }
 
     /// Upgraders have no fingerprint yet; a generated file is accepted once and fingerprinted.
@@ -291,6 +291,32 @@ final class ConfigurationRuleWriteTests: KeyPathTestCase {
         XCTAssertEqual(try String(contentsOf: configURL, encoding: .utf8), ";; handwritten global configuration")
         XCTAssertEqual(try Data(contentsOf: collectionURL), beforeCollections)
         XCTAssertFalse(FileManager.default.fileExists(atPath: RecoverableRuleWrite.journalURL(directory).path))
+    }
+
+    func testCommittedDeviceSelectionUsesTheServiceConfigurationDirectory() async throws {
+        let sharedURL = await DeviceSelectionStore.shared.persistenceURL
+        guard sharedURL == AppPaths.configDirectory.appendingPathComponent("DeviceSelection.json") else {
+            XCTFail("Shared device selection must be sandboxed before testing writes")
+            return
+        }
+        let expectedURL = directory.appendingPathComponent("DeviceSelection.json")
+        let selection = DeviceSelection(hash: "local", productKey: "Keyboard", isEnabled: true, lastSeen: .distantPast)
+        let committedCollections = [collection("Local device state")]
+        let sharedBefore = try? Data(contentsOf: sharedURL)
+
+        try await service.operationGate.withOperation { @MainActor permit in
+            let write = try await self.service.stageRuleState(
+                ruleCollections: committedCollections, customRules: [],
+                collectionStore: self.collections, customStore: self.customRules,
+                mutationPermit: permit, deviceSelections: [selection]
+            )
+            try await self.service.settleRuleWrite(write, commit: true, mutationPermit: permit)
+        }
+
+        let localStore = DeviceSelectionStore.testStore(at: expectedURL, cache: DeviceSelectionCache())
+        let stored = try await localStore.loadForMutation()
+        XCTAssertEqual(stored.map(\.hash), ["local"])
+        XCTAssertEqual(try? Data(contentsOf: sharedURL), sharedBefore)
     }
 
     func testDeviceScopedCandidateIsRejectedBeforeAnySourceStoreChanges() async throws {

@@ -99,7 +99,7 @@ struct MainAppStateControllerTests {
         #expect(controller.isConfigured == false)
 
         // Inject validator
-        controller.setValidator(SystemValidator())
+        controller.setValidator(SystemValidator.readyTestFixture())
 
         // Now should be true
         #expect(controller.isConfigured == true)
@@ -436,7 +436,7 @@ struct MainAppStateControllerBehaviorTests {
         let validator = StubSystemValidator(contexts: [denied, ready])
         let controller = configuredController(validator: validator)
         let lifecycle = ServiceLifecycleCoordinator()
-        controller.configure(serviceLifecycle: lifecycle, onSystemHealthy: {})
+        controller.configure(serviceLifecycle: lifecycle, observeRuntime: false, onSystemHealthy: {})
 
         await controller.performInitialValidation()
         #expect(controller.lastValidatedSystemContext?.permissions.accessibility == .denied)
@@ -594,7 +594,7 @@ struct MainAppStateControllerBehaviorTests {
             // not the removed process-age grace period.
             manager.serviceLifecycleCoordinator.isStartingKanata = true
             defer { manager.serviceLifecycleCoordinator.isStartingKanata = false }
-            controller.configure(serviceLifecycle: manager.serviceLifecycleCoordinator, onSystemHealthy: {})
+            controller.configure(serviceLifecycle: manager.serviceLifecycleCoordinator, observeRuntime: false, onSystemHealthy: {})
             controller.setValidator(StubSystemValidator(snapshot: snapshot))
             var permissionProbes = 0
             var healthProbes = 0
@@ -636,7 +636,7 @@ struct MainAppStateControllerBehaviorTests {
             validations += 1
             return .invalid(reason: "Caps Lock remapping requires the advanced driver backend")
         }
-        controller.configure(serviceLifecycle: lifecycle, onSystemHealthy: {})
+        controller.configure(serviceLifecycle: lifecycle, observeRuntime: false, onSystemHealthy: {})
         controller.setValidator(StubSystemValidator(context: SystemContextBuilder(componentsInstalled: true).build()))
         controller.configureStartupGateTestingState(
             permissionsOverride: { permissionProbes += 1; return sessionPermissions(runtimeKeyAccess: .granted) },
@@ -674,7 +674,7 @@ struct MainAppStateControllerBehaviorTests {
             lifecycle.testSessionConfigurationValidation = { .valid }
             lifecycle.testSessionCapsRecovery = { throw SessionCapsMappingLease.Refusal.mutationUncertain }
             if !duringHealth { #expect(await lifecycle.restoreSessionCaps(for: nil) == false) }
-            controller.configure(serviceLifecycle: lifecycle, onSystemHealthy: {})
+            controller.configure(serviceLifecycle: lifecycle, observeRuntime: false, onSystemHealthy: {})
             controller.setValidator(StubSystemValidator(context: SystemContextBuilder(componentsInstalled: true).build()))
             var healthChecks = 0, permissionChecks = 0
             controller.configureStartupGateTestingState(
@@ -703,7 +703,7 @@ struct MainAppStateControllerBehaviorTests {
     func wakeRecoveryDuringSnapshotRevalidates() async {
         let controller = MainAppStateController()
         let lifecycle = RuntimeCoordinator().serviceLifecycleCoordinator
-        controller.configure(serviceLifecycle: lifecycle, onSystemHealthy: {})
+        controller.configure(serviceLifecycle: lifecycle, observeRuntime: false, onSystemHealthy: {})
         let validator = SequenceSystemValidator(contexts: [
             SystemContextBuilder(servicesHealthy: false, componentsInstalled: true).build(),
             SystemContextBuilder(servicesHealthy: true, componentsInstalled: true).build()
@@ -727,7 +727,7 @@ struct MainAppStateControllerBehaviorTests {
         let controller = MainAppStateController()
         let lifecycle = RuntimeCoordinator().serviceLifecycleCoordinator
         lifecycle.testSessionCapsRecovery = { throw SessionCapsMappingLease.Refusal.mutationUncertain }
-        controller.configure(serviceLifecycle: lifecycle, onSystemHealthy: {})
+        controller.configure(serviceLifecycle: lifecycle, observeRuntime: false, onSystemHealthy: {})
         let validator = SequenceSystemValidator(contexts: [SystemContextBuilder(servicesHealthy: true, componentsInstalled: true).build()])
         validator.beforeCheck = { _ = await lifecycle.restoreSessionCaps(for: nil) }
         controller.setValidator(validator)

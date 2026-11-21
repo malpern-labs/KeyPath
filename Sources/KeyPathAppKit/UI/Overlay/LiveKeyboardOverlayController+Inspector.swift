@@ -7,6 +7,10 @@ extension LiveKeyboardOverlayController {
 
     func openInspector(animated: Bool) {
         guard let window else { return }
+        // Opening the editor is an explicit interaction. The passive overlay
+        // can stay in front without taking keyboard focus from another app.
+        NSApp.activate()
+        window.makeKey()
         let token = UUID()
         inspectorAnimationToken = token
         let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -129,7 +133,9 @@ extension LiveKeyboardOverlayController {
             guard let self else {
                 return
             }
-            Task { @MainActor in
+            // This timer is scheduled on the main run loop. Its work must not
+            // survive invalidation when a new reveal replaces the old one.
+            MainActor.assumeIsolated {
                 guard inspectorAnimationToken == token, inspectorAnimationTimer != nil else { return }
                 let elapsed = CACurrentMediaTime() - startTime
                 let progress = min(1.0, elapsed / inspectorAnimationDuration)
@@ -218,76 +224,80 @@ extension LiveKeyboardOverlayController {
         }
     }
 
-    func observeDesiredContentHeight() {
-        Task { @MainActor [weak self] in
+    func observeWindowSizing(for window: NSWindow) {
+        windowSizingObserver?.cancel()
+        windowSizingObserver = Task { @MainActor [weak self, weak window] in
             var lastHeight: CGFloat?
-            while let self {
-                let height = uiState.desiredContentHeight
-                if height != lastHeight {
-                    lastHeight = height
-                    if !isUserResizing {
-                        applyDesiredContentHeight(height)
-                    }
-                }
-                try? await Task.sleep(for: .milliseconds(50))
-            }
-        }
-    }
-
-    func observeDesiredContentWidth() {
-        Task { @MainActor [weak self] in
             var lastWidth: CGFloat?
-            while let self {
-                let width = uiState.desiredContentWidth
-                if width != lastWidth {
-                    lastWidth = width
-                    if !isUserResizing {
-                        applyDesiredContentWidth(width)
+            var lastRatio: CGFloat?
+
+            // Apply the SwiftUI measurements in order and keep the observer
+            // tied to the window whose content produced them.
+            while !Task.isCancelled {
+                do {
+                    guard let self, let window, self.window === window else { return }
+                    let height = uiState.desiredContentHeight
+                    if height != lastHeight {
+                        lastHeight = height
+                        if !isUserResizing {
+                            applyDesiredContentHeight(height)
+                        }
+                    }
+                    let width = uiState.desiredContentWidth
+                    if width != lastWidth {
+                        lastWidth = width
+                        if !isUserResizing {
+                            applyDesiredContentWidth(width)
+                        }
+                    }
+                    let ratio = uiState.keyboardAspectRatio
+                    if ratio != lastRatio {
+                        lastRatio = ratio
+                        if !isUserResizing {
+                            resizeWindowForNewAspectRatio(ratio)
+                        }
                     }
                 }
-                try? await Task.sleep(for: .milliseconds(50))
+                do {
+                    try await Task.sleep(for: .milliseconds(50))
+                } catch {
+                    return
+                }
             }
         }
     }
 
-    /// Show the hide hint bubble after health indicator dismisses
-    /// Waits for health indicator to disappear, then 0.5s delay, then shows bubble
-    func showHintBubbleAfterHealthIndicator() {
-        // Cancel any existing observer
+    /// Give the health indicator priority, then show the hint above the same overlay.
+    func showHintBubbleAfterHealthIndicator(
+        wait: @escaping @MainActor (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+    ) {
         hintBubbleObserver?.cancel()
-
-        // If health indicator is already dismissed, show after short delay
-        if uiState.healthIndicatorState == .dismissed || uiState.healthIndicatorState == .healthy {
-            showHintBubbleWithDelay(seconds: 0.5)
+        guard let window else {
+            hintBubbleObserver = nil
             return
         }
 
-        // Otherwise, observe and wait for dismissal
-        hintBubbleObserver?.cancel()
-        let observeTask = Task { @MainActor [weak self] in
-            while let self {
-                let state = uiState.healthIndicatorState
-                if state == .dismissed || state == .healthy {
-                    showHintBubbleWithDelay(seconds: 0.5)
-                    return
+        hintBubbleObserver = Task { @MainActor [weak self, weak window] in
+            do {
+                while !Task.isCancelled, let state = self?.uiState.healthIndicatorState,
+                      let window, self?.window === window, window.isVisible
+                {
+                    if state == .dismissed || state == .healthy {
+                        try await wait(.milliseconds(500))
+                        guard !Task.isCancelled, let self, self.window === window, window.isVisible else { return }
+                        hintBubbleObserver = nil
+                        if hintWindowController == nil {
+                            hintWindowController = HideHintWindowController()
+                        }
+                        hintWindowController?.show(above: window)
+                        return
+                    }
+                    try await wait(.milliseconds(50))
                 }
-                try? await Task.sleep(for: .milliseconds(50))
+            } catch {
+                // A dismissal cancels both the health wait and the presentation delay.
+                return
             }
-        }
-        hintBubbleObserver = observeTask
-    }
-
-    func showHintBubbleWithDelay(seconds: Double) {
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(seconds))
-            guard let window = self.window, window.isVisible else { return }
-
-            // Create controller if needed
-            if hintWindowController == nil {
-                hintWindowController = HideHintWindowController()
-            }
-
-            hintWindowController?.show(above: window)
         }
     }
 
@@ -296,22 +306,6 @@ extension LiveKeyboardOverlayController {
         hintBubbleObserver?.cancel()
         hintBubbleObserver = nil
         hintWindowController?.dismiss()
-    }
-
-    func observeKeyboardAspectRatio() {
-        Task { @MainActor [weak self] in
-            var lastRatio: CGFloat?
-            while let self {
-                let ratio = uiState.keyboardAspectRatio
-                if ratio != lastRatio {
-                    lastRatio = ratio
-                    if !isUserResizing {
-                        resizeWindowForNewAspectRatio(ratio)
-                    }
-                }
-                try? await Task.sleep(for: .milliseconds(50))
-            }
-        }
     }
 
     func resizeWindowForNewAspectRatio(_ newAspectRatio: CGFloat) {

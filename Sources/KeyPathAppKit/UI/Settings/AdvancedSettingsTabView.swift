@@ -1,11 +1,13 @@
 import AppKit
 import KeyPathCore
 import KeyPathInstallationWizard
+import KeyPathRulesCore
 import KeyPathWizardCore
 import SwiftUI
 
 struct AdvancedSettingsTabView: View {
     @Environment(KanataViewModel.self) var kanataManager
+    @Environment(\.services) private var services
 
     @State private var showingUninstall = false
     @State private var duplicateAppCopies: [String] = []
@@ -106,7 +108,7 @@ struct AdvancedSettingsTabView: View {
         .settingsBackground()
         .withToasts(settingsToastManager)
         .task {
-            duplicateAppCopies = await DuplicateAppDetector.detectDuplicateAppCopies()
+            duplicateAppCopies = await services.scanForDuplicateApps()
             backups = kanataManager.underlyingManager.configBackupManager.getAvailableBackups()
         }
         .alert("Move Extra Copies to Trash?", isPresented: $showingRemoveDuplicatesConfirm) {
@@ -274,7 +276,7 @@ struct AdvancedSettingsTabView: View {
             }
         }
 
-        let refreshed = await DuplicateAppDetector.detectDuplicateAppCopies()
+        let refreshed = await services.scanForDuplicateApps()
         await MainActor.run {
             duplicateAppCopies = refreshed
             if removed > 0 {

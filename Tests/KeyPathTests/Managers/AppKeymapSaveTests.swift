@@ -1,5 +1,6 @@
 import Foundation
 @testable import KeyPathAppKit
+import KeyPathCore
 import KeyPathRulesCore
 @preconcurrency import XCTest
 
@@ -457,7 +458,7 @@ final class AppKeymapSaveTests: KeyPathTestCase {
     }
 
     private static func reload(_ disposition: ReloadDisposition) -> ReloadResult {
-        ReloadResult(success: disposition == .applied, response: nil, errorMessage: disposition == .rejected ? "rejected by test engine" : nil, protocol: nil, disposition: disposition)
+        ReloadResult(success: disposition == .applied, response: nil, errorMessage: disposition == .rejected ? "rejected by test engine" : nil, disposition: disposition)
     }
 
     private func assertOriginalFiles(_ fixture: Fixture) throws {

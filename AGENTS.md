@@ -35,6 +35,13 @@ Rationale: older CLI/tooling may still expose `tools.web_search`, which prints a
 Use the narrowest workflow that matches the task. Do not run the full notarized
 release path for ordinary UI/code iteration.
 
+- Use the Air for interactive Swift/UI work with an incremental build.
+- Use the Mini for the full macOS CI lane and signed VM checks. Reuse a warm
+  guest for daily remapping and reserve fresh guests for onboarding, consent,
+  installer, and release qualification.
+- Use Linux for portable checks and log analysis. The verified checkout and
+  commands are in the [development workflow](docs/ITERATION_WORKFLOW.md).
+
 ### 1. Inner Loop: local development
 Use for Swift/UI changes while iterating:
 ```bash
@@ -78,9 +85,11 @@ Notes:
 - Use Poltergeist only for focused single-agent Swift/UI iteration:
   `poltergeist start`, edit, then `poltergeist wait keypath`. Stop it before
   release work, runtime/service work, broad tests, or parallel agents.
-- Near PR time, run the full safe gate once with `./Scripts/test-full.sh` (or
-  `KEYPATH_SNAPSHOTS=1 ./Scripts/run-tests-safe.sh`). Do not run the full safe
-  suite after every small edit.
+- Before opening a code PR, run the full safe gate once with
+  `./Scripts/test-full.sh` (or `KEYPATH_SNAPSHOTS=1 ./Scripts/run-tests-safe.sh`).
+  Use focused tests while iterating. For docs-only changes, check affected
+  paths and links and run the review gate. The CI docs classifier determines
+  whether the PR needs the macOS jobs.
 - Before that final broad gate and before opening/watching a PR, fetch
   `origin/master` and confirm the branch is current:
   `git rev-list --left-right --count origin/master...HEAD` should report `0` as
@@ -99,8 +108,14 @@ Notes:
   **integration-only**: keep it on `master` for merging and pulling. Do NOT do
   feature work or run `swift build`/`swift test` there — that is the root cause
   of SwiftPM lock/CPU contention and cross-thread collisions.
-- Create work in a fresh worktree:
-  `git worktree add -b <branch> <path> master`; build and open the PR from it.
+- Create work in a fresh worktree under `~/local-code/keypath-worktrees/`:
+  `git worktree add -b <branch> ~/local-code/keypath-worktrees/<name> master`;
+  build and open the PR from it. **Never put a worktree in `/tmp` or
+  `/private/tmp`.** macOS empties it on restart: on 2026-11-20 a restart of the
+  Air deleted 49 worktrees there, with any uncommitted work in them.
+- Commit and push early. Commits survive a lost folder because branches live in
+  the main repository, but uncommitted edits and unpushed branches exist only on
+  that machine.
 - After a PR merges, prune its worktree: `git worktree remove <path>`. It refuses
   when there is uncommitted work — that is a feature: inspect that work before
   deleting; never `--force`-remove blindly. Gate pruning on the **PR being
@@ -181,10 +196,14 @@ Notes:
 - Before pushing, run the quick checks CI runs, so they fail locally in seconds:
   `./Scripts/lint-no-sleep.sh`, `python3 Scripts/check-accessibility.py`, and
   `./Scripts/l10n/sync-strings.sh --check` after a Debug build.
-- Merge with `gh pr merge <n> --auto --merge`; it lands once `build-and-test`
-  and `code-quality` pass. `master` does not require branches to be up to date
-  (GitHub's merge queue is not available to a personally owned repository), so
-  do not update a branch just to merge it; resolve real conflicts only. A PR
+- Merge with `gh pr merge <n> --auto --merge`. Once `build-and-test` and
+  `code-quality` pass on the PR, it joins `master`'s merge queue (enabled
+  2026-11-21, after the repository moved to the malpern-labs organization).
+  The queue runs CI again on the PR combined with the latest `master` and any
+  PRs ahead of it, up to 3 at a time, and merges only if that passes. This
+  catches PRs that pass alone but break together: on 2026-11-21 #1592 and
+  #1575 each passed CI and together broke master's test build. Do not update a
+  branch just to merge it; resolve real conflicts only. A PR
   whose CI ran before a change to `.github/workflows/ci.yml` needs `master`
   merged in to pick that change up.
 - Git guardrail hooks in `.claude/settings.json` block commits on `master`,
@@ -203,18 +222,27 @@ Notes:
 
 - Prefer targeted tests while iterating:
   `swift test --filter <TestClassOrMethod>`
-- Run full `swift test` before PR/merge, release-candidate work, or after
-  broad/shared changes.
-- Avoid running broad Swift builds/tests concurrently across worktrees. Before
-  full test, release-candidate, or expensive build work, check for active Swift
-  compiles:
-  `pgrep -fl 'swift-test|swift-build|swift-frontend|swift-driver'`
-- If another worktree/agent is compiling and you must continue, reduce local
-  parallelism:
-  `swift test --jobs 4`
-  `swift build --jobs 4`
+- Run the full Swift suite for code PRs, release candidates, and broad
+  shared-code changes.
+- Run every `swift build`, `swift test` and other multi-minute compile through
+  `build-slot` (installed from dotfiles on the maintainer's Macs; where it is
+  not installed, run the command directly):
+  `build-slot swift test --filter FooTests`,
+  `build-slot -- ./Scripts/run-tests-safe.sh`.
+  It allows a few at a time per machine (3 on the Air, 4 on the Mini) and makes
+  the rest wait; `build-slot status` shows who holds each slot. On 2026-11-20
+  about 37 agent processes building at once stalled the Air until it was
+  restarted, although every agent had been told to check for other compiles
+  first. While waiting, do work that does not compile, or move to the Mini.
 - Do not delete `.build` or run clean builds unless diagnosing cache/build-state
   problems; preserving incremental build products is usually faster.
+- **Every new or changed test is isolated.** It must pass alone, in parallel and
+  in any order. Give it its own temporary directory and its own defaults suite
+  or store; never write to the real `$HOME`, `~/Library`, `UserDefaults.standard`,
+  the Keychain or launchd; never rely on a `.shared` or `.default` instance that
+  another test changes; derive paths, ports and identifiers from the test.
+  KeyPath's suite shared state for months, which forced CI to run one Swift test
+  job at a time and took review item P9 to undo. Do not add to it.
 - If a full suite stalls after compilation, triage it as a test failure/hang,
   not compile slowness. Capture the failing test name and log path in the
   handoff.
@@ -431,9 +459,9 @@ These apply to the session runtime, with `ServiceLifecycleCoordinator` as owner.
 - **Mock Time**: Do not use `Thread.sleep`. Use `Date` overrides or mock clocks.
 - Use the narrowest meaningful test command during iteration; prefer
   `swift test --filter <TestClassOrMethod>` for focused changes.
-- Run full `swift test` before PR/merge when practical, but do not leave hung
-  suites running. If a full run times out or stalls in an unrelated test, report
-  the failing test and keep targeted validation for the current change.
+- Stop and diagnose hung suites. If a full run times out or stalls in an
+  unrelated test, report the failing test and retain targeted evidence for the
+  current change.
 
 ### Accessibility (CRITICAL)
 - **ALL interactive UI elements MUST have `.accessibilityIdentifier()`**

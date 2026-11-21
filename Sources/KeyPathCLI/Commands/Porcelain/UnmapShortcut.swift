@@ -1,6 +1,5 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
 
 struct UnmapShortcut: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

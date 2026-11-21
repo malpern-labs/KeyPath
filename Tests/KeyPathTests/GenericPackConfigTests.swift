@@ -93,8 +93,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testCapsLockPackCanBeSavedBeforeLifecycleDiscoversKeyboard() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
@@ -106,7 +104,7 @@ final class GenericPackConfigTests: XCTestCase {
         var reloads = 0
         manager.onRulesChanged = {
             reloads += 1
-            return ReloadResult(success: false, response: nil, errorMessage: "Keyboard not attached", protocol: nil, disposition: .pending)
+            return ReloadResult(success: false, response: nil, errorMessage: "Keyboard not attached", disposition: .pending)
         }
         _ = try await PackInstaller.testInstaller().install(
             PackRegistry.capsLockToEscape, collectionConfiguration: configuration,
@@ -199,9 +197,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testFirstSuccessSupportedModifierInstallStagesFreshLauncherOffWithoutPrerequisitePrompt() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
         manager.ruleCollections = historicalEnabledCatalog()
@@ -467,9 +462,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testOnboardingCapsInstallNeverSilentlyDisablesAConflictingRule() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
@@ -536,9 +528,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testVisualOnlyInstallRestoresPriorTrackerStateWhenTrackerWriteFails() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -581,9 +570,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testPlainPackInstallRestoresRuleAndTrackerStateWhenTrackerWriteFails() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -670,9 +656,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testCollectionBackedInstallRestoresRuleStateWhenTrackerWriteFails() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -731,9 +714,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testSystemPackInstallRestoresPriorStateWhenTrackerWriteFails() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         let originalManagedSnapshot = PackCollectionSnapshot.load(for: PackRegistry.launcher.id, configDirectory: fixture.directory)
         defer {
@@ -825,9 +805,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testSystemPackInstallPreservesExternalDirectoryAtCollectionStore() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         let originalManagedSnapshot = PackCollectionSnapshot.load(for: PackRegistry.launcher.id, configDirectory: fixture.directory)
         defer {
@@ -921,9 +898,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testQuickLauncherBuildsOnSupportedModifierInstall() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer {
             try? FileManager.default.removeItem(at: tempDir)
@@ -933,7 +907,7 @@ final class GenericPackConfigTests: XCTestCase {
         var reloadCallbackCount = 0
         manager.onRulesChanged = {
             reloadCallbackCount += 1
-            return ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+            return ReloadResult(success: true, response: "ok", errorMessage: nil)
         }
 
         guard let catalogConfiguration = RuleCollectionCatalog().defaultCollections()
@@ -1170,9 +1144,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testQuickLauncherInstallConfiguresSupportedManagedModifier() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer {
             try? FileManager.default.removeItem(at: tempDir)
@@ -1203,9 +1174,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testQuickLauncherUninstallRestoresCapsLockRemap() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer {
             try? FileManager.default.removeItem(at: tempDir)
@@ -1251,9 +1219,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testQuickLauncherInstallEmbedsSnapshotInRecord() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer {
             try? FileManager.default.removeItem(at: tempDir)
@@ -1272,9 +1237,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testInstallOverExistingCustomCapsLockRemap() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer {
             try? FileManager.default.removeItem(at: tempDir)
@@ -1328,9 +1290,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testInstallOverCustomConfigThenUninstallRestoresCustomConfig() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer {
             try? FileManager.default.removeItem(at: tempDir)
@@ -1367,11 +1326,7 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testKeepMySettingsSkipsConfigOverride() async throws {
-        TestEnvironment.forceTestMode = true
         let installer = PackInstaller.testInstaller(applyManagedDefault: false)
-        defer {
-            TestEnvironment.forceTestMode = false
-        }
 
         let (manager, tempDir) = try makeTestManager()
         defer {
@@ -1412,11 +1367,7 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testUseRecommendedManagedDefaultPolicyBypassesCustomizationPrompt() async throws {
-        TestEnvironment.forceTestMode = true
         let installer = PackInstaller.testInstaller(applyManagedDefault: false)
-        defer {
-            TestEnvironment.forceTestMode = false
-        }
 
         let (manager, tempDir) = try makeTestManager()
         defer {
@@ -1457,11 +1408,7 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testInstallAppliesSilentlyWhenCollectionHasCatalogDefaults() async throws {
-        TestEnvironment.forceTestMode = true
         let installer = PackInstaller.testInstaller(applyManagedDefault: false)
-        defer {
-            TestEnvironment.forceTestMode = false
-        }
 
         let (manager, tempDir) = try makeTestManager()
         defer {
@@ -1498,9 +1445,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testNilDefaultConfigOnlyEnablesWithoutChangingConfig() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer {
             try? FileManager.default.removeItem(at: tempDir)
@@ -1533,9 +1477,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testUninstallAfterUserModificationDetectsChange() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer {
             try? FileManager.default.removeItem(at: tempDir)
@@ -1570,11 +1511,7 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testUninstallKeepCurrentWhenUserModified() async throws {
-        TestEnvironment.forceTestMode = true
         let installer = PackInstaller.testInstaller(restoreManagedDefaults: false)
-        defer {
-            TestEnvironment.forceTestMode = false
-        }
 
         let (manager, tempDir) = try makeTestManager()
         defer {
@@ -1617,9 +1554,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testTwoSystemPacksInstalledSimultaneously() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer {
             try? FileManager.default.removeItem(at: tempDir)
@@ -1658,9 +1592,6 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testLauncherUninstallWithoutSnapshotDoesNotCrash() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try makeTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -1812,7 +1743,7 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testFirstSuccessRealCapsAndLauncherProfilesAreSessionCompatible() async throws {
-        let defaults = PreferencesService.canonicalDefaults
+        let defaults = RecoverableRuleWrite.PreferenceDefaults.canonical
         let preferenceKey = PreferencesService.leaderKeyPreferenceKey
         let previousPreference = defaults.object(forKey: preferenceKey)
         defer {

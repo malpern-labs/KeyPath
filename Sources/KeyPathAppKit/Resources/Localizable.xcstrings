@@ -266,7 +266,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ %@"
+            "value" : "%1$@ %2$@"
           }
         }
       }
@@ -402,7 +402,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ デフォルトはSpaceです。"
+            "value" : "%@ デフォルトはスペースバーです。"
           }
         }
       }
@@ -1472,7 +1472,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ • %@"
+            "value" : "%1$@ • %2$@"
           }
         }
       }
@@ -1488,7 +1488,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@, %@"
+            "value" : "%1$@, %2$@"
           }
         }
       }
@@ -1728,7 +1728,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@. %@"
+            "value" : "%1$@. %2$@"
           }
         }
       }
@@ -1760,7 +1760,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@: %@"
+            "value" : "%1$@: %2$@"
           }
         }
       }
@@ -1935,7 +1935,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lldつのアクティブなルール"
+            "value" : "有効なルール%lld件"
           }
         }
       }
@@ -2021,7 +2021,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld個のコード • %@"
+            "value" : "%1$lld個のコード • %2$@"
           }
         }
       }
@@ -2057,7 +2057,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld件を変換、%lld件をスキップ"
+            "value" : "%1$lld件を変換、%2$lld件をスキップ"
           }
         }
       }
@@ -2153,7 +2153,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lldグループ%@ • %lldコード%@"
+            "value" : "%1$lldグループ%2$@ • %3$lldコード%4$@"
           }
         }
       }
@@ -2197,7 +2197,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "入力%lld + 出力%lldトークン"
+            "value" : "入力%1$lld + 出力%2$lldトークン"
           }
         }
       }
@@ -2214,7 +2214,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld台のキーボード%@"
+            "value" : "%1$lld台のキーボード%2$@"
           }
         }
       }
@@ -2231,7 +2231,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld台のキーボード%@が見つかりました"
+            "value" : "%1$lld台のキーボード%2$@が見つかりました"
           }
         }
       }
@@ -2389,7 +2389,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開始%lldミリ秒 · 間隔%lldミリ秒"
+            "value" : "開始%1$lldミリ秒 · 間隔%2$lldミリ秒"
           }
         }
       }
@@ -2416,7 +2416,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld / %lld"
+            "value" : "%1$lld / %2$lld"
           }
         }
       }
@@ -2469,7 +2469,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld件のルール%@を読み込む準備ができました"
+            "value" : "%1$lld件のルール%2$@を読み込む準備ができました"
           }
         }
       }
@@ -2524,7 +2524,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スキップしたルール%@: %lld件"
+            "value" : "スキップしたルール%2$@: %1$lld件"
           }
         }
       }
@@ -2621,7 +2621,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld%@"
+            "value" : "%1$lld%2$@"
           }
         }
       }
@@ -3415,7 +3415,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "600 ms · 最も寛容な押し方。フォールバックは最も長く待機"
+            "value" : "600 ms · 入力タイミングに最も余裕あり。フォールバックの待ち時間は最長"
           }
         }
       }
@@ -3702,7 +3702,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI修復にはAPIキーが必要です。設定 → 一般 → AI構成で追加してください。"
+            "value" : "AI修復にはAPIキーが必要です。設定 → 一般 → AI設定で追加してください。"
           }
         }
       }
@@ -4836,7 +4836,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "`d`、`c`、`y`を押した後、モーションで完了する代わりにEscを押していることがよくあります。少し落ち着いてください — 次に押すのは通常のモーション (`w`、`}`、`i\"`など) だけで、オペレーターがそれに適用されます。"
+            "value" : "`d`、`c`、`y`を押した後、モーションで完了する代わりにEscを押していることがよくあります。一拍おいて、通常のモーション（`w`、`}`、`i\"`など）を続けて入力しましょう。その範囲にオペレータの操作が適用されます。"
           }
         }
       }
@@ -5217,6 +5217,7 @@
       }
     },
     "Another app is already remapping Caps Lock on this keyboard (to %@). Turn that off to use Caps Lock rules in KeyPath." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -5227,6 +5228,7 @@
       }
     },
     "Another app or the Modifier Keys setting in System Settings is already remapping Caps Lock on this keyboard. Turn that off to use Caps Lock rules in KeyPath." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -5413,7 +5415,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アプリの環境設定と起動オプション"
+            "value" : "アプリの設定と起動オプション"
           }
         }
       }
@@ -5837,7 +5839,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自動Shift記号"
+            "value" : "記号の自動Shift入力"
           }
         }
       }
@@ -6214,7 +6216,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "高度なレイアウト向け。最上段のキーを長押しすると、別のキーレイヤーに一時的にアクセスできます。"
+            "value" : "高度なレイアウト向け。英字キーの上段のキーを長押しすると、別のキーレイヤーを一時的に使用できます。"
           }
         }
       }
@@ -6234,7 +6236,18 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ショートカットや一般的なアプリの使用向け。最上段のキーを長押しするとCmd/Opt/Ctrl/Shiftになります。"
+            "value" : "ショートカットや一般的なアプリの使用向け。上段のキーを長押しするとCmd/Opt/Ctrl/Shiftになります。"
+          }
+        }
+      }
+    },
+    "Beta" : {
+      "comment" : "Update channel for prerelease builds",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ベータ版"
           }
         }
       }
@@ -6426,7 +6439,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "括弧、演算子、Shift記号をすべてホームロウの下に。Space → Sを長押しで有効になります。プリセットのレイアウトから選べます。\n\nVimナビゲーションまたは別のリーダーパックが必要です。"
+            "value" : "括弧、演算子、Shift記号をすべてホームロウの下に。スペースバーを押したままSを押すと有効になります。プリセットのレイアウトから選べます。\n\nVimナビゲーションまたは別のリーダーパックが必要です。"
           }
         }
       }
@@ -6479,7 +6492,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アプリケーションフォルダをブラウズ..."
+            "value" : "アプリケーションから選択…"
           }
         }
       }
@@ -6781,16 +6794,6 @@
         }
       }
     },
-    "Caps Lock is already mapped to F20 on this keyboard. If you use Raycast’s Hyper Key, open Raycast → Settings → Keyboard → Hyper Key, set it to None, then click Check Again." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このキーボードでは、Caps LockがすでにF20にリマップされています。RaycastのHyper Keyを使っている場合は、Raycastの「Settings」→「Keyboard」→「Hyper Key」で「None」を選び、KeyPathの「再確認」をクリックしてください。"
-          }
-        }
-      }
-    },
     "Caps Lock\ntap + hold" : {
       "localizations" : {
         "ja" : {
@@ -6866,6 +6869,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Caps LockをEscapeに変更"
+          }
+        }
+      }
+    },
+    "Caps Lock is already mapped to %@ on this keyboard. macOS does not identify which app set the mapping. Turn off the existing mapping to use Caps Lock rules in KeyPath." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このキーボードではCaps Lockがすでに%@にマップされています。macOSはどのアプリが設定したかを識別できません。KeyPathのCaps Lockルールを使うには、既存のマッピングをオフにしてください。"
+          }
+        }
+      }
+    },
+    "Caps Lock is already mapped to F20 on this keyboard. If you use Raycast’s Hyper Key, open Raycast → Settings → Keyboard → Hyper Key, set it to None, then click Check Again." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このキーボードでは、Caps LockがすでにF20にリマップされています。RaycastのHyper Keyを使っている場合は、Raycastの「Settings」→「Keyboard」→「Hyper Key」で「None」を選び、KeyPathの「再確認」をクリックしてください。"
+          }
+        }
+      }
+    },
+    "Caps Lock is already remapped on this keyboard. macOS does not identify which app set the mapping. Check keyboard remapping apps and the Modifier Keys setting in System Settings." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このキーボードではCaps Lockがすでにリマップされています。macOSはどのアプリが設定したかを識別できません。キーボードリマップアプリとシステム設定の「修飾キー」を確認してください。"
           }
         }
       }
@@ -7772,6 +7805,8 @@
         }
       }
     },
+    "Choose a key to swap with %@ on %@. Esc cancels." : {},
+    "Choose a key with a supported assignment." : {},
     "Choose a keyboard" : {
       "localizations" : {
         "ja" : {
@@ -8065,7 +8100,16 @@
         }
       }
     },
-    "Choose output" : {},
+    "Choose output" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "出力を選択"
+          }
+        }
+      }
+    },
     "Choose the app this shortcut should open." : {
       "comment" : "Message in the onboarding application file picker.",
       "localizations" : {
@@ -9188,6 +9232,7 @@
       }
     },
     "Config file does not exist at: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -9272,7 +9317,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "構成のバックアップ"
+            "value" : "設定のバックアップ"
           }
         }
       }
@@ -9481,6 +9526,7 @@
       }
     },
     "Configuration validation failed (exit code: %@)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -9929,6 +9975,7 @@
         }
       }
     },
+    "Copy Assignment" : {},
     "Copy Error" : {
       "localizations" : {
         "ja" : {
@@ -10007,6 +10054,7 @@
         }
       }
     },
+    "Could not change these assignments. Your current rules were kept." : {},
     "Could not click Notification Center" : {
       "localizations" : {
         "ja" : {
@@ -10175,6 +10223,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "デュアルロールのアクションを変換できませんでした"
+          }
+        }
+      }
+    },
+    "Could not undo the assignment change. Your current rules were kept." : {},
+    "Could not undo the remap. Your current rules were kept." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リマップを取り消せませんでした。現在のルールは変更されていません。"
           }
         }
       }
@@ -10538,7 +10597,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "現在のフレーム: %lld×%lld、位置(%lld, %lld)"
+            "value" : "現在のフレーム: %1$lld×%2$lld、位置(%3$lld, %4$lld)"
           }
         }
       }
@@ -10604,7 +10663,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "現在%1$lldパーセント。ウインドウ開始時の%2$lldパーセントから減少しています。"
+            "value" : "現在%1$lldパーセント。集計期間の開始時の%2$lldパーセントから減少しています。"
           }
         }
       }
@@ -10620,7 +10679,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "現在%1$lldパーセント。ウインドウ開始時の%2$lldパーセントから横ばいです。"
+            "value" : "現在%1$lldパーセント。集計期間の開始時の%2$lldパーセントから横ばいです。"
           }
         }
       }
@@ -10636,7 +10695,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "現在%1$lldパーセント。ウインドウ開始時の%2$lldパーセントから増加しています。"
+            "value" : "現在%1$lldパーセント。集計期間の開始時の%2$lldパーセントから増加しています。"
           }
         }
       }
@@ -11113,7 +11172,7 @@
       }
     },
     "Delete" : {
-      "comment" : "Key name\nKey or shortcut label\nVim keycap: delete character",
+      "comment" : "Vim keycap: delete character",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11983,7 +12042,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ホームロウの環境設定の編集を完了"
+            "value" : "ホームロウの設定の編集を完了"
           }
         }
       }
@@ -12035,7 +12094,16 @@
         }
       }
     },
-    "Down Arrow" : {},
+    "Down Arrow" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下矢印"
+          }
+        }
+      }
+    },
     "Download Update…" : {
       "localizations" : {
         "ja" : {
@@ -12771,16 +12839,6 @@
         }
       }
     },
-    "Engine control over the worker's Unix-domain socket, owner-checked (ADR-046)" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ワーカーのUnixドメインソケット経由でのエンジン制御（所有者チェックあり、ADR-046）"
-          }
-        }
-      }
-    },
     "Enhanced by" : {
       "localizations" : {
         "ja" : {
@@ -13204,6 +13262,7 @@
       }
     },
     "External Kanata Conflicts (%lld)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -13214,6 +13273,7 @@
       }
     },
     "External Kanata processes that conflict with KeyPath" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -13245,7 +13305,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "余分なコピーは古い承認の原因になります。許可を正常に保つため余分を削除してください。"
+            "value" : "コピーが複数あると、古いコピーへの許可が残ることがあります。権限の問題を防ぐため、余分なコピーを削除してください。"
           }
         }
       }
@@ -13295,7 +13355,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "右手にファンクションキー、左手にメディアコントロール — 再生/一時停止、音量、明るさ。Spaceを長押し → Fで有効になります。\n\nVimナビゲーションまたは他のリーダーパックが必要です。"
+            "value" : "右手にファンクションキー、左手にメディアコントロール — 再生/一時停止、音量、明るさ。スペースバーを押したままFを押すと有効になります。\n\nVimナビゲーションまたは他のリーダーパックが必要です。"
           }
         }
       }
@@ -13764,6 +13824,7 @@
       }
     },
     "Failed to save mapping rule" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -13844,6 +13905,7 @@
       }
     },
     "Failed to validate configuration file: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -14668,7 +14730,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "シミュレータUI、オーバーレイマッピング、仮想キーアクションを制御します。"
+            "value" : "シミュレータUI、シミュレータ経由のオーバーレイマッピング、仮想キーアクションを制御します。"
           }
         }
       }
@@ -15410,7 +15472,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caps Lockを長押しすると、他のアプリと競合しにくいクリーンなショートカットの接頭辞を用意できます。"
+            "value" : "Caps Lockを長押しすると、ほかのアプリと競合しにくいショートカット用のキーの組み合わせを使えます。"
           }
         }
       }
@@ -15606,7 +15668,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spaceを長押しでVimスタイルのナビゲーション: H/J/K/Lで矢印、Y/Pでコピー/ペースト、Uで取り消し、/で検索。Spaceを離すと通常どおり入力できます。"
+            "value" : "スペースバーを長押しでVimスタイルのナビゲーション: H/J/K/Lで矢印、Y/Pでコピー/ペースト、Uで取り消し、/で検索。スペースバーを離すと通常どおり入力できます。"
           }
         }
       }
@@ -15616,7 +15678,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spaceを長押しでhjkl矢印とVimの移動"
+            "value" : "スペースバーを長押しでhjkl矢印とVimの移動"
           }
         }
       }
@@ -15626,7 +15688,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spaceを長押ししてこのレイヤーを使用"
+            "value" : "スペースバーを長押ししてこのレイヤーを使用"
           }
         }
       }
@@ -15636,7 +15698,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spaceを長押ししてからキーを押します。Spaceを離すと通常どおり入力できます。"
+            "value" : "スペースバーを長押ししてからキーを押します。スペースバーを離すと通常どおり入力できます。"
           }
         }
       }
@@ -15753,7 +15815,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "どちらかの人差し指を長押しするとナビゲーションレイヤーが有効になります。離すと通常の入力に戻ります。どちらも同じレイヤーを有効にするので、空いている方の手を使ってください。"
+            "value" : "左右どちらかの人差し指のキーを長押しするとナビゲーションレイヤーが有効になります。離すと通常の入力に戻ります。どちらも同じレイヤーを有効にするので、空いている方の手を使ってください。"
           }
         }
       }
@@ -15763,7 +15825,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "どちらかの人差し指を長押しでナビゲーションに入る"
+            "value" : "左右どちらかの人差し指のキーを長押しでナビゲーションに入る"
           }
         }
       }
@@ -16032,7 +16094,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ホームロウの環境設定"
+            "value" : "ホームロウの設定"
           }
         }
       }
@@ -16092,7 +16154,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ホームロウの環境設定"
+            "value" : "ホームロウの設定"
           }
         }
       }
@@ -16159,7 +16221,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "KeyPathがショートカットリストを表示するまでLeaderキーを押し続ける時間。デフォルトは長め（300ミリ秒）です。標準（200ミリ秒）は以前の動作と同じです。"
+            "value" : "KeyPathがショートカットリストを表示するまでリーダーキーを押し続ける時間。デフォルトは「長め」（300ミリ秒）です。「中」（200ミリ秒）は以前の動作と同じです。"
           }
         }
       }
@@ -16520,7 +16582,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld件の項目%@を読み込む"
+            "value" : "%1$lld件の項目%2$@を読み込む"
           }
         }
       }
@@ -16565,7 +16627,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld件のルール%@を読み込む"
+            "value" : "%1$lld件のルール%2$@を読み込む"
           }
         }
       }
@@ -17090,7 +17152,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "入力: %lldトークン • 出力: %lldトークン"
+            "value" : "入力: %1$lldトークン • 出力: %2$lldトークン"
           }
         }
       }
@@ -17279,7 +17341,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "国際的な物理レイアウト"
+            "value" : "各国の物理キー配列"
           }
         }
       }
@@ -17679,6 +17741,7 @@
       }
     },
     "Kanata Not Installed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -17706,6 +17769,7 @@
       }
     },
     "Kanata binary missing at %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -17716,6 +17780,7 @@
       }
     },
     "Kanata binary not found at %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -18048,6 +18113,7 @@
       }
     },
     "Karabiner Grabber Conflict" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -18288,7 +18354,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ベースレイヤーではオーバーレイを隠したままにします。レイヤーを長押しするか切り替えると表示されます。"
+            "value" : "ベースレイヤーではオーバーレイを非表示にします。レイヤーキーを押し続けるか、レイヤーを切り替えると表示されます。"
           }
         }
       }
@@ -18497,6 +18563,7 @@
       }
     },
     "Key mapping saved: %@ → %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -20455,7 +20522,16 @@
         }
       }
     },
-    "Left Arrow" : {},
+    "Left Arrow" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左矢印"
+          }
+        }
+      }
+    },
     "Left Command → Right Command" : {
       "localizations" : {
         "ja" : {
@@ -20941,7 +21017,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caps Lockがなくなりましたか？「Caps Lockのバックアップ」を有効にすると、両方のShiftで使えるようになります。"
+            "value" : "Caps Lockが使えなくなりましたか？「予備のCaps Lock」を有効にすると、両方のShiftキーの同時押しで使えるようになります。"
           }
         }
       }
@@ -21533,6 +21609,7 @@
       }
     },
     "Missing input/output sequences" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -21699,7 +21776,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "修飾キーを最上段に移動し、ホームロウをレイヤー切り替え用に空けます。タップで文字、長押しで修飾キーになります。"
+            "value" : "修飾キーを上段に移動し、ホームロウをレイヤー切り替え用に空けます。タップで文字、長押しで修飾キーになります。"
           }
         }
       }
@@ -21985,7 +22062,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "マルチタップウインドウ"
+            "value" : "マルチタップ受付時間"
           }
         }
       }
@@ -22433,6 +22510,16 @@
         }
       }
     },
+    "Next ⌘⇧]" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "次へ ⌘⇧]"
+          }
+        }
+      }
+    },
     "No AI generations yet" : {
       "localizations" : {
         "ja" : {
@@ -22458,7 +22545,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude APIキーが設定されていません。設定 → 実験的 → AI構成生成で追加してください。"
+            "value" : "Claude APIキーが設定されていません。設定 → 実験的 → AIによる設定ファイルの生成で追加してください。"
           }
         }
       }
@@ -22784,7 +22871,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "追加時間なし。基本のタップウインドウのみを使用します。"
+            "value" : "追加時間なし。基本のタップ受付時間のみを使用します。"
           }
         }
       }
@@ -22919,7 +23006,16 @@
         }
       }
     },
-    "No matching actions" : {},
+    "No matching actions" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一致するアクションがありません"
+          }
+        }
+      }
+    },
     "No matching collection was found." : {
       "localizations" : {
         "ja" : {
@@ -23359,7 +23455,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "現在: %lld%% — %lld%%前後で安定しています。"
+            "value" : "現在: %1$lld%% — %2$lld%%前後で安定しています。"
           }
         }
       }
@@ -23564,7 +23660,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "オン · 選択した%lld台のキーボード · 内部で%@を使用"
+            "value" : "オン · 選択した%1$lld台のキーボード · 内部で%2$@を使用"
           }
         }
       }
@@ -23590,7 +23686,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "オンボーディングのステップ %lld/%lld"
+            "value" : "オンボーディングのステップ %1$lld/%2$lld"
           }
         }
       }
@@ -23743,7 +23839,7 @@
       }
     },
     "Open" : {
-      "comment" : "Status action button: open the log file\nVim keycap: new line below",
+      "comment" : "Status action button: open the log file",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -24297,7 +24393,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "演算子"
+            "value" : "オペレータ"
           }
         }
       }
@@ -24337,7 +24433,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "反対の手の判定ウインドウ"
+            "value" : "反対の手の判定時間"
           }
         }
       }
@@ -24585,7 +24681,16 @@
         }
       }
     },
-    "Output type" : {},
+    "Output type" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "出力タイプ"
+          }
+        }
+      }
+    },
     "Overlay" : {
       "comment" : "Layer display option: show the keyboard overlay",
       "localizations" : {
@@ -24758,7 +24863,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld行目で解析エラー: %@"
+            "value" : "%1$lld行目で解析エラー: %2$@"
           }
         }
       }
@@ -24824,6 +24929,7 @@
         }
       }
     },
+    "Paste Assignment" : {},
     "Paste JSON" : {
       "localizations" : {
         "ja" : {
@@ -25214,7 +25320,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "わかりやすい言葉: Copy、Paste、Top。オーバーレイとショートカットリストでも使用されます。"
+            "value" : "わかりやすい言葉: コピー、ペースト、先頭。オーバーレイとショートカットリストでも使用されます。"
           }
         }
       }
@@ -25357,7 +25463,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正の値でそのキーのタップウインドウを延長。デフォルトは空白/0。"
+            "value" : "正の値でそのキーのタップ受付時間を延長。デフォルトは空白/0。"
           }
         }
       }
@@ -25373,7 +25479,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正の値でキーごとのタップウインドウを延長。デフォルトは0。"
+            "value" : "正の値でキーごとのタップ受付時間を延長。デフォルトは0。"
           }
         }
       }
@@ -25423,7 +25529,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "環境設定を保存できませんでした。"
+            "value" : "設定を保存できませんでした。"
           }
         }
       }
@@ -25556,6 +25662,7 @@
       }
     },
     "Press key combination..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -25566,6 +25673,7 @@
       }
     },
     "Press key sequence..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -25729,7 +25837,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@をプレビュー、ショートカット %@"
+            "value" : "%1$@をプレビュー、ショートカット %2$@"
           }
         }
       }
@@ -25853,6 +25961,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "前の単語"
+          }
+        }
+      }
+    },
+    "Previous ⌘⇧[" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前へ ⌘⇧["
           }
         }
       }
@@ -26341,6 +26459,7 @@
       }
     },
     "Quit Karabiner-Elements or disable its key remapping" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -26889,16 +27008,6 @@
         }
       }
     },
-    "Reliable TCP protocol for config reloading (no authentication required - see ADR-013)" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "設定ファイル再読み込み用の信頼性の高いTCPプロトコル（認証不要 - ADR-013を参照）"
-          }
-        }
-      }
-    },
     "Reload delayed: %@" : {
       "localizations" : {
         "ja" : {
@@ -26929,6 +27038,16 @@
         }
       }
     },
+    "Remap" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リマップ"
+          }
+        }
+      }
+    },
     "Remap Escape to something you'll use more — Caps Lock, Backtick, or Tab. Pairs naturally with Caps Lock Remap so both keys stay useful." : {
       "localizations" : {
         "ja" : {
@@ -26955,6 +27074,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@にリマップ"
+          }
+        }
+      }
+    },
+    "Remap undone" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リマップを取り消しました"
           }
         }
       }
@@ -27095,7 +27224,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "イメージを削除"
+            "value" : "画像を削除"
           }
         }
       }
@@ -27314,7 +27443,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "連続タップウインドウ"
+            "value" : "連続タップ受付時間"
           }
         }
       }
@@ -28076,7 +28205,16 @@
         }
       }
     },
-    "Right Arrow" : {},
+    "Right Arrow" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右矢印"
+          }
+        }
+      }
+    },
     "Right Command → Left Command" : {
       "localizations" : {
         "ja" : {
@@ -28274,7 +28412,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ルールファイルを保存できませんでした: %@。回復にも失敗しました: %@"
+            "value" : "ルールファイルを保存できませんでした: %1$@。回復にも失敗しました: %2$@"
           }
         }
       }
@@ -28360,7 +28498,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ルールの書き込み（%@）に失敗しました（errno %@）。"
+            "value" : "ルールの書き込み（%1$@）に失敗しました（errno %2$@）。"
           }
         }
       }
@@ -28916,7 +29054,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@への変更を保存するには、以下の補助ルールも必要です。"
+            "value" : "%@への変更を保存するには、以下のサポートルールも必要です。"
           }
         }
       }
@@ -29302,7 +29440,16 @@
         }
       }
     },
-    "Search actions" : {},
+    "Search actions" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アクションを検索"
+          }
+        }
+      }
+    },
     "Search and import layouts from the QMK keyboard database" : {
       "localizations" : {
         "ja" : {
@@ -30492,7 +30639,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld件の%@を表示"
+            "value" : "%1$lld件の%2$@を表示"
           }
         }
       }
@@ -30597,7 +30744,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "何も表示しない"
+            "value" : "キーボードオーバーレイを表示"
           }
         }
       }
@@ -30617,7 +30764,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キーボードオーバーレイを表示"
+            "value" : "何も表示しない"
           }
         }
       }
@@ -30767,7 +30914,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "フローティングキーボードの視覚表示を表示"
+            "value" : "フローティングキーボードを表示"
           }
         }
       }
@@ -30837,7 +30984,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "KindaVimのモード (ノーマル、インサート、ビジュアル) をオーバーレイのヘッダーに表示します。オーバーレイはモードに合わせて変化します。ノーマルモードではVimのヒント、インサートモードではすっきりしたキーボードを表示します。\n\n表示のみで、キーのリマップは行いません。KindaVim.appが必要です。"
+            "value" : "KindaVimのモード (ノーマル、挿入、ビジュアル) をオーバーレイのヘッダーに表示します。オーバーレイはモードに合わせて変化します。ノーマルモードではVimのヒント、挿入モードではすっきりしたキーボードを表示します。\n\n表示のみで、キーのリマップは行いません。KindaVim.appが必要です。"
           }
         }
       }
@@ -31162,7 +31309,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ウインドウを左右半分、四隅、全画面にスナップ。すべてキーボードで操作できます。Spaceを押したままWを押し、位置を選びます。\n\nVimナビゲーションとアクセシビリティの権限が必要です。"
+            "value" : "ウインドウを左右半分、四隅、全画面にスナップ。すべてキーボードで操作できます。スペースバーを押したままWを押し、位置を選びます。\n\nVimナビゲーションとアクセシビリティの権限が必要です。"
           }
         }
       }
@@ -31371,6 +31518,17 @@
         }
       }
     },
+    "Stable" : {
+      "comment" : "Update channel for regular releases",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安定版"
+          }
+        }
+      }
+    },
     "Standard" : {
       "localizations" : {
         "en" : {
@@ -31388,7 +31546,6 @@
       }
     },
     "Start" : {
-      "comment" : "Vim keycap: start of line",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -31937,6 +32094,8 @@
         }
       }
     },
+    "Swap Assignments" : {},
+    "Swap Assignment…" : {},
     "Swap Backspace and Delete" : {
       "localizations" : {
         "ja" : {
@@ -32304,7 +32463,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "システムに%lld件の問題があります%@。クリックして修正します。"
+            "value" : "システムに%1$lld件の問題があります%2$@。クリックして修正します。"
           }
         }
       }
@@ -32486,16 +32645,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "TCCデータベースチェック結果:"
-          }
-        }
-      }
-    },
-    "TCP (Reliable)" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "TCP (高信頼)"
           }
         }
       }
@@ -32850,7 +32999,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タップで文字、長押しでモディファイア"
+            "value" : "タップで文字、長押しで修飾キー"
           }
         }
       }
@@ -32907,7 +33056,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タップで文字、長押しでモディファイア"
+            "value" : "タップで文字、長押しで修飾キー"
           }
         }
       }
@@ -33019,7 +33168,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タップウインドウ"
+            "value" : "タップ受付時間"
           }
         }
       }
@@ -33036,7 +33185,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タップウインドウ: タップが長押しになるまでの時間。長押し遅延: 長押しが有効になるまでの時間。"
+            "value" : "タップ受付時間: タップが長押しになるまでの時間。長押し遅延: 長押しが有効になるまでの時間。"
           }
         }
       }
@@ -33145,6 +33294,7 @@
       }
     },
     "Terminate conflicting processes or let KeyPath auto-fix them" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -33442,7 +33592,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "判定ウインドウは、反対の手の入力でいつレイヤーが有効になるかを決めます。"
+            "value" : "判定時間は、反対の手の入力でいつレイヤーが有効になるかを決めます。"
           }
         }
       }
@@ -34010,7 +34160,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "これらの設定は、最上段のキーを長押ししたときの動作を制御します。タップでは通常どおり文字が入力されます。"
+            "value" : "これらの設定は、上段のキーを長押ししたときの動作を制御します。タップでは通常どおり文字が入力されます。"
           }
         }
       }
@@ -34702,7 +34852,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "バックグラウンド項目でKeyPathをONに切り替えてから、ここに戻ってください。"
+            "value" : "「システム設定」→「一般」→「ログイン項目と機能拡張」の「アプリのバックグラウンドでのアクティビティ」でKeyPathをオンにしてから、ここに戻ってください。"
           }
         }
       }
@@ -36231,7 +36381,16 @@
         }
       }
     },
-    "Up Arrow" : {},
+    "Up Arrow" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上矢印"
+          }
+        }
+      }
+    },
     "Update channel" : {
       "localizations" : {
         "ja" : {
@@ -36330,6 +36489,7 @@
       }
     },
     "Use KeyPath's Installation Wizard to install Kanata automatically" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -36705,6 +36865,7 @@
       }
     },
     "Validation failed: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -36939,7 +37100,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vim本来の用語（yank、put、gg）を使います。オーバーレイとショートカット一覧でも使用されます。"
+            "value" : "Vim本来の用語（yank、put、gg）を使います。オーバーレイとショートカットリストでも使用されます。"
           }
         }
       }
@@ -37739,7 +37900,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "準備ができたら、設定 → 状態（開始）から、またはKeyPathを再起動してサービスを再開できます。"
+            "value" : "準備ができたら、設定 → ステータスの「開始」から、またはKeyPathを再起動してサービスを再開できます。"
           }
         }
       }
@@ -37854,7 +38015,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キーボード中心のアプリで多くの時間を過ごしています"
+            "value" : "kindaVimがキーボードフォールバックで動作するアプリをよく使っています"
           }
         }
       }
@@ -38240,7 +38401,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "右手がテンキーになり、左手で演算子を入力します。Space → ;を長押しして有効にします。\n\nVimナビゲーションまたはほかのリーダーパックが必要です。"
+            "value" : "右手がテンキーになり、左手で演算子を入力します。スペースバーを押したまま;を押すと有効になります。\n\nVimナビゲーションまたはほかのリーダーパックが必要です。"
           }
         }
       }
@@ -39275,6 +39436,7 @@
       }
     },
     "karabiner_grabber is running and will prevent Kanata from starting" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -39290,6 +39452,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "キー"
+          }
+        }
+      }
+    },
+    "key.name.delete" : {
+      "comment" : "Name of the Delete key",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
           }
         }
       }
@@ -39629,6 +39808,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "今"
+          }
+        }
+      }
+    },
+    "numpad.operators" : {
+      "comment" : "Numpad section heading: math operators",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Operators"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "演算子"
           }
         }
       }
@@ -40155,7 +40351,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タップウインドウ %1$lldミリ秒、長押し遅延 %2$lldミリ秒"
+            "value" : "タップ受付時間 %1$lldミリ秒、長押し遅延 %2$lldミリ秒"
           }
         }
       }
@@ -40303,6 +40499,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "上"
+          }
+        }
+      }
+    },
+    "vim.keycap.line-start" : {
+      "comment" : "Vim keycap: start of line",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "行頭"
+          }
+        }
+      }
+    },
+    "vim.keycap.open-line" : {
+      "comment" : "Vim keycap: new line below",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "挿入"
           }
         }
       }
@@ -40527,7 +40757,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "• %@: %lld"
+            "value" : "• %1$@: %2$lld"
           }
         }
       }
@@ -40910,6 +41140,7 @@
       }
     },
     "⚠️ %@ permission required for recording" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -40930,6 +41161,7 @@
       }
     },
     "⚠️ Failed to initialize keyboard capture" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -40967,6 +41199,7 @@
       }
     },
     "⚠️ Recording failed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -40977,6 +41210,7 @@
       }
     },
     "⚠️ Recording timed out - try again" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -40987,6 +41221,7 @@
       }
     },
     "⚠️ Recording timed out — try again." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -41170,6 +41405,7 @@
       }
     },
     "❌ Failed to start keyboard capture. Check KeyPath diagnostics." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -41180,6 +41416,7 @@
       }
     },
     "❌ Recording failed: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -41190,6 +41427,7 @@
       }
     },
     "❌ Recording requires %@ permission. Open the Installation Wizard to grant access." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {

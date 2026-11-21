@@ -1,4 +1,6 @@
 @testable import KeyPathAppKit
+import KeyPathCore
+import KeyPathRulesCore
 @preconcurrency import XCTest
 
 final class AppKeymapStoreTests: XCTestCase {
@@ -18,6 +20,15 @@ final class AppKeymapStoreTests: XCTestCase {
         }
         tempDirectory = nil
         store = nil
+    }
+
+    func testDefaultStoreAndGeneratedIncludeUseTheTestConfigDirectory() async {
+        let keymaps = await AppKeymapStore.shared.persistenceURL
+        XCTAssertEqual(keymaps, AppPaths.configDirectory.appendingPathComponent("AppKeymaps.json"))
+        XCTAssertEqual(
+            AppConfigGenerator.appConfigPath,
+            AppPaths.configDirectory.appendingPathComponent("keypath-apps.kbd").path
+        )
     }
 
     // MARK: - Load Tests

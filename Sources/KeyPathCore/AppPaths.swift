@@ -34,10 +34,7 @@ public enum AppPaths {
         userDirectory(".config/keypath")
     }
 
-    /// Cached: isRunningTests scans Bundle.allBundles on every call and its
-    /// result cannot change within a process. The mutable
-    /// TestEnvironment.forceTestMode is intentionally excluded — flipping it
-    /// mid-process must not make early- and late-resolved paths disagree.
+    /// Keep the same sandbox decision for every path lookup in this process.
     private static let isSandboxed = TestEnvironment.isRunningTests
 
     private static func userDirectory(_ relativePath: String) -> URL {

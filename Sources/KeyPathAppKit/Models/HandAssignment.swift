@@ -1,31 +1,7 @@
 import Foundation
+import KeyPathRulesCore
 
-/// Assigns keyboard keys to left/right hands for opposite-hand activation in HRM.
-///
-/// Used to generate Kanata `defhands` blocks. The assignment is position-based
-/// (first 5 columns = left, last 5 = right), so it works for any logical keymap
-/// (QWERTY, Dvorak, Colemak, etc.) without change.
-struct HandAssignment: Equatable, Sendable {
-    /// QWERTY scancode names for left-hand keys (3 rows × 5 columns)
-    let leftKeys: [String]
-
-    /// QWERTY scancode names for right-hand keys (3 rows × 5 columns)
-    let rightKeys: [String]
-
-    /// Default QWERTY hand assignment (standard 5/5 column split)
-    static let qwertyDefault = HandAssignment(
-        leftKeys: [
-            "q", "w", "e", "r", "t",
-            "a", "s", "d", "f", "g",
-            "z", "x", "c", "v", "b"
-        ],
-        rightKeys: [
-            "y", "u", "i", "o", "p",
-            "h", "j", "k", "l", ";",
-            "n", "m", ",", ".", "/"
-        ]
-    )
-
+extension HandAssignment {
     /// Derive hand assignment from a physical keyboard layout.
     ///
     /// - **Standard keyboards**: Uses the fixed keyCode column arrays from `LogicalKeymap` —

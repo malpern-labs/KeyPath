@@ -1,10 +1,34 @@
 @testable import KeyPathAppKit
+import Network
 @preconcurrency import XCTest
 
 /// Unit tests for TCP read buffer behavior.
 /// These tests verify the critical line-splitting logic that prevents hangs
 /// when Kanata sends multiple JSON lines in a single TCP packet.
 final class TCPReadBufferTests: XCTestCase {
+    func testDelayedClosePreservesReplacementConnectionAndBuffer() async {
+        let client = KanataTCPClient(port: 37001)
+        let previous = NWConnection(to: .unix(path: "/unused/keypath-old.sock"), using: .tcp)
+        let replacement = NWConnection(to: .unix(path: "/unused/keypath-replacement.sock"), using: .tcp)
+        let pending = Data("reply for the replacement".utf8)
+        await client.installConnectionForTest(previous, buffered: Data())
+        await client.installConnectionForTest(replacement, buffered: pending)
+
+        await client.closeTimedOutConnection(previous)
+
+        let retained = await client.connection
+        let retainedBuffer = await client.readBuffer
+        XCTAssertTrue(retained === replacement)
+        XCTAssertEqual(retainedBuffer, pending)
+
+        await client.closeTimedOutConnection(replacement)
+
+        let closed = await client.connection
+        let clearedBuffer = await client.readBuffer
+        XCTAssertNil(closed)
+        XCTAssertTrue(clearedBuffer.isEmpty)
+    }
+
     // MARK: - extractFirstLine Tests
 
     func testExtractFirstLine_SingleLine() throws {
@@ -89,5 +113,12 @@ final class TCPReadBufferTests: XCTestCase {
         XCTAssertNotNil(result)
         XCTAssertEqual(try String(data: XCTUnwrap(result?.line), encoding: .utf8), "{\"status\":\"Ok\"}\n")
         XCTAssertEqual(try String(data: XCTUnwrap(result?.remaining), encoding: .utf8), "{\"partial\":")
+    }
+}
+
+private extension KanataTCPClient {
+    func installConnectionForTest(_ newConnection: NWConnection, buffered: Data) {
+        connection = newConnection
+        readBuffer = buffered
     }
 }

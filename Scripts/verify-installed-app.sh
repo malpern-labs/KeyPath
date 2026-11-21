@@ -21,7 +21,8 @@ fi
 
 for resource_bundle in \
     KeyPath_KeyPath.bundle \
-    KeyPath_KeyPathAppKit.bundle; do
+    KeyPath_KeyPathAppKit.bundle \
+    KeyPath_KeyPathRulesCore.bundle; do
     packaged_bundle="$APP_PATH/Contents/Resources/$resource_bundle"
     if [[ ! -d "$packaged_bundle" ]]; then
         echo "❌ Packaged SwiftPM resource bundle is missing: $packaged_bundle" >&2
@@ -36,6 +37,25 @@ if [[ ! -f "$metal_library" || ! -s "$metal_library" ]]; then
     echo "❌ Packaged Metal library is missing or empty in the KeyPathAppKit resource bundle" >&2
     exit 1
 fi
+
+catalog_bundle="$APP_PATH/Contents/Resources/KeyPath_KeyPathRulesCore.bundle"
+catalog="$catalog_bundle/rule-collection-catalog.json"
+if [[ ! -f "$catalog" || ! -s "$catalog" ]]; then
+    catalog="$catalog_bundle/Contents/Resources/rule-collection-catalog.json"
+fi
+if [[ ! -f "$catalog" || ! -s "$catalog" ]]; then
+    echo "❌ Packaged rule collection catalog is missing or empty in the KeyPathRulesCore resource bundle" >&2
+    exit 1
+fi
+
+# Layout-dependent generation must have the same keyboard data in the app and CLI.
+for layout_name in macbook-us.json ansi-60.json; do
+    if [[ ! -s "$catalog_bundle/Keyboards/$layout_name" &&
+          ! -s "$catalog_bundle/Contents/Resources/Keyboards/$layout_name" ]]; then
+        echo "❌ Packaged keyboard layout is missing or empty: $layout_name" >&2
+        exit 1
+    fi
+done
 
 # The launch splash is this poster; without it the app falls back to a plain glyph.
 if [[ ! -s "$APP_PATH/Contents/Resources/keypath-poster-hor.png" ]]; then

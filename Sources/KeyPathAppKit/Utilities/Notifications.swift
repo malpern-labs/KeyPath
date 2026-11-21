@@ -1,4 +1,5 @@
 import Foundation
+import KeyPathRulesCore
 
 extension Notification.Name {
     /// Startup coordination
@@ -33,18 +34,12 @@ extension Notification.Name {
     static let ruleCollectionsChanged = Notification.Name("KeyPath.RuleCollections.Changed")
 
     /// Config validation
-    static let configValidationFailed = Notification.Name("KeyPath.Config.ValidationFailed")
     static let configReloadFailed = Notification.Name("KeyPath.Config.ReloadFailed")
     static let configReloadRecovered = Notification.Name("KeyPath.Config.ReloadRecovered")
 
     /// Overlay app-scoped suppression list changed — observers should
     /// re-evaluate whether to hide/show the overlay for the current app.
     static let overlaySuppressedBundleIDsChanged = Notification.Name("KeyPath.Overlay.SuppressedBundleIDsChanged")
-
-    /// `InstalledPackTracker` upserted or removed a pack record. Observers
-    /// such as the KindaVim mode monitor controller use this to start/stop
-    /// based on whether their pack is installed.
-    static let installedPacksChanged = Notification.Name("KeyPath.Packs.InstalledPacksChanged")
 
     /// Mapper drawer
     /// Posted when a key is clicked and should be selected in the mapper drawer
@@ -100,4 +95,21 @@ final class SettingsNavigationCoordinator {
         guard pendingRequest?.notification == notification else { return }
         pendingRequest = nil
     }
+}
+
+public extension Notification.Name {
+    /// Posted when user should navigate to App Rules tab in drawer
+    static let switchToAppRulesTab = Notification.Name("switchToAppRulesTab")
+    /// Posted when Mapper should open the app condition picker (for "New Rule" from App Rules tab)
+    static let openMapperAppConditionPicker = Notification.Name("openMapperAppConditionPicker")
+    /// Posted when overlay should open with mapper tab selected (from Settings)
+    static let openOverlayWithMapper = Notification.Name("openOverlayWithMapper")
+    /// Posted when overlay view should switch to mapper tab
+    static let switchToMapperTab = Notification.Name("switchToMapperTab")
+    /// Posted when overlay should open with mapper tab and preset values for editing
+    /// UserInfo: inputKey (String), outputKey (String), optional shiftedOutputKey (String), optionally appBundleId (String)
+    static let openOverlayWithMapperPreset = Notification.Name("openOverlayWithMapperPreset")
+    /// Posted to set the app condition on the mapper (for adding a rule to a specific app)
+    /// UserInfo: bundleId (String), displayName (String)
+    static let mapperSetAppCondition = Notification.Name("mapperSetAppCondition")
 }

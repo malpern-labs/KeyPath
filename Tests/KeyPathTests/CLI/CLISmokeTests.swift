@@ -1,5 +1,6 @@
 import ArgumentParser
 @testable import KeyPathCLI
+import KeyPathCLICommon
 import XCTest
 
 final class CLISmokeTests: XCTestCase {

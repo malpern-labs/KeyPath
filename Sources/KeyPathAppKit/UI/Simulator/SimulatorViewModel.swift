@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 /// ViewModel for the keyboard simulator.
@@ -290,7 +291,7 @@ final class SimulatorViewModel {
         case "spc": String(localized: "Space", comment: "Key name")
         case "ret": String(localized: "Return", comment: "Key name")
         case "tab": String(localized: "Tab", comment: "Key name")
-        case "bspc": String(localized: "Delete", comment: "Key name")
+        case "bspc": String(localized: "key.name.delete", defaultValue: "Delete", comment: "Name of the Delete key")
         case "esc": String(localized: "Esc", comment: "Key name: Escape, abbreviated")
         case "caps": String(localized: "Caps", comment: "Key name: Caps Lock, abbreviated")
         case "lsft", "rsft": String(localized: "Shift", comment: "Key name")

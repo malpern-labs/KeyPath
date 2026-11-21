@@ -1,4 +1,5 @@
 @testable import KeyPathAppKit
+import KeyPathRulesCore
 import XCTest
 
 @MainActor
@@ -6,6 +7,7 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
     private var preferences: IsolatedPreferenceDefaults!
     private var controller: AutoDetectKeyboardController!
     private var tempDirectory: URL!
+    private let notificationCenter = NotificationCenter()
     private var initialKeyboardEvents: [HIDDeviceMonitor.HIDKeyboardEvent] = []
 
     override func setUp() async throws {
@@ -15,17 +17,26 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
             .appendingPathComponent("AutoDetectKeyboardControllerTests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         preferences = try IsolatedPreferenceDefaults()
+        configureController(index: KeyboardDetectionIndex(exactEntries: [
+            .init(
+                matchKey: "CB10:1256", matchType: .exactVIDPID, source: .via, confidence: .high,
+                displayName: "Corne Keyboard", manufacturer: nil,
+                qmkPath: "crkbd/rev4_0/standard", builtInLayoutId: "corne"
+            )
+        ]))
+    }
+
+    private func configureController(index: KeyboardDetectionIndex) {
         controller = AutoDetectKeyboardController(
             bindingStore: DeviceLayoutBindingStore.testStore(at: tempDirectory.appendingPathComponent("DeviceLayoutBindings.json")),
             displayContextStore: KeyboardDisplayContextStore.testStore(at: tempDirectory.appendingPathComponent("KeyboardDisplayContexts.json")),
-            recognitionService: .shared,
+            recognitionService: DeviceRecognitionService(detectionIndex: index),
             defaults: preferences.defaults,
+            notificationCenter: notificationCenter,
             initialKeyboardEventsProvider: { [weak self] in
                 self?.initialKeyboardEvents ?? []
             }
         )
-        KeyboardDetectionIndex.resetCache()
-        KeyboardDetectionIndex.seedIndex(exactEntries: [])
     }
 
     override func tearDown() async throws {
@@ -37,7 +48,6 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
             try? FileManager.default.removeItem(at: tempDirectory)
         }
         tempDirectory = nil
-        KeyboardDetectionIndex.resetCache()
         try await super.tearDown()
     }
 
@@ -46,19 +56,6 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
     /// Verifies that restarting observation without a new plug-in event
     /// does not replay a stale connection and trigger a toast or auto-switch.
     func testRestartObservationDoesNotReplayStaleEvent() async {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [
-            .init(
-                matchKey: "CB10:1256",
-                matchType: .exactVIDPID,
-                source: .via,
-                confidence: .high,
-                displayName: "Corne Keyboard",
-                manufacturer: nil,
-                qmkPath: "crkbd/rev4_0/standard",
-                builtInLayoutId: "corne"
-            )
-        ])
-
         // Simulate a keyboard connect
         let event = HIDDeviceMonitor.HIDKeyboardEvent(
             vendorID: 0xCB10,
@@ -91,19 +88,6 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
     /// Verifies that duplicate connect notifications for the same device
     /// don't produce multiple toasts.
     func testDuplicateConnectDoesNotSpamToast() async {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [
-            .init(
-                matchKey: "CB10:1256",
-                matchType: .exactVIDPID,
-                source: .via,
-                confidence: .high,
-                displayName: "Corne Keyboard",
-                manufacturer: nil,
-                qmkPath: "crkbd/rev4_0/standard",
-                builtInLayoutId: "corne"
-            )
-        ])
-
         let event = HIDDeviceMonitor.HIDKeyboardEvent(
             vendorID: 0xCB10,
             productID: 0x1256,
@@ -122,19 +106,6 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
     /// Verifies that disconnecting then reconnecting the same keyboard
     /// triggers detection again (connectedVIDPIDs cleared on disconnect).
     func testReconnectAfterDisconnectTriggersDetection() async {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [
-            .init(
-                matchKey: "CB10:1256",
-                matchType: .exactVIDPID,
-                source: .via,
-                confidence: .high,
-                displayName: "Corne Keyboard",
-                manufacturer: nil,
-                qmkPath: "crkbd/rev4_0/standard",
-                builtInLayoutId: "corne"
-            )
-        ])
-
         let event = HIDDeviceMonitor.HIDKeyboardEvent(
             vendorID: 0xCB10,
             productID: 0x1256,
@@ -158,8 +129,6 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
 
     /// Verifies that an unrecognized keyboard (no VID:PID match) does not show a toast.
     func testUnrecognizedKeyboardDoesNotShowToast() async {
-        KeyboardDetectionIndex.seedIndex(exactEntries: []) // No matches
-
         let event = HIDDeviceMonitor.HIDKeyboardEvent(
             vendorID: 0x1337,
             productID: 0xBEEF,
@@ -176,19 +145,6 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
     }
 
     func testRecognizedKeyboardBecomesActiveConnectedKeyboard() async {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [
-            .init(
-                matchKey: "CB10:1256",
-                matchType: .exactVIDPID,
-                source: .via,
-                confidence: .high,
-                displayName: "Corne Keyboard",
-                manufacturer: nil,
-                qmkPath: "crkbd/rev4_0/standard",
-                builtInLayoutId: "corne"
-            )
-        ])
-
         let event = HIDDeviceMonitor.HIDKeyboardEvent(
             vendorID: 0xCB10,
             productID: 0x1256,
@@ -204,20 +160,13 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
     }
 
     private func corneEvent() -> HIDDeviceMonitor.HIDKeyboardEvent {
-        KeyboardDetectionIndex.seedIndex(exactEntries: [
-            .init(
-                matchKey: "CB10:1256", matchType: .exactVIDPID, source: .via, confidence: .high,
-                displayName: "Corne Keyboard", manufacturer: nil,
-                qmkPath: "crkbd/rev4_0/standard", builtInLayoutId: "corne"
-            )
-        ])
-        return HIDDeviceMonitor.HIDKeyboardEvent(
+        HIDDeviceMonitor.HIDKeyboardEvent(
             vendorID: 0xCB10, productID: 0x1256, productName: "Corne Keyboard", isConnected: true
         )
     }
 
     private func postConnected(_ event: HIDDeviceMonitor.HIDKeyboardEvent) async throws {
-        NotificationCenter.default.post(name: .hidKeyboardConnected, object: nil, userInfo: ["event": event])
+        notificationCenter.post(name: .hidKeyboardConnected, object: nil, userInfo: ["event": event])
         for _ in 0 ..< 10000 where controller.connectedKeyboards.isEmpty {
             await Task.yield()
         }
@@ -287,7 +236,7 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
     }
 
     func testLowConfidenceVendorFallbackRequiresReviewInsteadOfAutoActivation() async {
-        KeyboardDetectionIndex.seedIndex(
+        configureController(index: KeyboardDetectionIndex(
             exactEntries: [],
             vendorFallbackEntries: [
                 .init(
@@ -301,7 +250,7 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
                     builtInLayoutId: "kinesis-360"
                 )
             ]
-        )
+        ))
 
         let event = HIDDeviceMonitor.HIDKeyboardEvent(
             vendorID: 0x29EA,
@@ -319,13 +268,7 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
     }
 
     func testDisconnectRestoresBaselineDisplayContextWhenNoKeyboardRemains() async {
-        controller.overlayDisplayContextDidChange(
-            layoutId: "macbook-us",
-            keymapId: LogicalKeymap.defaultId,
-            includePunctuationStore: "{}"
-        )
-
-        KeyboardDetectionIndex.seedIndex(exactEntries: [
+        configureController(index: KeyboardDetectionIndex(exactEntries: [
             .init(
                 matchKey: "29EA:1001",
                 matchType: .exactVIDPID,
@@ -336,7 +279,13 @@ final class AutoDetectKeyboardControllerTests: KeyPathAsyncTestCase {
                 qmkPath: nil,
                 builtInLayoutId: "kinesis-mwave"
             )
-        ])
+        ]))
+
+        controller.overlayDisplayContextDidChange(
+            layoutId: "macbook-us",
+            keymapId: LogicalKeymap.defaultId,
+            includePunctuationStore: "{}"
+        )
 
         let event = HIDDeviceMonitor.HIDKeyboardEvent(
             vendorID: 0x29EA,

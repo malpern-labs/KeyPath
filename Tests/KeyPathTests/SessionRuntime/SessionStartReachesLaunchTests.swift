@@ -7,11 +7,8 @@
 @MainActor
 final class SessionStartReachesLaunchTests: KeyPathTestCase {
     func testStartReachesLaunch() async {
-        ServiceLifecycleCoordinator.testSessionStart = nil
-        addTeardownBlock { @MainActor in
-            ServiceLifecycleCoordinator.testSessionStart = { _ in false }
-        }
         let coordinator = ServiceLifecycleCoordinator()
+        coordinator.testSessionStart = nil
         coordinator.testSessionCurrentReport = { nil }
         coordinator.testSessionConfigurationValidation = { .valid }
         coordinator.testSessionCapsPreparation = {}

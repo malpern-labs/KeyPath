@@ -132,15 +132,17 @@ struct RuleSetupSheet: View {
 
     private func providerChoice(_ provider: RuleCollection, index: Int, recommended: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            SettingsOptionCard(icon: provider.icon ?? "keyboard", title: provider.name,
-                               subtitle: recommended ? String(localized: "Recommended") : provider.summary,
-                               isSelected: selections[index] == provider.id)
-            {
+            SettingsOptionCard(
+                identifier: "rule-setup-provider-\(provider.id)",
+                icon: provider.icon ?? "keyboard",
+                title: provider.name,
+                subtitle: recommended ? String(localized: "Recommended") : provider.summary,
+                isSelected: selections[index] == provider.id
+            ) {
                 selections[index] = provider.id
                 error = nil
             }
             .disabled(saving)
-            .accessibilityIdentifier("rule-setup-provider-\(provider.id)")
             if selections[index] == provider.id {
                 if provider.id == RuleCollectionIdentifier.leaderKey {
                     let key = provider.configuration.singleKeyPickerConfig?.selectedOutput ?? PreferencesService.shared.leaderKeyPreference.key

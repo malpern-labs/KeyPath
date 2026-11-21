@@ -28,7 +28,7 @@ extension OverlayKeycapView {
             }
 
             // Selection highlight (shows when key is selected in mapper drawer)
-            if isSelected {
+            if isSelected || assignmentCommands?.swapSource == key.keyCode {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(Color.accentColor.opacity(0.8), lineWidth: 2.5 * scale)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -42,6 +42,13 @@ extension OverlayKeycapView {
                     .stroke(Color.accentColor.opacity(0.8), lineWidth: 2.5 * scale)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .shadow(color: Color.accentColor.opacity(0.4), radius: 4 * scale)
+            }
+
+            if showsAppliedRemap {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(Color.green, lineWidth: 2.5 * scale)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
             }
 
             // Glow layers for dark mode backlight effect
@@ -178,6 +185,18 @@ extension OverlayKeycapView {
                             onKeyRemap(key, layerKeyInfo)
                         }
                         .accessibilityIdentifier("overlay-key-remap-\(key.keyCode)")
+                    }
+                    if let assignmentCommands, key.layoutRole != .touchId {
+                        if assignmentCommands.canCopy(key) {
+                            Button("Swap Assignment…") { assignmentCommands.beginSwap(key) }
+                                .accessibilityIdentifier("overlay-key-swap-\(key.keyCode)")
+                            Button("Copy Assignment") { assignmentCommands.copy(key) }
+                                .accessibilityIdentifier("overlay-key-copy-\(key.keyCode)")
+                        }
+                        if assignmentCommands.canPaste(key) {
+                            Button("Paste Assignment") { assignmentCommands.paste(key) }
+                                .accessibilityIdentifier("overlay-key-paste-\(key.keyCode)")
+                        }
                     }
                     if isResettable, let onKeyReset {
                         Button("Reset \u{201C}\(keyMenuName)\u{201D} to Default") {

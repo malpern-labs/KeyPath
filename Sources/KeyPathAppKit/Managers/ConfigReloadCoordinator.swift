@@ -1,6 +1,7 @@
 import Foundation
 import KeyPathCore
 import KeyPathPermissions
+import KeyPathRulesCore
 
 /// Manages configuration reloads through the session worker's engine socket.
 ///
@@ -92,8 +93,7 @@ final class ConfigReloadCoordinator {
 
     // MARK: - Reload Operations
 
-    /// Main reload method using TCP protocol.
-    /// Checks service health, permission gates, and delegates to TCP reload.
+    /// Checks runtime health and permissions before reloading through the worker socket.
     func triggerConfigReload(
         notifyOnFailure: Bool = true,
         scheduleRetryOnPending: Bool = true,
@@ -111,7 +111,7 @@ final class ConfigReloadCoordinator {
            let startRuntimeForExplicitApply
         {
             guard !Task.isCancelled else {
-                return ReloadResult(success: false, response: nil, errorMessage: String(localized: "Apply cancelled"), protocol: nil, disposition: .pending)
+                return ReloadResult(success: false, response: nil, errorMessage: String(localized: "Apply cancelled"), disposition: .pending)
             }
             let started = await startRuntimeForExplicitApply()
             expectedIntent = runtimeIntentGeneration()
@@ -121,7 +121,7 @@ final class ConfigReloadCoordinator {
             else {
                 return ReloadResult(success: false, response: nil,
                                     errorMessage: healthStatus.reason ?? String(localized: "Session startup did not establish readiness"),
-                                    protocol: nil, disposition: .pending)
+                                    disposition: .pending)
             }
         }
         if !healthStatus.isHealthy {
@@ -138,7 +138,6 @@ final class ConfigReloadCoordinator {
                 success: false,
                 response: nil,
                 errorMessage: healthStatus.reason ?? String(localized: "Kanata service is starting; retry shortly"),
-                protocol: nil,
                 disposition: .pending
             )
         }
@@ -157,12 +156,12 @@ final class ConfigReloadCoordinator {
                 } catch {
                     return ReloadResult(success: false, response: nil,
                                         errorMessage: String(localized: "Apply cancelled"),
-                                        protocol: nil, disposition: .pending)
+                                        disposition: .pending)
                 }
                 guard !Task.isCancelled else {
                     return ReloadResult(success: false, response: nil,
                                         errorMessage: String(localized: "Apply cancelled"),
-                                        protocol: nil, disposition: .pending)
+                                        disposition: .pending)
                 }
                 guard expectedIntent == runtimeIntentGeneration(), runtimeWantsRunning() else {
                     return changedRuntimeIntent()
@@ -183,7 +182,6 @@ final class ConfigReloadCoordinator {
                 success: true,
                 response: tcpResult.response ?? "",
                 errorMessage: nil,
-                protocol: .tcp,
                 disposition: .applied
             )
         } else {
@@ -205,7 +203,6 @@ final class ConfigReloadCoordinator {
                     success: false,
                     response: tcpResult.response,
                     errorMessage: String(localized: "Kanata is restarting; reload will retry shortly"),
-                    protocol: .tcp,
                     disposition: .pending
                 )
             }
@@ -234,7 +231,6 @@ final class ConfigReloadCoordinator {
                 success: false,
                 response: tcpResult.response,
                 errorMessage: errorMessage,
-                protocol: .tcp,
                 disposition: disposition(for: tcpResult, message: errorMessage)
             )
         }
@@ -242,7 +238,7 @@ final class ConfigReloadCoordinator {
 
     private func changedRuntimeIntent() -> ReloadResult {
         ReloadResult(success: false, response: nil, errorMessage: Self.runtimeIntentChangedMessage,
-                     protocol: nil, disposition: .pending)
+                     disposition: .pending)
     }
 
     private func disposition(for tcpResult: TCPReloadResult, message: String) -> ReloadDisposition {
@@ -403,11 +399,11 @@ final class ConfigReloadCoordinator {
         do {
             return try await configurationOperationGate.withOperation { _ in await operation() }
         } catch {
-            return ReloadResult(success: false, response: nil, errorMessage: error.localizedDescription, protocol: nil, disposition: .failed)
+            return ReloadResult(success: false, response: nil, errorMessage: error.localizedDescription, disposition: .failed)
         }
     }
 
-    /// TCP-based config reload (no authentication required - see ADR-013)
+    /// Owner-checked config reload over the worker’s Unix socket (ADR-046).
     func triggerTCPReload(expectedRuntimeIntent: UInt64? = nil) async -> TCPReloadResult {
         let expectedIntent = expectedRuntimeIntent ?? runtimeIntentGeneration()
         guard expectedIntent == runtimeIntentGeneration() else {
@@ -418,7 +414,7 @@ final class ConfigReloadCoordinator {
             return .networkError("Test environment - TCP disabled")
         }
 
-        let admission: SessionCapsRuntimeSupport.Admission? = sessionValidationOverride == nil
+        let admission: SessionConfigurationAdmission? = sessionValidationOverride == nil
             ? SessionCapsRuntimeSupport.admit(
                 // Admission must allow the first Caps rule before a selection exists.
                 // The lifecycle restart owns discovery and verifies the keyboard before

@@ -132,14 +132,17 @@ final class SessionCapsIntermediateTests: XCTestCase {
     }
 
     func testUnknownOwnerMessagesSayWhatCanBeKnown() {
-        XCTAssertTrue(SessionCapsConflict(destination: f20).message.contains("(to F20)"))
+        XCTAssertTrue(SessionCapsConflict(destination: f20).message.contains("F20"))
+        XCTAssertTrue(SessionCapsConflict(destination: f20).message.contains("does not identify which app"))
+        XCTAssertFalse(SessionCapsConflict(destination: f20).message.contains("Another app"))
         let modifier = SessionCapsConflict(destination: 0x7_0000_00E0).message
         XCTAssertTrue(modifier.contains("Modifier Keys"))
+        XCTAssertTrue(modifier.contains("does not identify which app"))
         XCTAssertFalse(modifier.contains("Raycast"))
     }
 
     @MainActor
-    func testSettingsDoesNotReportKeyPathsOwnRowAsAConflict() {
+    func testSettingsDoesNotReportVerifiedKeyPathsOwnRowAsAConflict() {
         let own = SessionCapsConflict(destination: Policy.packed(110))
         XCTAssertTrue(SessionCapsSettingsSection.ownRow(own, intermediate: 110))
         XCTAssertFalse(SessionCapsSettingsSection.ownRow(own, intermediate: 109))
@@ -212,7 +215,7 @@ final class SessionCapsIntermediateTests: XCTestCase {
                                  bootSessionUUID: "A7B944DF-471A-4C22-B9F3-A4EE5522F775")
         let f18Lease = try Policy.acquire(original: [], device: device, devices: [device], owner: owner,
                                           effectiveConfigSHA256: String(repeating: "a", count: 64))
-        typealias Admission = SessionCapsRuntimeSupport.Admission
+        typealias Admission = SessionConfigurationAdmission
         XCTAssertTrue(SessionRuntimeWorker.profileFitsLease(Admission(result: .valid, managedCaps: true, intermediateUsage: 109), record: f18Lease))
         // The profile now uses F18: admission without re-choice refuses, or
         // (with re-choice) lands on another key. Either way the lease no longer fits.

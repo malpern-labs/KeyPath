@@ -1,4 +1,5 @@
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 extension LiveKeyboardOverlayView {
@@ -20,7 +21,8 @@ extension LiveKeyboardOverlayView {
         keyboardTrailingPadding: CGFloat,
         allowKeyboardDrag: Bool
     ) -> some View {
-        VStack(spacing: 0) {
+        let isEditingLayer = uiState.isInspectorOpen && inspectorSection == .mapper && !isSettingsShelfActive
+        return VStack(spacing: 0) {
             OverlayDragHeader(
                 isDark: isDark,
                 fadeAmount: fadeAmount,
@@ -45,19 +47,28 @@ extension LiveKeyboardOverlayView {
                 onKeyboardSelected: { keyboardID in
                     autoDetectController.selectKeyboard(keyboardID)
                 },
-                onLayerSelected: { layerName in
-                    Task {
-                        _ = await kanataViewModel?.changeLayer(layerName)
+                onLayerSelected: { layer in
+                    if isEditingLayer {
+                        viewModel.selectEditingLayer(layer)
+                    } else {
+                        Task { _ = await kanataViewModel?.changeLayer(layer) }
                     }
                 },
                 onCreateLayer: { layerName in
                     Task {
                         await kanataViewModel?.underlyingManager.rulesManager.createLayer(layerName)
-                        _ = await kanataViewModel?.changeLayer(layerName)
+                        if viewModel.editingLayerName != nil {
+                            viewModel.selectEditingLayer(layerName)
+                        } else if !isEditingLayer {
+                            _ = await kanataViewModel?.changeLayer(layerName)
+                        }
                     }
                 },
                 onDeleteLayer: { layerName in
                     Task {
+                        if viewModel.editingLayerName?.lowercased() == layerName.lowercased() {
+                            viewModel.selectEditingLayer("base")
+                        }
                         if kanataViewModel?.currentLayerName.lowercased() == layerName.lowercased() {
                             _ = await kanataViewModel?.changeLayer("base")
                         }
@@ -65,6 +76,7 @@ extension LiveKeyboardOverlayView {
                     }
                 }
             )
+            .environment(\.overlayLayerShortcutsEnabled, isEditingLayer)
             .frame(maxWidth: .infinity)
 
             overlayMainContent(
@@ -83,6 +95,36 @@ extension LiveKeyboardOverlayView {
                 allowKeyboardDrag: allowKeyboardDrag,
                 inspectorSection: inspectorSection
             )
+        }
+        .background {
+            let hasSelection = isEditingLayer && viewModel.selectedKeyCode != nil
+            OverlayAssignmentMenuBridge { hasSelection ? selectedAssignmentCommands() : nil }
+                .allowsHitTesting(false)
+        }
+        .environment(\.overlayAssignmentCommands, isEditingLayer ? assignmentCommands(layer: RuleCollectionLayer(kanataName: viewModel.currentLayerName)) : nil)
+        .overlay(alignment: .topLeading) {
+            if isEditingLayer, let message = assignmentFeedback ?? assignmentSwapSource.map({
+                String(localized: "Choose a key to swap with \($0.label.uppercased()) on \(viewModel.currentLayerName.capitalized). Esc cancels.")
+            }) {
+                Text(message)
+                    .font(.caption)
+                    .padding(5)
+                    .background(.regularMaterial)
+                    .allowsHitTesting(false)
+            }
+        }
+        .onExitCommand {
+            assignmentSwapSource = nil
+            assignmentFeedback = nil
+        }
+        .onChange(of: viewModel.currentLayerName) { _, _ in
+            assignmentSwapSource = nil
+            assignmentFeedback = nil
+        }
+        .onChange(of: isEditingLayer, initial: true) { _, editing in
+            assignmentSwapSource = nil
+            assignmentFeedback = nil
+            viewModel.selectEditingLayer(editing ? viewModel.currentLayerName : nil)
         }
     }
 
@@ -169,7 +211,7 @@ extension LiveKeyboardOverlayView {
                     tapHoldIdleLabels: viewModel.tapHoldIdleLabels,
                     holdActiveKeyCodes: viewModel.holdActiveKeyCodes,
                     customIcons: viewModel.customIcons,
-                    onKeyClick: onKeyClick,
+                    onKeyClick: { selectAssignmentKey($0, info: $1) },
                     onKeyDoubleClick: onKeyDoubleClick,
                     onKeyRemap: onKeyRemap,
                     onKeyReset: onKeyReset,
@@ -177,6 +219,8 @@ extension LiveKeyboardOverlayView {
                         in: kanataViewModel?.customRules ?? [], layer: viewModel.currentLayerName
                     ),
                     selectedKeyCode: viewModel.selectedKeyCode,
+                    appliedRemapKeyCode: viewModel.appliedRemapLayer?.lowercased() == viewModel.currentLayerName.lowercased()
+                        ? viewModel.appliedRemapKeyCode : nil,
                     hoveredRuleKeyCode: viewModel.hoveredRuleKeyCode,
                     vimHintsActive: kindaVimPackInstalled && VimHintLayer.isCurrentlyRendering,
                     isLauncherMode: viewModel.isLauncherModeActive || (uiState.isInspectorOpen && inspectorSection == .launchers),

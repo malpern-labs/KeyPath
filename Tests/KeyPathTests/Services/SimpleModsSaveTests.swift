@@ -1,5 +1,7 @@
 import Foundation
 @testable import KeyPathAppKit
+import KeyPathCore
+import KeyPathRulesCore
 @preconcurrency import XCTest
 
 @MainActor
@@ -174,7 +176,7 @@ final class SimpleModsSaveTests: KeyPathTestCase {
     }
 
     private static func reload(_ disposition: ReloadDisposition) -> ReloadResult {
-        ReloadResult(success: disposition == .applied, response: nil, errorMessage: disposition == .rejected ? "rejected" : nil, protocol: nil, disposition: disposition)
+        ReloadResult(success: disposition == .applied, response: nil, errorMessage: disposition == .rejected ? "rejected" : nil, disposition: disposition)
     }
 
     private func withFixture(_ body: (Fixture) async throws -> Void) async throws {

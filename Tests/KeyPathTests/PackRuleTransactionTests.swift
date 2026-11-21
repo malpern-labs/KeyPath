@@ -54,7 +54,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
 
     private static func reload(_ disposition: ReloadDisposition) -> ReloadResult {
         ReloadResult(success: disposition == .applied, response: nil,
-                     errorMessage: disposition == .applied ? nil : "injected \(disposition)", protocol: nil, disposition: disposition)
+                     errorMessage: disposition == .applied ? nil : "injected \(disposition)", disposition: disposition)
     }
 
     func testMissingCollectionResultExplainsFailureWithoutClaimingCancellation() async throws {
@@ -161,7 +161,7 @@ final class PackRuleTransactionTests: KeyPathTestCase {
                 if applications == 1 {
                     XCTAssertTrue(self.manager.ruleCollections.contains { $0.id == capsID && $0.isEnabled })
                     return ReloadResult(success: false, response: nil, errorMessage: "No compatible Caps keyboard",
-                                        protocol: nil, disposition: .rejected)
+                                        disposition: .rejected)
                 }
                 XCTAssertEqual(try? self.snapshot(), before)
                 return Self.reload(.applied)

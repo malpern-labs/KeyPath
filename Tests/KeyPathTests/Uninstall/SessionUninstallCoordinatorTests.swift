@@ -1,4 +1,5 @@
 @testable import KeyPathAppKit
+import KeyPathCore
 import KeyPathInstallationWizard
 import XCTest
 

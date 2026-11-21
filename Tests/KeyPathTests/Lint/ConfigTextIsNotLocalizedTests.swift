@@ -12,13 +12,17 @@ final class ConfigTextIsNotLocalizedTests: XCTestCase {
     }
 
     func testConfigRenderingDoesNotUseLocalizedLayerNames() throws {
-        let configDir = LintScanner.path("Sources/KeyPathAppKit/Infrastructure/Config")
-        let files = try FileManager.default.contentsOfDirectory(atPath: configDir.path)
-            .filter { $0.hasPrefix("KanataConfiguration") && $0.hasSuffix(".swift") }
+        let folders = [
+            LintScanner.path("Sources/KeyPathRulesCore"),
+            LintScanner.path("Sources/KeyPathAppKit/Infrastructure/Config")
+        ]
+        let files = try folders.flatMap { folder in
+            try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+        }.filter { $0.lastPathComponent.hasPrefix("KanataConfiguration") && $0.pathExtension == "swift" }
         XCTAssertFalse(files.isEmpty)
         for file in files {
-            let text = try String(contentsOf: configDir.appendingPathComponent(file), encoding: .utf8)
-            XCTAssertFalse(text.contains("Layer.displayName"), "\(file) writes a localized layer name into config")
+            let text = try String(contentsOf: file, encoding: .utf8)
+            XCTAssertFalse(text.contains("Layer.displayName"), "\(file.lastPathComponent) writes a localized layer name into config")
         }
     }
 }

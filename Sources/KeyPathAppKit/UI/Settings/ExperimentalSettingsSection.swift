@@ -1,6 +1,7 @@
 import KeyPathCore
 import KeyPathPermissions
 import KeyPathPluginKit
+import KeyPathRulesCore
 import SwiftUI
 
 /// Settings section for experimental features and feature flags

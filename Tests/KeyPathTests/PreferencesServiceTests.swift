@@ -1,4 +1,5 @@
 @testable import KeyPathAppKit
+import KeyPathRulesCore
 import XCTest
 
 @MainActor
@@ -20,18 +21,8 @@ final class PreferencesServiceTests: XCTestCase {
     }
 
     func testCanonicalDefaultsFallsBackToStandardWhenSuiteIsUnavailable() {
-        let defaults = PreferencesService.canonicalDefaults(using: nil)
+        let defaults = RecoverableRuleWrite.PreferenceDefaults.canonical(using: nil)
         XCTAssertTrue(defaults === UserDefaults.standard)
-    }
-
-    // MARK: - Communication Config Description
-
-    func testCommunicationConfigDescriptionNamesTheOwnerCheckedSocket() {
-        let desc = makePreferences().communicationConfigDescription
-        XCTAssertTrue(desc.contains("Unix-domain socket"))
-        XCTAssertTrue(desc.contains("owner-checked"))
-        XCTAssertFalse(desc.contains("37001"))
-        XCTAssertFalse(desc.localizedCaseInsensitiveContains("no authentication"))
     }
 
     // MARK: - Context HUD Hold Delay
@@ -59,21 +50,6 @@ final class PreferencesServiceTests: XCTestCase {
         prefs.contextHUDHoldDelayCustomMs = 175
         prefs.contextHUDHoldDelayPreset = .custom
         XCTAssertEqual(prefs.contextHUDHoldDelayMs, 175)
-    }
-
-    // MARK: - Preferred Protocol
-
-    func testPreferredProtocol_AlwaysTCP() {
-        let prefs = makePreferences()
-        XCTAssertEqual(prefs.preferredProtocol, .tcp)
-    }
-
-    // MARK: - Reset Communication Settings
-
-    func testResetCommunicationSettings_RestoresDefaults() {
-        let prefs = makePreferences()
-        prefs.resetCommunicationSettings()
-        XCTAssertEqual(prefs.communicationProtocol, .tcp)
     }
 
     // MARK: - Enum Display Names
@@ -116,12 +92,6 @@ final class PreferencesServiceTests: XCTestCase {
             XCTAssertFalse(mode.displayName.isEmpty, "\(mode) missing displayName")
             XCTAssertFalse(mode.description.isEmpty, "\(mode) missing description")
         }
-    }
-
-    func testCommunicationProtocol_TCPHasDisplayInfo() {
-        let proto = CommunicationProtocol.tcp
-        XCTAssertFalse(proto.displayName.isEmpty)
-        XCTAssertFalse(proto.description.isEmpty)
     }
 
     // MARK: - KeyLabelStyle raw values

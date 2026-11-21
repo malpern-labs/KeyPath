@@ -3,6 +3,7 @@ import KeyPathCore
 import KeyPathInstallationWizard
 import KeyPathPermissions
 import KeyPathPluginKit
+import KeyPathRulesCore
 import KeyPathWizardCore
 import Sparkle
 import SwiftUI

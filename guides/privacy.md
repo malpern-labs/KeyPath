@@ -88,6 +88,8 @@ Driverless remapping is unavailable in protected password-entry and Secure Input
 
 ## Legacy installation locations
 
+To remove the old service and helper, follow the [KeyPath 1.0.1 cleanup guide]({{ '/guides/upgrading-from-1-0-1/' | relative_url }}).
+
 KeyPath 1.0.1 and earlier installed a root-owned system service. Current versions do not install or use the service, the engine, or the logs listed here, but these files may remain on Macs upgraded from those releases.
 
 | What | Where | Contents |

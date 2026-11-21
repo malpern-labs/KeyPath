@@ -25,7 +25,6 @@ final class PreferencesServicePersistenceTests: XCTestCase {
     }
 
     private static let preferenceKeys = [
-        "KeyPath.Communication.Protocol",
         "KeyPath.TCP.ServerPort",
         "KeyPath.Notifications.Enabled",
         "KeyPath.Recording.ApplyMappingsDuringRecording",
@@ -145,7 +144,6 @@ final class PreferencesServicePersistenceTests: XCTestCase {
 
     func testLoadFallsBackForInvalidStoredEnumsAndLeaderPreference() {
         withPreservedDefaults {
-            defaults.set("udp", forKey: "KeyPath.Communication.Protocol")
             defaults.set("emoji", forKey: "KeyPath.Display.KeyLabelStyle")
             defaults.set("invisible", forKey: "KeyPath.Overlay.UnmappedLayerKeyStyle")
             defaults.set("drawer", forKey: "KeyPath.ContextHUD.DisplayMode")
@@ -158,7 +156,6 @@ final class PreferencesServicePersistenceTests: XCTestCase {
 
             let prefs = makePreferences()
 
-            XCTAssertEqual(prefs.communicationProtocol, .tcp)
             XCTAssertEqual(prefs.keyLabelStyle, .symbols)
             XCTAssertEqual(prefs.unmappedLayerKeyStyle, .baseLayer)
             XCTAssertEqual(prefs.contextHUDDisplayMode, .none)
@@ -492,14 +489,6 @@ final class PreferencesServicePersistenceTests: XCTestCase {
         }
     }
 
-    func testCommunicationProtocol_RawValueRoundTrip() {
-        for proto in CommunicationProtocol.allCases {
-            let raw = proto.rawValue
-            let restored = CommunicationProtocol(rawValue: raw)
-            XCTAssertEqual(restored, proto)
-        }
-    }
-
     // MARK: - Invalid Enum Raw Values
 
     func testContextHUDDisplayMode_InvalidRawValueReturnsNil() {
@@ -552,7 +541,6 @@ final class PreferencesServicePersistenceTests: XCTestCase {
 
     func testDefaultValues_AreReasonable() {
         let prefs = makePreferences()
-        XCTAssertEqual(prefs.communicationProtocol, .tcp)
         XCTAssertTrue(prefs.notificationsEnabled)
         XCTAssertTrue(prefs.isSequenceMode)
     }
@@ -584,22 +572,6 @@ final class PreferencesServicePersistenceTests: XCTestCase {
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(RuleCollectionLayer.self, from: data)
         XCTAssertEqual(decoded, original)
-    }
-
-    // MARK: - Reset Behavior
-
-    func testResetCommunicationSettings_RestoresProtocol() {
-        let prefs = makePreferences()
-        prefs.resetCommunicationSettings()
-        XCTAssertEqual(prefs.communicationProtocol, .tcp)
-    }
-
-    // MARK: - Config Description
-
-    func testCommunicationConfigDescription_Format() {
-        let prefs = makePreferences()
-        let desc = prefs.communicationConfigDescription
-        XCTAssertTrue(desc.contains("Unix-domain socket"), "Should name the transport")
     }
 
     // MARK: - NeovimTerminalCategory Tests

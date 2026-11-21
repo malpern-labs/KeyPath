@@ -7,7 +7,6 @@ import XCTest
 final class RuleCollectionsManagerDependentResolutionTests: XCTestCase {
     func testKeepEnabledAppliesNothing() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let provider = layerContentProvider(
             id: uuid(1),
             name: "Function",
@@ -62,7 +61,6 @@ final class RuleCollectionsManagerDependentResolutionTests: XCTestCase {
 
     func testDisableAnywayAppliesOnlyProviderDisableOnce() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let provider = layerContentProvider(
             id: uuid(10),
             name: "Function",
@@ -94,7 +92,6 @@ final class RuleCollectionsManagerDependentResolutionTests: XCTestCase {
 
     func testAlternateActiveProviderSuppressesDialog() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let first = layerContentProvider(
             id: uuid(20),
             name: "Function",
@@ -135,7 +132,6 @@ final class RuleCollectionsManagerDependentResolutionTests: XCTestCase {
 
     func testManyDependentsProduceDeterministicCollapsedRows() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let provider = layerContentProvider(
             id: uuid(30),
             name: "Function",
@@ -196,7 +192,6 @@ final class RuleCollectionsManagerDependentResolutionTests: XCTestCase {
 
     func testCustomRuleProviderUsesSameReverseConfirmation() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
         let provider = CustomRule(
             id: uuid(40),
             title: "My Function Layer",
@@ -228,7 +223,6 @@ final class RuleCollectionsManagerDependentResolutionTests: XCTestCase {
 
     func testFailedDisableRestoresProviderAndDependentState() async throws {
         let manager = try makeManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var leader = try XCTUnwrap(
             RuleCollectionCatalog().defaultCollections().first {
@@ -295,7 +289,6 @@ final class RuleCollectionsManagerDependentResolutionTests: XCTestCase {
     }
 
     private func makeManager() throws -> RuleCollectionsManager {
-        TestEnvironment.forceTestMode = true
         let directory = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("dependent-resolution-\(UUID().uuidString)")
         try FileManager.default.createDirectory(

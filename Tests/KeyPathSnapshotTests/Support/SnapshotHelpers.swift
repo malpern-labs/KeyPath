@@ -42,46 +42,6 @@ enum DocSize {
     static let fullWindow = CGSize(width: 1400, height: 800)
 }
 
-// MARK: - Isolated UserDefaults
-
-/// Creates an isolated UserDefaults suite for @AppStorage testing.
-/// Prevents snapshot tests from reading/writing the real user defaults.
-func withIsolatedDefaults(
-    suiteName: String = "com.keypath.snapshot-tests",
-    defaults: [String: Any] = [:],
-    body: () throws -> Void
-) rethrows {
-    let suite = UserDefaults(suiteName: suiteName)!
-    let standardDefaults = Foundation.UserDefaults()
-    suite.removePersistentDomain(forName: suiteName)
-
-    // Set known defaults for @AppStorage keys
-    let baseDefaults: [String: Any] = [
-        "selectedKeymapId": "qwerty-us",
-        "keymapIncludePunctuation": "true",
-        "selectedLayoutId": "ansi-100",
-        "overlayColorwayId": "default",
-        "inspectorSettingsSection": "keymaps",
-        "launcherWelcomeSeenForBuild": "999",
-    ]
-
-    for (key, value) in baseDefaults.merging(defaults, uniquingKeysWith: { _, new in new }) {
-        suite.set(value, forKey: key)
-    }
-
-    // Swap standard defaults
-    standardDefaults.removePersistentDomain(forName: suiteName + ".standard")
-    for (key, value) in baseDefaults.merging(defaults, uniquingKeysWith: { _, new in new }) {
-        standardDefaults.set(value, forKey: key)
-    }
-
-    defer {
-        suite.removePersistentDomain(forName: suiteName)
-    }
-
-    try body()
-}
-
 // MARK: - View Hosting
 
 /// Wraps a SwiftUI view in a fixed-size NSHostingView for snapshot capture.
@@ -174,8 +134,6 @@ class ScreenshotTestCase: XCTestCase {
         } else {
             DispatchQueue.main.sync { _ = NSApplication.shared }
         }
-        // Snapshot rendering must not scan the developer's installed apps.
-        DuplicateAppDetector.testDuplicateAppPathsOverride = { [] }
         originalHomeEnv = ProcessInfo.processInfo.environment["HOME"]
         originalFixedHomeEnv = ProcessInfo.processInfo.environment["CFFIXED_USER_HOME"]
         let isolatedHome = FileManager.default.temporaryDirectory
@@ -209,7 +167,6 @@ class ScreenshotTestCase: XCTestCase {
     }
 
     override func tearDown() {
-        DuplicateAppDetector.testDuplicateAppPathsOverride = nil
         if let snapshotDefaultsSuiteName {
             snapshotDefaults?.removePersistentDomain(forName: snapshotDefaultsSuiteName)
         }
@@ -255,6 +212,7 @@ class ScreenshotTestCase: XCTestCase {
             .background(Color(nsColor: .windowBackgroundColor))
             .environment(\.colorScheme, .dark)
             .defaultAppStorage(requiredSnapshotDefaults)
+            .environment(\.services, ServiceContainer(scanForDuplicateApps: { [] }))
 
         let host = NSHostingView(rootView: wrapped)
         host.frame = CGRect(origin: .zero, size: CGSize(width: size.width, height: 10000))
@@ -295,7 +253,7 @@ class ScreenshotTestCase: XCTestCase {
         line: UInt = #line
     ) {
         let hosted = hostView(
-            view,
+            view.environment(\.services, ServiceContainer(scanForDuplicateApps: { [] })),
             size: size,
             colorScheme: colorScheme,
             defaults: requiredSnapshotDefaults

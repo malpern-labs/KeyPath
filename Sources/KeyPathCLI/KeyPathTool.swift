@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import KeyPathCLICommon
 @_exported import KeyPathCLIHelp
 import KeyPathCLISupport
 

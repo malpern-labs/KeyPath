@@ -3,12 +3,12 @@ import KeyPathRulesCore
 import XCTest
 
 final class KanataConfigurationGeneratorSnapshotTests: XCTestCase {
-    func testExplicitGenerationInputsDoNotConsultDeviceCache() {
-        let cachedDevice = ConnectedDevice(
-            hash: "cache-device",
+    func testExplicitGenerationInputsAreIndependent() {
+        let firstDevice = ConnectedDevice(
+            hash: "first-device",
             vendorID: 1,
             productID: 1,
-            productKey: "Cached Keyboard",
+            productKey: "First Keyboard",
             isVirtualHID: true
         )
         let explicitDevice = ConnectedDevice(
@@ -18,16 +18,22 @@ final class KanataConfigurationGeneratorSnapshotTests: XCTestCase {
             productKey: "Explicit Keyboard",
             isVirtualHID: true
         )
-        DeviceSelectionCache.shared.updateConnectedDevices([cachedDevice])
-        defer { DeviceSelectionCache.shared.reset() }
-
         let inputs = KanataGenerationInputs(
             deviceGenerationInput: DeviceGenerationInput(selections: [], connectedDevices: [explicitDevice])
         )
         let config = KanataConfiguration.generateFromCollections([], inputs: inputs)
 
+        let otherConfig = KanataConfiguration.generateFromCollections(
+            [],
+            inputs: KanataGenerationInputs(
+                deviceGenerationInput: DeviceGenerationInput(selections: [], connectedDevices: [firstDevice])
+            )
+        )
+
         assertContains(config, "explicit-device")
-        XCTAssertFalse(config.contains("cache-device"))
+        XCTAssertFalse(config.contains("first-device"))
+        assertContains(otherConfig, "first-device")
+        XCTAssertFalse(otherConfig.contains("explicit-device"))
     }
 
     func testBaseConfigIncludesDefaultFunctionKeys() {

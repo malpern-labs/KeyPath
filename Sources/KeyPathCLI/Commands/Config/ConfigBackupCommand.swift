@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathRulesCore
 
 struct ConfigBackup: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -15,10 +15,10 @@ struct ConfigBackup: AsyncParsableCommand {
 
     mutating func run() async throws {
         let ctx = globals.outputContext
-        let facade = ConfigFacade()
+        let archive = ConfigurationArchive()
 
         do {
-            let result = try await facade.backupConfig(outputPath: outputPath)
+            let result = try await archive.backupConfig(outputPath: outputPath)
             CLIOutput.write(result, context: ctx) {
                 """
                 Backup created: \(result.backupPath)

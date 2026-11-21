@@ -1,5 +1,6 @@
 import Foundation
 import KeyPathCore
+import KeyPathRulesCore
 
 /// Service for searching QMK keyboards using a bundled index of 3,700+ keyboards.
 ///
@@ -85,9 +86,6 @@ actor QMKKeyboardDatabase {
 
     /// For test injection: override metadata
     private var seededMetadata: [String: KeyboardMeta]?
-
-    /// Test-only: overrides fetchDefaultKeymap to return these tokens instead of hitting network
-    private var seededKeymapTokens: [String: [String]]?
 
     private init() {}
 
@@ -604,11 +602,6 @@ actor QMKKeyboardDatabase {
     /// The `via` fallback covers ~40-60% of VIA-compatible split/ortho boards
     /// whose `default/` folder is sparse or missing.
     func fetchDefaultKeymap(keyboardPath: String) async -> [String]? {
-        // Test override: return seeded tokens without network
-        if let seeded = seededKeymapTokens?[keyboardPath] {
-            return seeded
-        }
-
         // Check disk cache first (keymap files are cached separately with a "-keymap" suffix)
         let cacheKey = "\(keyboardPath)-keymap"
         if let cached = readFromDiskCache(keyboardPath: cacheKey),
@@ -665,10 +658,11 @@ actor QMKKeyboardDatabase {
         return nil
     }
 
-    /// Invalidate the cached keymap for a specific keyboard path, forcing a fresh fetch.
-    func invalidateKeymapCache(keyboardPath: String) {
+    /// Discard the cached keymap and fetch fresh tokens for this keyboard.
+    func refreshDefaultKeymap(keyboardPath: String) async -> [String]? {
         let cacheKey = "\(keyboardPath)-keymap"
         deleteFromDiskCache(keyboardPath: cacheKey)
+        return await fetchDefaultKeymap(keyboardPath: keyboardPath)
     }
 
     // MARK: - Cache Management
@@ -710,19 +704,6 @@ actor QMKKeyboardDatabase {
         func seedCache(with keyboards: [KeyboardMetadata]) {
             bundledKeyboards = keyboards
             bundledIds = Set(keyboards.map(\.id))
-        }
-
-        /// Seed keymap tokens for testing refreshKeymap without network
-        func seedKeymapTokens(keyboardPath: String, tokens: [String]) {
-            if seededKeymapTokens == nil {
-                seededKeymapTokens = [:]
-            }
-            seededKeymapTokens?[keyboardPath] = tokens
-        }
-
-        /// Clear seeded keymap tokens
-        func clearSeededKeymapTokens() {
-            seededKeymapTokens = nil
         }
     #endif
 }

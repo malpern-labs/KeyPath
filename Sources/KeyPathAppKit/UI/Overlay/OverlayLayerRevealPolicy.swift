@@ -1,4 +1,5 @@
 import Foundation
+import KeyPathRulesCore
 
 /// Decides when the keyboard overlay appears on its own because a layer is active.
 ///

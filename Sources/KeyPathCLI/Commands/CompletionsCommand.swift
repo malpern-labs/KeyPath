@@ -1,7 +1,7 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
 import KeyPathCLISupport
+import KeyPathRulesCore
 
 struct Completions: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -274,15 +274,14 @@ struct Completions: ParsableCommand {
         mutating func run() async throws {
             switch noun.lowercased() {
             case "pack":
-                let facade = PacksFacade()
+                let facade = CLIPackCatalog()
                 let packs = await facade.listPacks()
                 for pack in packs {
                     let slug = pack.id.replacingOccurrences(of: "com.keypath.pack.", with: "")
                     CLIOutput.writeRaw(slug)
                 }
             case "collection":
-                let facade = CollectionsFacade()
-                let collections = await facade.loadRuleCollections()
+                let collections = await RuleCollectionStore.shared.listCollections()
                 for c in collections {
                     CLIOutput.writeRaw(c.name)
                 }
@@ -293,8 +292,7 @@ struct Completions: ParsableCommand {
                     CLIOutput.writeRaw(layer)
                 }
             case "rule":
-                let facade = RulesFacade()
-                let rules = await facade.listRules()
+                let rules = await CustomRulesStore.shared.listRules()
                 for rule in rules {
                     CLIOutput.writeRaw(rule.input)
                 }

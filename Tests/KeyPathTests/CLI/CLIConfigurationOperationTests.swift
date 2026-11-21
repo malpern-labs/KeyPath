@@ -1,5 +1,7 @@
 import Foundation
 @testable import KeyPathAppKit
+@testable import KeyPathCLISupport
+import KeyPathCore
 import KeyPathRulesCore
 @preconcurrency import XCTest
 
@@ -18,6 +20,21 @@ final class CLIConfigurationOperationTests: KeyPathTestCase {
             }
             let stored = await CustomRulesStore(fileURL: directory.appendingPathComponent("CustomRules.json")).loadRules()
             XCTAssertEqual(Set(stored.map(\.input)), ["f13", "f15"])
+        }
+    }
+
+    func testPreviewReadsDeviceSelectionFromItsOwnConfigurationDirectory() async throws {
+        try await withDirectory { directory in
+            let metadata = directory.appendingPathComponent("DeviceSelection.json")
+            let malformed = Data("invalid device selection".utf8)
+            try malformed.write(to: metadata)
+            try await CLIConfigurationOperation.run(configDirectory: directory.path) { operation in
+                do {
+                    _ = try await operation.config.applyConfiguration(dryRun: true)
+                    XCTFail("Preview should refuse the unreadable device selection in its own directory")
+                } catch is DecodingError {}
+            }
+            XCTAssertEqual(try Data(contentsOf: metadata), malformed)
         }
     }
 

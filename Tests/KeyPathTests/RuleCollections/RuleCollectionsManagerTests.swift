@@ -21,8 +21,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
 
     @MainActor
     private func createTestManager() async throws -> (RuleCollectionsManager, URL) {
-        TestEnvironment.forceTestMode = true
-
         let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("rule-manager-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -52,7 +50,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testCatalogUpdatePreviewDefaultsToLocalRuleAndShowsAffectedKeys() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var local = try XCTUnwrap(
             RuleCollectionCatalog().defaultCollections().first { $0.id == RuleCollectionIdentifier.vimNavigation }
@@ -72,7 +69,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testCatalogUpdatePreviewDoesNotOfferPackManagedRule() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var local = try XCTUnwrap(
             RuleCollectionCatalog().defaultCollections().first { $0.id == RuleCollectionIdentifier.vimNavigation }
@@ -90,7 +86,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testApplyCatalogUpdateBacksUpLocalRuleAndReportsApplied() async throws {
         let (manager, tempDir) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var collections = RuleCollectionCatalog().defaultCollections()
         let index = try XCTUnwrap(collections.firstIndex { $0.id == RuleCollectionIdentifier.vimNavigation })
@@ -98,7 +93,7 @@ final class RuleCollectionsManagerTests: XCTestCase {
         try await manager.ruleCollectionStore.saveCollections(collections)
         manager.ruleCollections = collections
         manager.onRulesChanged = {
-            ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
+            ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .applied)
         }
 
         let result = await manager.applyCatalogUpdates(ids: [RuleCollectionIdentifier.vimNavigation])
@@ -116,7 +111,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testCombinedCatalogUpdateConflictRejectsBatchBeforeBackup() async throws {
         let (manager, tempDir) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         let firstID = UUID()
         let secondID = UUID()
@@ -146,9 +140,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
 
     @MainActor
     func testToggleRehydratesMissingCatalogCollection() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("rule-manager-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -203,7 +194,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testMakeCustomRulePreservesExistingShiftedOutputForSameInput() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         let original = CustomRule(input: "g", action: .keystroke(key: "M-up"), shiftedOutput: "M-down", isEnabled: true)
         let saved = await manager.saveCustomRule(original)
@@ -220,7 +210,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testShiftedOutputCustomRulePersistsAndRendersForkAliasAfterBootstrap() async throws {
         let (manager, tempDir) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         let shiftedRule = CustomRule(
             title: "Shift-aware nav",
@@ -320,7 +309,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     func testUnsupportedMediaRulesRefuseWithoutChangingSavedState() async throws {
         let (manager, tempDir) = try await createTestManager()
         defer {
-            TestEnvironment.forceTestMode = false
             try? FileManager.default.removeItem(at: tempDir)
         }
         let baseline = CustomRule(input: "q", action: .keystroke(key: "a"), isEnabled: true, createdAt: Date(timeIntervalSince1970: 42))
@@ -356,7 +344,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testCustomRuleConflictWithCustomRule_WarnsButAllows() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var conflictContext: RuleConflictContext?
         manager.onConflictResolution = { context in
@@ -392,7 +379,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testCustomRuleConflictWithCollection_WarnsButAllows() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var conflictContext: RuleConflictContext?
         let collection = RuleCollection(
@@ -435,7 +421,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testCustomRuleConflictWithCollectionOnCustomLayer_WarnsButAllows() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var conflictContext: RuleConflictContext?
         manager.onConflictResolution = { context in
@@ -478,7 +463,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testToggleCustomRule_ConflictWarnsButEnables() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var conflictContext: RuleConflictContext?
         manager.onConflictResolution = { context in
@@ -513,7 +497,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testNoConflictWarning_WhenNoOverlap() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var warningReceived: String?
         manager.onWarning = { warningReceived = $0 }
@@ -533,7 +516,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testDisabledRuleDoesNotConflict() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var warningReceived: String?
         manager.onWarning = { warningReceived = $0 }
@@ -552,7 +534,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testConflictInfo_ContainsCorrectKeys() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var conflictContext: RuleConflictContext?
         manager.onConflictResolution = { context in
@@ -575,7 +556,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testIdenticalMomentaryActivatorsDoNotWarn() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var warningReceived: String?
         manager.onWarning = { warningReceived = $0 }
@@ -616,7 +596,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testNeovimReferenceCoexistsWithVimNavigationWithoutConflictDialog() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         var conflictDialogRequested = false
         manager.onConflictResolution = { _ in
@@ -656,7 +635,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testAddCollectionConflictKeepNew_DisablesExistingAndEnablesNew() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         manager.onConflictResolution = { _ in .keepNew }
 
@@ -696,7 +674,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testToggleCollectionConflictKeepNew_DisablesConflictingCustomRule() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         let collection = RuleCollection(
             name: "Supported base conflict", summary: "q to right", category: .custom,
@@ -731,7 +708,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testToggleLeaderKeyOffResetsMomentaryActivatorsToSpace() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         manager.preferencesService.leaderKeyPreference = .default
         defer { manager.preferencesService.leaderKeyPreference = .default }
@@ -767,7 +743,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testReplaceCollectionsReconcilesLeaderKeyFromSelectedOutput() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         // Preference starts at the default ("space"); the loaded collection asks for "tab".
         manager.preferencesService.leaderKeyPreference = .default
@@ -823,7 +798,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testReconcileLeavesPreferenceUntouchedWhenSelectedOutputNil() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         // Leader key deliberately configured via the system-preference path.
         manager.preferencesService.leaderKeyPreference = LeaderKeyPreference(
@@ -858,7 +832,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testReconcileSkipsWhenLeaderCollectionDisabled() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         manager.preferencesService.leaderKeyPreference = LeaderKeyPreference(
             key: "caps", targetLayer: .navigation, enabled: true
@@ -893,7 +866,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testReconcileRollsBackWhenConfigRegenFails() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         // Baseline leader = default ("space"). The Leader Key collection asks to reconcile
         // to "f" — but explicitly enabled Home Row Arrows already owns the base-layer "f"
@@ -951,7 +923,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testToggleCustomRuleConflictKeepNew_DisablesConflictingCollection() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         let collection = RuleCollection(
             name: "Supported base conflict", summary: "q to right", category: .custom,
@@ -994,7 +965,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testRemoveLayer_deletesCollectionsAndRules() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         // Create collections and rules on custom "window" layer
         let windowCollection = RuleCollection(
@@ -1060,7 +1030,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testRemoveLayer_persistsChangesToDisk() async throws {
         let (manager, tempDir) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         // Create a custom rule on a custom layer
         let customRule = CustomRule(input: "a", action: .keystroke(key: "b"), isEnabled: true, targetLayer: .custom("test"))
@@ -1083,7 +1052,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testRemoveLayer_caseInsensitive() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         // Create collection with lowercase layer name
         let collection = RuleCollection(
@@ -1108,7 +1076,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
     @MainActor
     func testRemoveLayer_doesNotAffectOtherLayers() async throws {
         let (manager, _) = try await createTestManager()
-        defer { TestEnvironment.forceTestMode = false }
 
         // Create collections on different layers
         let collection1 = RuleCollection(
@@ -1145,9 +1112,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
 
     @MainActor
     func testBootstrapReconcilesPacks_ReEnablesDisabledCollections() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try await createTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -1180,9 +1144,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
 
     @MainActor
     func testBootstrapReconciliation_DoesNotReEnableInstalledPackCollectionWhenItConflicts() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try await createTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -1216,9 +1177,6 @@ final class RuleCollectionsManagerTests: XCTestCase {
 
     @MainActor
     func testBootstrapReconciliation_DoesNotEnableUninstalledPacks() async throws {
-        TestEnvironment.forceTestMode = true
-        defer { TestEnvironment.forceTestMode = false }
-
         let (manager, tempDir) = try await createTestManager()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 

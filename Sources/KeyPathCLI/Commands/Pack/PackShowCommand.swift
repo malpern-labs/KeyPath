@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import KeyPathAppKit
+import KeyPathRulesCore
 
 struct PackShow: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -15,7 +15,7 @@ struct PackShow: AsyncParsableCommand {
 
     mutating func run() async throws {
         let ctx = globals.outputContext
-        let facade = PacksFacade()
+        let facade = CLIPackCatalog()
 
         let detail: CLIPackDetail
         do {

@@ -3,34 +3,20 @@
 @preconcurrency import XCTest
 
 final class DuplicateAppDetectorTests: XCTestCase {
-    override func tearDown() async throws {
-        DuplicateAppDetector.testDuplicateAppPathsOverride = nil
-        DuplicateAppDetector.testDuplicateScanRunner = nil
-        DuplicateAppDetector.testReadOnlyVolumeOverride = nil
-        try await super.tearDown()
-    }
+    func testDetectDuplicateAppCopiesFiltersBuildPathsAndSortsApplicationsFirst() {
+        let copies = DuplicateAppDetector.filteredCopies([
+            "/Users/test/Downloads/KeyPath.app",
+            "/dist/KeyPath.app",
+            "/Volumes/Cache/Sparkle_generate_appcast/abc123/KeyPath.app",
+            "/Applications/KeyPath.app",
+            "/Users/test/KeyPath.app"
+        ], isReadOnly: { _ in false })
 
-    func testDetectDuplicateAppCopiesFiltersBuildPathsAndSortsApplicationsFirst() async {
-        DuplicateAppDetector.testDuplicateAppPathsOverride = {
-            [
-                "/Users/test/Downloads/KeyPath.app",
-                "/dist/KeyPath.app",
-                "/Volumes/Cache/Sparkle_generate_appcast/abc123/KeyPath.app",
-                "/Applications/KeyPath.app",
-                "/Users/test/KeyPath.app"
-            ]
-        }
-
-        let copies = await DuplicateAppDetector.detectDuplicateAppCopies()
-        XCTAssertEqual(copies.first, "/Applications/KeyPath.app")
-        let remaining = Set(copies.dropFirst())
-        XCTAssertEqual(
-            remaining,
-            Set([
-                "/Users/test/KeyPath.app",
-                "/Users/test/Downloads/KeyPath.app"
-            ])
-        )
+        XCTAssertEqual(copies, [
+            "/Applications/KeyPath.app",
+            "/Users/test/Downloads/KeyPath.app",
+            "/Users/test/KeyPath.app"
+        ])
     }
 
     func testDetectDuplicateAppCopiesUsesBoundedSpotlightScan() async {
@@ -43,42 +29,58 @@ final class DuplicateAppDetectorTests: XCTestCase {
                 duration: 0.01
             )
         }
-        DuplicateAppDetector.testDuplicateScanRunner = runner
 
-        let copies = await DuplicateAppDetector.detectDuplicateAppCopies()
+        let copies = await DuplicateAppDetector.detectDuplicateAppCopies(runner: runner)
 
         XCTAssertEqual(copies, ["/Applications/KeyPath.app", "/Users/test/Downloads/KeyPath.app"])
         let commands = await runner.executedCommands
         XCTAssertEqual(commands.first?.executable, "/usr/bin/mdfind")
         XCTAssertEqual(DuplicateAppDetector.duplicateScanTimeout, 2)
         XCTAssertTrue(DuplicateAppDetector.duplicateScanExcludedPathFragments.contains("/Sparkle_generate_appcast/"))
-        DuplicateAppDetector.testDuplicateScanRunner = nil
     }
 
-    func testDetectDuplicateAppCopiesFallsBackWhenSpotlightTimesOut() async {
+    func testDetectDuplicateAppCopiesFallsBackWhenSpotlightTimesOut() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let installed = directory.appendingPathComponent("KeyPath.app", isDirectory: true)
+        let missing = directory.appendingPathComponent("Missing/KeyPath.app", isDirectory: true)
+        try FileManager.default.createDirectory(at: installed, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
         let runner = SubprocessRunnerFake()
         await runner.setShouldTimeout(true)
-        DuplicateAppDetector.testDuplicateScanRunner = runner
+        let copies = await DuplicateAppDetector.detectDuplicateAppCopies(runner: runner) {
+            [installed.path, missing.path]
+        }
 
-        let copies = await DuplicateAppDetector.detectDuplicateAppCopies()
-
-        // A stalled Spotlight must degrade to the canonical locations, never hang, and
-        // never report a location that does not exist (which read as a phantom duplicate).
-        XCTAssertTrue(copies.allSatisfy { $0.hasSuffix("/KeyPath.app") })
-        XCTAssertTrue(copies.allSatisfy { FileManager.default.fileExists(atPath: $0) })
-        DuplicateAppDetector.testDuplicateScanRunner = nil
+        XCTAssertEqual(copies, [installed.path])
     }
 
-    /// Air, 2026-10-18: a mounted installer image (/Volumes/KeyPath) was listed as
-    /// an installed copy that "Remove Extra Copies" could never trash.
-    func testDetectDuplicateAppCopiesIgnoresReadOnlyVolumes() async {
-        DuplicateAppDetector.testDuplicateAppPathsOverride = {
-            ["/Applications/KeyPath.app", "/Volumes/KeyPath/KeyPath.app", "/Users/test/Old/KeyPath.app"]
+    func testConcurrentScansKeepTheirRunnersAndResultsSeparate() async {
+        let firstRunner = SubprocessRunnerFake()
+        let secondRunner = SubprocessRunnerFake()
+        let firstPath = "/Users/test/First/KeyPath.app"
+        let secondPath = "/Users/test/Second/KeyPath.app"
+        await firstRunner.configureRunResult { _, _ in
+            ProcessResult(exitCode: 0, stdout: firstPath, stderr: "", duration: 0)
         }
-        DuplicateAppDetector.testReadOnlyVolumeOverride = { $0.hasPrefix("/Volumes/KeyPath/") }
-        defer { DuplicateAppDetector.testReadOnlyVolumeOverride = nil }
+        await secondRunner.configureRunResult { _, _ in
+            ProcessResult(exitCode: 0, stdout: secondPath, stderr: "", duration: 0)
+        }
 
-        let copies = await DuplicateAppDetector.detectDuplicateAppCopies()
+        async let first = DuplicateAppDetector.detectDuplicateAppCopies(runner: firstRunner)
+        async let second = DuplicateAppDetector.detectDuplicateAppCopies(runner: secondRunner)
+        let (firstCopies, secondCopies) = await (first, second)
+
+        XCTAssertEqual(firstCopies, [firstPath])
+        XCTAssertEqual(secondCopies, [secondPath])
+    }
+
+    /// A mounted installer image is not an installed copy that can be moved to the Trash.
+    func testDetectDuplicateAppCopiesIgnoresReadOnlyVolumes() {
+        let copies = DuplicateAppDetector.filteredCopies(
+            ["/Applications/KeyPath.app", "/Volumes/KeyPath/KeyPath.app", "/Users/test/Old/KeyPath.app"],
+            isReadOnly: { $0.hasPrefix("/Volumes/KeyPath/") }
+        )
         XCTAssertEqual(copies, ["/Applications/KeyPath.app", "/Users/test/Old/KeyPath.app"])
     }
 

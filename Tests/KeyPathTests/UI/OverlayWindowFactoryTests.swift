@@ -1,3 +1,4 @@
+import AppKit
 @testable import KeyPathAppKit
 import XCTest
 
@@ -17,6 +18,39 @@ final class OverlayWindowFactoryTests: XCTestCase {
         XCTAssertTrue(style.contains(.borderless))
         XCTAssertTrue(style.contains(.resizable))
         XCTAssertFalse(style.contains(.titled))
+    }
+
+    func testOverlayOffersNativeUndoOnlyWhenItOwnsKeyboardFocus() {
+        let window = OverlayWindow(contentRect: .zero, styleMask: .borderless, backing: .buffered, defer: true)
+        let command = NSMenuItem(title: "Undo", action: #selector(OverlayWindow.undoOverlayRemap(_:)), keyEquivalent: "z")
+        let target = NSObject()
+        window.remapUndoManager.beginUndoGrouping()
+        window.remapUndoManager.registerUndo(withTarget: target) { _ in }
+        window.remapUndoManager.setActionName("Test Remap")
+        window.remapUndoManager.endUndoGrouping()
+
+        XCTAssertTrue(window.responds(to: command.action!))
+        XCTAssertFalse(window.validateUserInterfaceItem(command))
+        XCTAssertEqual(command.title, window.remapUndoManager.undoMenuItemTitle)
+        window.undoOverlayRemap(nil)
+        XCTAssertTrue(window.remapUndoManager.canUndo)
+    }
+
+    func testAssignmentMenuUsesTheCurrentSelectionAtInvocation() {
+        var commands: SelectedAssignmentCommands?
+        var copies = 0
+        let menu = OverlayAssignmentMenu { commands }
+        commands = SelectedAssignmentCommands(copy: { copies += 1 }, paste: nil, swap: {})
+        menu.refresh()
+        XCTAssertEqual(menu.enabled, [.copy, .swap])
+        menu.perform(.copy)
+        XCTAssertEqual(copies, 1)
+
+        commands = nil
+        menu.perform(.copy)
+        XCTAssertEqual(copies, 1)
+        menu.refresh()
+        XCTAssertTrue(menu.enabled.isEmpty)
     }
 
     func testDefaultOriginUsesBottomRightMargin() {

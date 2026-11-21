@@ -117,6 +117,7 @@ extension HomeRowModsCollectionView {
 
                     HStack(spacing: 10) {
                         SettingsOptionCard(
+                            identifier: "home-row-mods-layer-toggle-while-held",
                             icon: "hand.raised",
                             title: String(localized: "While Held"),
                             subtitle: String(localized: "Active only while holding"),
@@ -128,11 +129,11 @@ extension HomeRowModsCollectionView {
                             config.layerToggleMode = .whileHeld
                             updateConfig()
                         }
-                        .accessibilityIdentifier("home-row-mods-layer-toggle-while-held")
                         .accessibilityLabel("Layer activation while held")
                         .accessibilityValue(config.layerToggleMode == .whileHeld ? String(localized: "selected") : String(localized: "not selected"))
 
                         SettingsOptionCard(
+                            identifier: "home-row-mods-layer-toggle-toggle",
                             icon: "switch.2",
                             title: String(localized: "Toggle"),
                             subtitle: String(localized: "Press once to stay on"),

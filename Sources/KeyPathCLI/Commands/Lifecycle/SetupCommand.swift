@@ -1,6 +1,7 @@
 import AppKit
 import ArgumentParser
 import Foundation
+import KeyPathCLICommon
 import KeyPathCore
 
 struct Setup: AsyncParsableCommand {

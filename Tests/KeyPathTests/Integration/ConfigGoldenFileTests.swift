@@ -100,7 +100,7 @@ final class ConfigGoldenFileTests: KeyPathTestCase {
     @MainActor
     func testHistoricalCatalogConfig_Golden() throws {
         let url = try XCTUnwrap(
-            KeyPathAppKitResources.url(forResource: "rule-collection-catalog", withExtension: "json")
+            RuleCollectionCatalog.catalogURL
         )
         let collections = try JSONDecoder().decode([RuleCollection].self, from: Data(contentsOf: url))
         let config = KanataConfiguration.generateFromCollections(collections)

@@ -1,7 +1,7 @@
 import Foundation
 @testable import KeyPathAppKit
 import KeyPathCore
-import KeyPathRulesCore
+@testable import KeyPathRulesCore
 import XCTest
 
 /// Exercises generated profiles through Kanata's parsed action-tree validator.
@@ -171,7 +171,7 @@ final class GeneratedSessionProfileEligibilityTests: KeyPathTestCase {
     }
 
     private func originalCatalog() throws -> [RuleCollection] {
-        let url = try XCTUnwrap(KeyPathAppKitResources.url(forResource: "rule-collection-catalog", withExtension: "json"))
+        let url = try XCTUnwrap(RuleCollectionCatalog.catalogURL)
         return try JSONDecoder().decode([RuleCollection].self, from: Data(contentsOf: url))
     }
 

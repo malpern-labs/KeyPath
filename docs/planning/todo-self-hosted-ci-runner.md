@@ -50,7 +50,7 @@ room to link and execute the tests after a healthy cold rebuild.
 On macOS 27, SwiftPM binary-artifact requests crash in AppSSO when they run from
 the boot-available `keypath-mini` LaunchDaemon. The interactive
 `keypath-mini-2` LaunchAgent is the proven SwiftPM execution context and carries
-the `swiftpm-safe` label. Build, cache-warm, and coverage workflows require that
+the `swiftpm-safe` label. Build and coverage workflows require that
 label; code-quality and health checks may still use either runner. See
 `docs/bugs/2026-07-16-headless-swiftpm-appsso-trap.md`.
 
