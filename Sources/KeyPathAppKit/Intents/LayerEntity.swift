@@ -1,5 +1,6 @@
 import AppIntents
 import Foundation
+import KeyPathCLISupport
 
 struct LayerEntity: AppEntity {
     static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Layer")
@@ -24,7 +25,11 @@ struct LayerEntityQuery: EntityQuery {
     }
 
     private func fetchLayers() async throws -> [LayerEntity] {
-        let names = try await KanataTCPClient().requestLayerNames()
+        let names = if OneShotProbeEnvironment.isActive() {
+            try await ConfigFacade().tcpGetLayers()
+        } else {
+            try await KanataTCPClient().requestLayerNames()
+        }
         return names.map { LayerEntity(id: $0, name: $0) }
     }
 }

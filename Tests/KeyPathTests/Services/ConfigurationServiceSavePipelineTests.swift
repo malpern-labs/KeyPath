@@ -20,6 +20,17 @@ final class ConfigurationServiceSavePipelineTests: KeyPathTestCase {
         try await super.tearDown()
     }
 
+    func testGenerationUsesInjectedLeaderPreferenceWhenNoExplicitPreferenceIsSupplied() async throws {
+        let service = ConfigurationService(
+            configDirectory: tempDirectory.path,
+            fallbackLeaderPreference: { LeaderKeyPreference(key: "space", targetLayer: .navigation, enabled: true) }
+        )
+
+        let generated = try await service.generateConfiguration(ruleCollections: [])
+
+        XCTAssertTrue(generated.content.contains("layer_nav_spc"))
+    }
+
     // MARK: - Conflict Rejection Tests
 
     func testSaveConfiguration_ThrowsOnMappingConflict() async throws {

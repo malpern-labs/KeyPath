@@ -77,17 +77,23 @@ public final class ConfigurationService {
 
     package convenience init(
         configDirectory: String?,
-        fallbackLeaderPreference _: (@MainActor () -> LeaderKeyPreference)?
+        fallbackLeaderPreference: (@MainActor () -> LeaderKeyPreference)?
     ) {
         if let configDirectory, configDirectory != KeyPathConstants.Config.directory {
             let directory = URL(fileURLWithPath: configDirectory, isDirectory: true)
             self.init(
                 configDirectory: configDirectory,
                 ruleCollectionStore: RuleCollectionStore(fileURL: directory.appendingPathComponent("RuleCollections.json")),
-                customRulesStore: CustomRulesStore(fileURL: directory.appendingPathComponent("CustomRules.json"))
+                customRulesStore: CustomRulesStore(fileURL: directory.appendingPathComponent("CustomRules.json")),
+                fallbackLeaderPreference: fallbackLeaderPreference
             )
         } else {
-            self.init(configDirectory: configDirectory, ruleCollectionStore: .shared, customRulesStore: .shared)
+            self.init(
+                configDirectory: configDirectory,
+                ruleCollectionStore: .shared,
+                customRulesStore: .shared,
+                fallbackLeaderPreference: fallbackLeaderPreference
+            )
         }
     }
 
