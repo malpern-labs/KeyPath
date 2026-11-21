@@ -947,16 +947,20 @@ extension RuleCollectionsManager {
                   await updateCustomRuleInMemory(rule, autoResolveConflicts: true, mutationPermit: permit)
             else { return .failed }
             let result = await commitRuleMutationResult(snapshot: before, mutationPermit: permit)
-            guard result.success, result.reloadResult?.isSuccess == true
-            else { return RemapSaveOutcome(saved: result.success, undo: nil) }
-            // The save owner can resolve another conflict while staging the configuration.
-            var after = snapshotRuleState()
-            guard let persistedRules = try? await customRulesStore.rulesInPersistenceFormat(after.customRules)
-            else { return RemapSaveOutcome(saved: true, undo: nil) }
-            after.customRules = persistedRules
-            let undo = before != after ? RemapUndo(before: before, after: after) : nil
-            return RemapSaveOutcome(saved: true, undo: undo)
+            return await remapSaveOutcome(before: before, result: result)
         }
+    }
+
+    func remapSaveOutcome(before: RuleStateSnapshot, result: SaveResult) async -> RemapSaveOutcome {
+        guard result.success, result.reloadResult?.isSuccess == true
+        else { return RemapSaveOutcome(saved: result.success, undo: nil) }
+        // The save owner can resolve another conflict while staging the configuration.
+        var after = snapshotRuleState()
+        guard let persistedRules = try? await customRulesStore.rulesInPersistenceFormat(after.customRules)
+        else { return RemapSaveOutcome(saved: true, undo: nil) }
+        after.customRules = persistedRules
+        let undo = before != after ? RemapUndo(before: before, after: after) : nil
+        return RemapSaveOutcome(saved: true, undo: undo)
     }
 
     func undoRemap(_ undo: RemapUndo) async -> Bool {

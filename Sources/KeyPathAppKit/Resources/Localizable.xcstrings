@@ -7783,6 +7783,8 @@
         }
       }
     },
+    "Choose a key to swap with %@ on %@. Esc cancels." : {},
+    "Choose a key with a supported assignment." : {},
     "Choose a keyboard" : {
       "localizations" : {
         "ja" : {
@@ -9949,6 +9951,7 @@
         }
       }
     },
+    "Copy Assignment" : {},
     "Copy Error" : {
       "localizations" : {
         "ja" : {
@@ -10027,6 +10030,7 @@
         }
       }
     },
+    "Could not change these assignments. Your current rules were kept." : {},
     "Could not click Notification Center" : {
       "localizations" : {
         "ja" : {
@@ -10199,6 +10203,7 @@
         }
       }
     },
+    "Could not undo the assignment change. Your current rules were kept." : {},
     "Could not undo the remap. Your current rules were kept." : {
       "localizations" : {
         "ja" : {
@@ -24890,6 +24895,7 @@
         }
       }
     },
+    "Paste Assignment" : {},
     "Paste JSON" : {
       "localizations" : {
         "ja" : {
@@ -32052,6 +32058,8 @@
         }
       }
     },
+    "Swap Assignments" : {},
+    "Swap Assignment…" : {},
     "Swap Backspace and Delete" : {
       "localizations" : {
         "ja" : {

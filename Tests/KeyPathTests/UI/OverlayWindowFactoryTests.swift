@@ -36,6 +36,23 @@ final class OverlayWindowFactoryTests: XCTestCase {
         XCTAssertTrue(window.remapUndoManager.canUndo)
     }
 
+    func testAssignmentMenuUsesTheCurrentSelectionAtInvocation() {
+        var commands: SelectedAssignmentCommands?
+        var copies = 0
+        let menu = OverlayAssignmentMenu { commands }
+        commands = SelectedAssignmentCommands(copy: { copies += 1 }, paste: nil, swap: {})
+        menu.refresh()
+        XCTAssertEqual(menu.enabled, [.copy, .swap])
+        menu.perform(.copy)
+        XCTAssertEqual(copies, 1)
+
+        commands = nil
+        menu.perform(.copy)
+        XCTAssertEqual(copies, 1)
+        menu.refresh()
+        XCTAssertTrue(menu.enabled.isEmpty)
+    }
+
     func testDefaultOriginUsesBottomRightMargin() {
         let visibleFrame = CGRect(x: 0, y: 0, width: 1000, height: 800)
         let windowSize = CGSize(width: 200, height: 100)
