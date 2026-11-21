@@ -202,7 +202,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
         if let injected = injectedConfigurationService {
             configurationService = injected
         } else {
-            configurationService = ConfigurationService(
+            configurationService = ConfigurationService.forApp(
                 configDirectory: KeyPathConstants.Config.directory
             )
         }

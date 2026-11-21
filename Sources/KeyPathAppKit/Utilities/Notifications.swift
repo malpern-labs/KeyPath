@@ -34,7 +34,6 @@ extension Notification.Name {
     static let ruleCollectionsChanged = Notification.Name("KeyPath.RuleCollections.Changed")
 
     /// Config validation
-    static let configValidationFailed = Notification.Name("KeyPath.Config.ValidationFailed")
     static let configReloadFailed = Notification.Name("KeyPath.Config.ReloadFailed")
     static let configReloadRecovered = Notification.Name("KeyPath.Config.ReloadRecovered")
 

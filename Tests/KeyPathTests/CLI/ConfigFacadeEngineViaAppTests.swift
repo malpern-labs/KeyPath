@@ -1,5 +1,5 @@
 import Darwin
-@testable import KeyPathAppKit
+@testable import KeyPathCLISupport
 import KeyPathCore
 @preconcurrency import XCTest
 

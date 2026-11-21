@@ -1,7 +1,7 @@
 import Foundation
 @testable import KeyPathAppKit
 @testable import KeyPathCore
-import KeyPathRulesCore
+@testable import KeyPathRulesCore
 @preconcurrency import XCTest
 
 @MainActor
@@ -18,6 +18,17 @@ final class ConfigurationServiceSavePipelineTests: KeyPathTestCase {
     override func tearDown() async throws {
         try? FileManager.default.removeItem(at: tempDirectory)
         try await super.tearDown()
+    }
+
+    func testGenerationUsesInjectedLeaderPreferenceWhenNoExplicitPreferenceIsSupplied() async throws {
+        let service = ConfigurationService(
+            configDirectory: tempDirectory.path,
+            fallbackLeaderPreference: { LeaderKeyPreference(key: "space", targetLayer: .navigation, enabled: true) }
+        )
+
+        let generated = try await service.generateConfiguration(ruleCollections: [])
+
+        XCTAssertTrue(generated.content.contains("layer_nav_spc"))
     }
 
     // MARK: - Conflict Rejection Tests

@@ -84,7 +84,7 @@ let package = Package(
         ),
         .target(
             name: "KeyPathCLISupport",
-            dependencies: ["KeyPathCore", "KeyPathInstallationWizard", "KeyPathPermissions", "KeyPathWizardCore"],
+            dependencies: ["KeyPathCore", "KeyPathInstallationWizard", "KeyPathPermissions", "KeyPathRulesCore", "KeyPathWizardCore"],
             path: "Sources/KeyPathCLISupport",
             swiftSettings: [
                 .swiftLanguageMode(.v6)
@@ -263,6 +263,7 @@ let package = Package(
                 "KeyPathAppKit",
                 "KeyPathCLI",
                 "KeyPathCLICommon",
+                "KeyPathCLISupport",
                 "KeyPathCore",
                 "KeyPathInsights",
                 "KeyPathPermissions",

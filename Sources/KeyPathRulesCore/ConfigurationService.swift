@@ -1,10 +1,6 @@
 import CryptoKit
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
-import Network
-
-// KanataConfiguration struct and generation logic moved to KanataConfigurationGenerator.swift
 
 // MARK: - Configuration Service
 
@@ -31,23 +27,24 @@ public final class ConfigurationService {
 
     private var currentConfiguration: CachedConfiguration?
     private var observers: [UUID: @Sendable (Config) async -> Void] = [:]
-    @MainActor var onWillStageConfigurationWrite: ((String) -> Void)?
+    @MainActor package var onWillStageConfigurationWrite: ((String) -> Void)?
 
     /// The admission engine's blocking sentences for the rules being written
     /// (phase 4e), so a refused save names the rule. Wired by `RuntimeCoordinator`.
-    @MainActor var sessionRefusalAttribution: (() -> [String])?
+    @MainActor package var sessionRefusalAttribution: (() -> [String])?
 
     private let ruleCollectionStore: RuleCollectionStore
     private let customRulesStore: CustomRulesStore
     let sessionValidationRuntimeHost: KanataRuntimeHost
     private let deviceSelectionStore: DeviceSelectionStore
+    private let fallbackLeaderPreference: (@MainActor () -> LeaderKeyPreference)?
     private let synchronizePreferences: @Sendable (RecoverableRuleWrite.PreferenceDefaults) -> Bool
 
     @MainActor private var needsRecoveredRuntimeRefresh = false
     @MainActor private var needsRecoveredDeviceRuntimeRestart = false
-    @MainActor private(set) var ruleRecoveryRevision: UInt64 = 0
+    @MainActor package private(set) var ruleRecoveryRevision: UInt64 = 0
 
-    let operationGate: ConfigurationOperationGate
+    package nonisolated let operationGate: ConfigurationOperationGate
 
     /// Perform blocking file I/O off the main actor
     private let ioQueue = DispatchQueue(label: "com.keypath.configservice.io", qos: .utility)
@@ -75,31 +72,46 @@ public final class ConfigurationService {
     // MARK: - Initialization
 
     public convenience init(configDirectory: String? = nil) {
+        self.init(configDirectory: configDirectory, fallbackLeaderPreference: nil)
+    }
+
+    package convenience init(
+        configDirectory: String?,
+        fallbackLeaderPreference: (@MainActor () -> LeaderKeyPreference)?
+    ) {
         if let configDirectory, configDirectory != KeyPathConstants.Config.directory {
             let directory = URL(fileURLWithPath: configDirectory, isDirectory: true)
             self.init(
                 configDirectory: configDirectory,
                 ruleCollectionStore: RuleCollectionStore(fileURL: directory.appendingPathComponent("RuleCollections.json")),
-                customRulesStore: CustomRulesStore(fileURL: directory.appendingPathComponent("CustomRules.json"))
+                customRulesStore: CustomRulesStore(fileURL: directory.appendingPathComponent("CustomRules.json")),
+                fallbackLeaderPreference: fallbackLeaderPreference
             )
         } else {
-            self.init(configDirectory: configDirectory, ruleCollectionStore: .shared, customRulesStore: .shared)
+            self.init(
+                configDirectory: configDirectory,
+                ruleCollectionStore: .shared,
+                customRulesStore: .shared,
+                fallbackLeaderPreference: fallbackLeaderPreference
+            )
         }
     }
 
     /// Injectable stores keep tests hermetic: the shared stores read the real user
     /// data directories even under XCTest, so tests must pass temp-backed stores.
-    init(
+    package init(
         configDirectory: String?,
         ruleCollectionStore: RuleCollectionStore,
         customRulesStore: CustomRulesStore,
         deviceSelectionStore: DeviceSelectionStore? = nil,
         sessionValidationRuntimeHost: KanataRuntimeHost? = nil,
+        fallbackLeaderPreference: (@MainActor () -> LeaderKeyPreference)? = nil,
         synchronizePreferences: @escaping @Sendable (RecoverableRuleWrite.PreferenceDefaults) -> Bool = { $0.value.synchronize() }
     ) {
         self.ruleCollectionStore = ruleCollectionStore
         self.customRulesStore = customRulesStore
         self.sessionValidationRuntimeHost = sessionValidationRuntimeHost ?? Self.defaultSessionValidationRuntimeHost()
+        self.fallbackLeaderPreference = fallbackLeaderPreference
         self.synchronizePreferences = synchronizePreferences
         self.configDirectory = configDirectory ?? KeyPathConstants.Config.directory
         let directory = URL(fileURLWithPath: self.configDirectory, isDirectory: true)
@@ -123,7 +135,7 @@ public final class ConfigurationService {
         await current(mutationPermit: nil)
     }
 
-    func current(mutationPermit: ConfigurationOperationGate.Permit?) async -> KanataConfiguration {
+    package func current(mutationPermit: ConfigurationOperationGate.Permit?) async -> KanataConfiguration {
         // Fast path: return cached config if available
         if let cached = withLockedCurrentConfig() { return cached }
 
@@ -147,7 +159,7 @@ public final class ConfigurationService {
         try await reload(mutationPermit: nil)
     }
 
-    func reload(mutationPermit: ConfigurationOperationGate.Permit?) async throws -> KanataConfiguration {
+    package func reload(mutationPermit: ConfigurationOperationGate.Permit?) async throws -> KanataConfiguration {
         var exists = await fileExistsAsync(path: configurationPath)
         // Same semantics as createInitialConfigIfNeeded: a truncated/empty
         // config is as unparseable as a missing one, so let the self-heal
@@ -239,7 +251,7 @@ public final class ConfigurationService {
         try await createInitialConfigIfNeeded(mutationPermit: nil)
     }
 
-    func createInitialConfigIfNeeded(mutationPermit: ConfigurationOperationGate.Permit?) async throws {
+    package func createInitialConfigIfNeeded(mutationPermit: ConfigurationOperationGate.Permit?) async throws {
         try await operationGate.withOperation(using: mutationPermit) { @MainActor [self] permit in
             // Create config directory if it doesn't exist (off-main)
             try await createDirectoryAsync(path: configDirectory)
@@ -298,7 +310,7 @@ public final class ConfigurationService {
         try await saveConfiguration(ruleCollections: ruleCollections, customRules: customRules, mutationPermit: nil)
     }
 
-    func saveConfiguration(
+    package func saveConfiguration(
         ruleCollections: [RuleCollection],
         customRules: [CustomRule] = [],
         mutationPermit: ConfigurationOperationGate.Permit?,
@@ -318,7 +330,7 @@ public final class ConfigurationService {
 
     /// CLI reconciliation retains the generated config and its canonical leader preference
     /// in one raw-config journal without rewriting the source collection stores.
-    func saveConfiguration(
+    package func saveConfiguration(
         ruleCollections: [RuleCollection], customRules: [CustomRule],
         leaderKeyPreference: LeaderKeyPreference,
         preferenceDefaults: UserDefaults,
@@ -362,7 +374,7 @@ public final class ConfigurationService {
     /// write set. The manager supplies its actual stores, which can differ from
     /// this service's defaults in tests and isolated CLI workflows.
     @MainActor
-    func saveRuleState(
+    package func saveRuleState(
         ruleCollections: [RuleCollection], customRules: [CustomRule],
         collectionStore: RuleCollectionStore, customStore: CustomRulesStore,
         mutationPermit: ConfigurationOperationGate.Permit? = nil,
@@ -386,7 +398,7 @@ public final class ConfigurationService {
         }
     }
 
-    struct RuleWrite: Sendable {
+    package struct RuleWrite: Sendable {
         let pending: RecoverableRuleWrite.PendingWrite
         let configuration: KanataConfiguration
         let packUpdate: InstalledPackTracker.PreparedRecordUpdate?
@@ -395,7 +407,7 @@ public final class ConfigurationService {
 
     /// Stage the generated configuration and both source stores without notifying
     /// observers. The caller must retain admission through commit or recovery.
-    func stageRuleState(
+    package func stageRuleState(
         ruleCollections: [RuleCollection], customRules: [CustomRule],
         collectionStore: RuleCollectionStore, customStore: CustomRulesStore,
         mutationPermit: ConfigurationOperationGate.Permit,
@@ -490,7 +502,7 @@ public final class ConfigurationService {
         }
     }
 
-    func settleRuleWrite(_ write: RuleWrite, commit: Bool, mutationPermit: ConfigurationOperationGate.Permit) async throws {
+    package func settleRuleWrite(_ write: RuleWrite, commit: Bool, mutationPermit: ConfigurationOperationGate.Permit) async throws {
         try await operationGate.withOperation(using: mutationPermit) { @MainActor [self] _ in
             try await performRuleFileOperation {
                 if commit { try RecoverableRuleWrite.commit(write.pending) }
@@ -524,7 +536,7 @@ public final class ConfigurationService {
     /// Run before loading source stores on startup. Refuse further rule writes
     /// when recovery detects a corrupt journal or an unrelated external edit.
     @discardableResult
-    func recoverPendingRuleWrite(
+    package func recoverPendingRuleWrite(
         collectionStore: RuleCollectionStore? = nil,
         customStore: CustomRulesStore? = nil,
         mutationPermit: ConfigurationOperationGate.Permit? = nil,
@@ -569,14 +581,14 @@ public final class ConfigurationService {
         }
     }
 
-    struct RawConfigurationWrite: Sendable {
+    package struct RawConfigurationWrite: Sendable {
         let pending: RecoverableRuleWrite.PendingWrite
     }
 
     /// Raw editing owns only the main file. Sidecars and handwritten syntax are
     /// preserved; the expected original detects edits during validation/preparation.
-    func stageRawConfiguration(content: String, expectedContent: String,
-                               mutationPermit: ConfigurationOperationGate.Permit) async throws -> RawConfigurationWrite
+    package func stageRawConfiguration(content: String, expectedContent: String,
+                                       mutationPermit: ConfigurationOperationGate.Permit) async throws -> RawConfigurationWrite
     {
         try await operationGate.withOperation(using: mutationPermit) { @MainActor [self] _ in
             try await requireSessionEligibleConfiguration(content)
@@ -593,9 +605,9 @@ public final class ConfigurationService {
         }
     }
 
-    func settleRawConfiguration(_ write: RawConfigurationWrite, commit: Bool,
-                                requireRuntimeRecovery: Bool = false,
-                                mutationPermit: ConfigurationOperationGate.Permit) async throws
+    package func settleRawConfiguration(_ write: RawConfigurationWrite, commit: Bool,
+                                        requireRuntimeRecovery: Bool = false,
+                                        mutationPermit: ConfigurationOperationGate.Permit) async throws
     {
         try await operationGate.withOperation(using: mutationPermit) { @MainActor [self] _ in
             try await performRuleFileOperation {
@@ -608,17 +620,17 @@ public final class ConfigurationService {
         }
     }
 
-    struct AppKeymapWrite: Sendable {
+    package struct AppKeymapWrite: Sendable {
         let pending: RecoverableRuleWrite.PendingWrite
         let previousKeymaps: [AppKeymap]
         let keymaps: [AppKeymap]
-        let configuration: KanataConfiguration
+        package let configuration: KanataConfiguration
         let store: AppKeymapStore
     }
 
     /// Called inside the existing save owner. No observers see the staged revision.
     @MainActor
-    func stageAppKeymapChange(
+    package func stageAppKeymapChange(
         store: AppKeymapStore,
         mutationPermit: ConfigurationOperationGate.Permit,
         mutate: @MainActor @Sendable (inout [AppKeymap]) throws -> Void
@@ -701,7 +713,7 @@ public final class ConfigurationService {
         }
     }
 
-    func settleAppKeymapWrite(_ write: AppKeymapWrite, commit: Bool, mutationPermit: ConfigurationOperationGate.Permit) async throws {
+    package func settleAppKeymapWrite(_ write: AppKeymapWrite, commit: Bool, mutationPermit: ConfigurationOperationGate.Permit) async throws {
         try await operationGate.withOperation(using: mutationPermit) { @MainActor [self] _ in
             try await performRuleFileOperation {
                 if commit { try RecoverableRuleWrite.commit(write.pending) }
@@ -717,7 +729,7 @@ public final class ConfigurationService {
         }
     }
 
-    func recoverPendingAppKeymapWrite(store: AppKeymapStore? = nil, mutationPermit: ConfigurationOperationGate.Permit? = nil) async throws {
+    package func recoverPendingAppKeymapWrite(store: AppKeymapStore? = nil, mutationPermit: ConfigurationOperationGate.Permit? = nil) async throws {
         try await operationGate.withOperation(using: mutationPermit) { @MainActor [self] _ in
             let resolvedStore = store ?? AppKeymapStore(fileURL: URL(fileURLWithPath: configDirectory).appendingPathComponent("AppKeymaps.json"))
             let files = await appKeymapWriteFiles(store: resolvedStore)
@@ -740,7 +752,7 @@ public final class ConfigurationService {
     /// candidate. Keep runtime recovery required until an existing reload owner
     /// accepts or defers it. A later save owner can retry using this same service.
     @MainActor
-    func applyRecoveredRuntimeIfNeeded(
+    package func applyRecoveredRuntimeIfNeeded(
         mutationPermit: ConfigurationOperationGate.Permit,
         reloadHandler: (() async -> ReloadResult)?
     ) async throws -> ReloadResult? {
@@ -758,7 +770,7 @@ public final class ConfigurationService {
     /// Device targeting changes require a daemon restart: a TCP config reload
     /// does not replace the active device-grab set. The caller owns restart
     /// sequencing, then clears this retained recovery obligation.
-    func applyRecoveredDeviceRuntimeRestartIfNeeded(
+    package func applyRecoveredDeviceRuntimeRestartIfNeeded(
         mutationPermit: ConfigurationOperationGate.Permit? = nil,
         restartHandler: () async -> Bool
     ) async throws -> Bool {
@@ -902,7 +914,7 @@ public final class ConfigurationService {
     /// The generator's opening lines: its header, then the enabled-rules summary
     /// (written since May 2026). The header line alone is not enough: people
     /// edit generated files and keep it.
-    static func hasGeneratedPreamble(_ content: String) -> Bool {
+    package static func hasGeneratedPreamble(_ content: String) -> Bool {
         let lines = content.split(separator: "\n", maxSplits: 2, omittingEmptySubsequences: false)
         return lines.count >= 2
             && lines[0] + "\n" == KanataConfiguration.managedHeader
@@ -1013,7 +1025,7 @@ public final class ConfigurationService {
     }
 
     /// Generate a Kanata configuration from rule stores without writing it.
-    func generateConfiguration(
+    package func generateConfiguration(
         ruleCollections: [RuleCollection],
         customRules: [CustomRule] = [],
         appSpecificKeys: Set<String>? = nil,
@@ -1054,11 +1066,10 @@ public final class ConfigurationService {
         }
 
         // Resolve the leader before checking conflicts; it participates in admission.
-        let leaderKeyPref: LeaderKeyPreference = if let leaderKeyPreference {
-            leaderKeyPreference
-        } else {
-            await MainActor.run { PreferencesService.shared.leaderKeyPreference }
-        }
+        let leaderKeyPref = leaderKeyPreference
+            ?? fallbackLeaderPreference?()
+            ?? persistedLeaderPreference(in: RecoverableRuleWrite.PreferenceDefaults.canonical)
+            ?? .default
 
         // Admission before deduplication: two intentional claims on one slot are
         // refused here, so `dedupe` below never resolves one in silence (ADR-039 §1).
@@ -1101,7 +1112,7 @@ public final class ConfigurationService {
     }
 
     /// Strip managed-repeat directives that the runtime supports but `kanata --check` doesn't.
-    static func stripManagedRepeatForValidation(_ config: String) -> String {
+    package static func stripManagedRepeatForValidation(_ config: String) -> String {
         var lines = config.components(separatedBy: "\n")
 
         // Remove managed-repeat* lines from defcfg
@@ -1149,7 +1160,7 @@ public final class ConfigurationService {
         try await writeConfigurationContent(content, mutationPermit: nil)
     }
 
-    func writeConfigurationContent(_ content: String, mutationPermit: ConfigurationOperationGate.Permit?) async throws {
+    package func writeConfigurationContent(_ content: String, mutationPermit: ConfigurationOperationGate.Permit?) async throws {
         try await operationGate.withOperation(using: mutationPermit) { @MainActor [self] _ in
             try await writeFileAsync(string: content, to: configurationPath)
             // Update current configuration
@@ -1490,7 +1501,7 @@ extension ConfigurationService {
         }
     }
 
-    func fileExistsAsync(path: String) async -> Bool {
+    package func fileExistsAsync(path: String) async -> Bool {
         await withCheckedContinuation { cont in
             ioQueue.async {
                 cont.resume(returning: Foundation.FileManager().fileExists(atPath: path))

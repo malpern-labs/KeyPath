@@ -101,7 +101,7 @@ final class SaveCoordinator {
 
     /// Convenience initializer for legacy code (will be deprecated)
     convenience init() {
-        let configService = ConfigurationService(configDirectory: KeyPathConstants.Config.directory)
+        let configService = ConfigurationService.forApp(configDirectory: KeyPathConstants.Config.directory)
         self.init(configurationService: configService, configFileWatcher: nil)
     }
 

@@ -2,11 +2,9 @@ import Darwin
 import Foundation
 import KeyPathCore
 import KeyPathRulesCore
-import Synchronization
 
 public struct ConfigFacade: Sendable {
     private var operation: CLIConfigurationOperation?
-    private var engineAccessOverride: EngineAccess?
     private var controlSocketPath = RuntimeControl.socketURL.path
     private let configDirectory: String
     private let ruleCollectionLoader: @Sendable () async -> [RuleCollection]
@@ -47,7 +45,6 @@ public struct ConfigFacade: Sendable {
     /// An owned fake app endpoint, without changing routing for other facades.
     init(appControlSocketPath: String) {
         self.init()
-        engineAccessOverride = .viaApp
         controlSocketPath = appControlSocketPath
     }
 
@@ -98,7 +95,6 @@ public struct ConfigFacade: Sendable {
                 reloadHandler: { await reloadResult() }
             )
         }
-        await refreshSharedLeaderPreference()
         let collections = await ruleCollectionLoader()
         let customRules = await customRuleLoader()
         let enabledCount = collections.filter(\.isEnabled).count
@@ -130,7 +126,7 @@ public struct ConfigFacade: Sendable {
             let previewConfig = try await service.generateConfiguration(
                 ruleCollections: reconciledCollections,
                 customRules: customRules,
-                leaderKeyPreference: reconcile ?? (preferenceDefaultsOverride == nil ? nil : current),
+                leaderKeyPreference: reconcile ?? current,
                 preferenceDefaults: preferenceDefaultsOverride?.value
             )
             try await validateDryRunConfig(previewConfig.content)
@@ -158,7 +154,6 @@ public struct ConfigFacade: Sendable {
                 preferenceChanges: [preferenceChange],
                 mutationPermit: permit
             )
-            await refreshSharedLeaderPreference()
         } else {
             try await service.saveConfiguration(
                 ruleCollections: reconciledCollections,
@@ -197,33 +192,7 @@ public struct ConfigFacade: Sendable {
         preferenceDefaultsOverride?.value ?? RecoverableRuleWrite.PreferenceDefaults.canonical
     }
 
-    @MainActor
-    private func refreshSharedLeaderPreference() {
-        if preferenceDefaultsOverride == nil {
-            PreferencesService.shared.reloadLeaderKeyPreference()
-        }
-    }
-
     // MARK: - Engine
-
-    /// How this process reaches the engine. Only the app that launched the
-    /// worker may connect to it (ADR-046): the app sets `.direct` at startup;
-    /// the CLI and anything else asks the app over runtime control.
-    public enum EngineAccess: Sendable {
-        case direct
-        case viaApp
-    }
-
-    private static let engineAccessState = Mutex<EngineAccess>(.viaApp)
-
-    public static var engineAccess: EngineAccess {
-        get { engineAccessState.withLock { $0 } }
-        set { engineAccessState.withLock { $0 = newValue } }
-    }
-
-    private var resolvedEngineAccess: EngineAccess {
-        engineAccessOverride ?? Self.engineAccess
-    }
 
     /// Engine requests answered by the app. A missing app, or one that cannot
     /// answer, reads as "not available".
@@ -233,72 +202,35 @@ public struct ConfigFacade: Sendable {
         try await RuntimeControl.requestEngine(operation, argument: argument, socketPath: controlSocketPath)
     }
 
-    func engineClient() -> KanataTCPClient {
-        KanataTCPClient()
-    }
-
     public func tcpCheckHealth() async -> Bool {
-        switch resolvedEngineAccess {
-        case .direct: await engineClient().checkServerStatus()
         // The engine must answer, not only the app report "running".
-        case .viaApp: await (try? askApp(.layer))?.layer != nil
-        }
+        await (try? askApp(.layer))?.layer != nil
     }
 
     public func tcpGetCurrentLayer() async throws -> String {
-        switch resolvedEngineAccess {
-        case .direct: return try await engineClient().requestCurrentLayerName()
-        case .viaApp:
-            guard let layer = try await askApp(.layer).layer else { throw Self.error("No current layer reported") }
-            return layer
-        }
+        guard let layer = try await askApp(.layer).layer else { throw Self.error("No current layer reported") }
+        return layer
     }
 
     public func tcpGetLayers() async throws -> [String] {
-        switch resolvedEngineAccess {
-        case .direct: try await engineClient().requestLayerNames()
-        case .viaApp: try await askApp(.layers).layers ?? []
-        }
+        try await askApp(.layers).layers ?? []
     }
 
     public func tcpReload() async -> Bool {
-        switch resolvedEngineAccess {
-        case .direct:
-            if case .success = await engineClient().reloadConfig() { return true }
-            return false
-        case .viaApp: return await (try? askApp(.reload)) != nil
-        }
+        await (try? askApp(.reload)) != nil
     }
 
     public func tcpGetHrmStats() async throws -> CLIHrmStats {
-        switch resolvedEngineAccess {
-        case .direct:
-            let stats = try await engineClient().requestHrmStats()
-            return CLIHrmStats(
-                totalDecisions: stats.decisionsTotal,
-                tapCount: stats.tapCount,
-                holdCount: stats.holdCount
-            )
-        case .viaApp:
-            guard let stats = try await askApp(.hrmStats).hrmStats else { throw Self.error("No HRM statistics reported") }
-            return CLIHrmStats(totalDecisions: stats.totalDecisions, tapCount: stats.tapCount, holdCount: stats.holdCount)
-        }
+        guard let stats = try await askApp(.hrmStats).hrmStats else { throw Self.error("No HRM statistics reported") }
+        return CLIHrmStats(totalDecisions: stats.totalDecisions, tapCount: stats.tapCount, holdCount: stats.holdCount)
     }
 
     public func tcpResetHrmStats() async throws {
-        switch resolvedEngineAccess {
-        case .direct: try await engineClient().resetHrmStats()
-        case .viaApp: _ = try await askApp(.resetHrmStats)
-        }
+        _ = try await askApp(.resetHrmStats)
     }
 
     public func tcpChangeLayer(_ layerName: String) async -> Bool {
-        switch resolvedEngineAccess {
-        case .direct:
-            if case .success = await engineClient().changeLayer(layerName) { return true }
-            return false
-        case .viaApp: return await (try? askApp(.changeLayer, argument: layerName)) != nil
-        }
+        await (try? askApp(.changeLayer, argument: layerName)) != nil
     }
 
     private func validateDryRunConfig(_ content: String) async throws {

@@ -77,7 +77,7 @@ extension AppConfigGenerator {
     /// Startup repair creates a missing include or verifies the existing one.
     /// It never updates differing content; edits belong to SaveCoordinator.
     static func ensureIncludeFromStore() async throws {
-        let owner = await ConfigurationService(configDirectory: AppKeymapStore.defaultDirectory.path)
+        let owner = await ConfigurationService.forApp(configDirectory: AppKeymapStore.defaultDirectory.path)
         try await owner.operationGate.withOperation { permit in
             try await owner.recoverPendingAppKeymapWrite(mutationPermit: permit)
             let keymaps = try await AppKeymapStore.shared.loadForMutation()

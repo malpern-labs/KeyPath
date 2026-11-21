@@ -1,4 +1,5 @@
 import Foundation
+import KeyPathCLISupport
 import KeyPathCore
 import KeyPathRulesCore
 
@@ -260,7 +261,7 @@ public struct PacksFacade: Sendable {
                 configurationService: operation.service, installedPackTracker: installedPackTracker
             )
         }
-        let configService = ConfigurationService()
+        let configService = ConfigurationService.forApp()
         return RuleCollectionsManager(
             ruleCollectionStore: .shared,
             customRulesStore: .shared,
@@ -334,5 +335,11 @@ public struct CLIPackSettingValueError: Error, CustomStringConvertible {
 
     public var description: String {
         "Invalid value \(value) for setting '\(settingKey)' on pack '\(packName)': \(reason)"
+    }
+}
+
+public extension CLIConfigurationOperation {
+    var packs: PacksFacade {
+        PacksFacade(operation: self)
     }
 }

@@ -6,10 +6,10 @@ import KeyPathRulesCore
 /// Scoped facades may compose writes and apply without releasing ownership.
 /// They cannot be used to mutate after the command returns.
 public struct CLIConfigurationOperation: Sendable {
-    let service: ConfigurationService
-    let permit: ConfigurationOperationGate.Permit
-    let directory: String
-    let installedPackTracker: InstalledPackTracker
+    package let service: ConfigurationService
+    package let permit: ConfigurationOperationGate.Permit
+    package let directory: String
+    package let installedPackTracker: InstalledPackTracker
 
     public var rules: RulesFacade {
         RulesFacade(configDirectory: URL(fileURLWithPath: directory), gate: service.operationGate, permit: permit)
@@ -22,10 +22,6 @@ public struct CLIConfigurationOperation: Sendable {
             permit: permit,
             installedPackTracker: installedPackTracker
         )
-    }
-
-    public var packs: PacksFacade {
-        PacksFacade(operation: self)
     }
 
     public var config: ConfigFacade {

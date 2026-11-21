@@ -1,6 +1,5 @@
 import Foundation
 import KeyPathCore
-import KeyPathRulesCore
 
 public extension ConfigurationService {
     /// Parse configuration from string content
