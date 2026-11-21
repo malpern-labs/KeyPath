@@ -53,6 +53,9 @@ final class SessionCapsMappingFleetTests: XCTestCase {
             XCTAssertEqual(result.records.count, 2)
             XCTAssertTrue(result.failures.isEmpty)
             XCTAssertEqual(Set(fake.writes), [101, 102])
+            let activeRecords = try fleet.activeRecords(bootSessionUUID: owner.bootSessionUUID, processAlive: { _ in true })
+            XCTAssertEqual(Set(activeRecords.map(\.device.registryEntryID)), [101, 102])
+            XCTAssertEqual(Set(activeRecords.map(\.intermediate)), [Policy.f18])
             XCTAssertEqual(try fleet.activeDeviceIDs(bootSessionUUID: owner.bootSessionUUID, processAlive: { _ in true }), [101, 102])
 
             fake.connected.remove(101)
@@ -63,6 +66,24 @@ final class SessionCapsMappingFleetTests: XCTestCase {
             try fleet.restore(owner: owner, bootSessionUUID: owner.bootSessionUUID)
             XCTAssertEqual(fake.mappings[102], [])
             XCTAssertTrue(try fleet.pendingRecords(owner: owner).isEmpty)
+        }
+    }
+
+    func testSelectedKeyboardLeaseIsReportedAsKeyPathOwned() throws {
+        try fixture { fleet, fake, owner in
+            let device = fake.devices[0]
+            let lease = SessionCapsMappingLease(directory: fleet.directory, backend: fake.backend)
+            _ = try lease.acquire(owner: owner, configSHA256: String(repeating: "a", count: 64),
+                                  device: device, intermediate: Policy.f18)
+
+            let records = try fleet.activeRecords(bootSessionUUID: owner.bootSessionUUID,
+                                                  selectedKeyboardOnly: true,
+                                                  processAlive: { _ in true })
+
+            XCTAssertEqual(records.map(\.device.registryEntryID), [device.registryEntryID])
+            XCTAssertEqual(records.first?.intermediate, Policy.f18)
+            XCTAssertEqual(fake.mappings[device.registryEntryID],
+                           [.init(source: Policy.caps, destination: Policy.f18)])
         }
     }
 

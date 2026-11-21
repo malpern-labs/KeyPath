@@ -78,10 +78,12 @@ public struct SessionCapsConflict: Equatable, Sendable {
     public var message: String {
         if destination >> 32 == 7, SessionCapsIntermediate.isCandidate(UInt32(destination & 0xFFFF_FFFF)) {
             String(
-                localized: "Another app is already remapping Caps Lock on this keyboard (to \(SessionCapsIntermediate.label(UInt32(destination & 0xFFFF_FFFF)))). Turn that off to use Caps Lock rules in KeyPath."
+                localized: "Caps Lock is already mapped to \(SessionCapsIntermediate.label(UInt32(destination & 0xFFFF_FFFF))) on this keyboard. macOS does not identify which app set the mapping. Turn off the existing mapping to use Caps Lock rules in KeyPath."
             )
         } else {
-            String(localized: "Another app or the Modifier Keys setting in System Settings is already remapping Caps Lock on this keyboard. Turn that off to use Caps Lock rules in KeyPath.")
+            String(
+                localized: "Caps Lock is already remapped on this keyboard. macOS does not identify which app set the mapping. Check keyboard remapping apps and the Modifier Keys setting in System Settings."
+            )
         }
     }
 }

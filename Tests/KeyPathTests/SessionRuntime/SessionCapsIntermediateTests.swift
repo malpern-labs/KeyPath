@@ -132,14 +132,17 @@ final class SessionCapsIntermediateTests: XCTestCase {
     }
 
     func testUnknownOwnerMessagesSayWhatCanBeKnown() {
-        XCTAssertTrue(SessionCapsConflict(destination: f20).message.contains("(to F20)"))
+        XCTAssertTrue(SessionCapsConflict(destination: f20).message.contains("F20"))
+        XCTAssertTrue(SessionCapsConflict(destination: f20).message.contains("does not identify which app"))
+        XCTAssertFalse(SessionCapsConflict(destination: f20).message.contains("Another app"))
         let modifier = SessionCapsConflict(destination: 0x7_0000_00E0).message
         XCTAssertTrue(modifier.contains("Modifier Keys"))
+        XCTAssertTrue(modifier.contains("does not identify which app"))
         XCTAssertFalse(modifier.contains("Raycast"))
     }
 
     @MainActor
-    func testSettingsDoesNotReportKeyPathsOwnRowAsAConflict() {
+    func testSettingsDoesNotReportVerifiedKeyPathsOwnRowAsAConflict() {
         let own = SessionCapsConflict(destination: Policy.packed(110))
         XCTAssertTrue(SessionCapsSettingsSection.ownRow(own, intermediate: 110))
         XCTAssertFalse(SessionCapsSettingsSection.ownRow(own, intermediate: 109))

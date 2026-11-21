@@ -5217,6 +5217,7 @@
       }
     },
     "Another app is already remapping Caps Lock on this keyboard (to %@). Turn that off to use Caps Lock rules in KeyPath." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -5227,6 +5228,7 @@
       }
     },
     "Another app or the Modifier Keys setting in System Settings is already remapping Caps Lock on this keyboard. Turn that off to use Caps Lock rules in KeyPath." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -6792,16 +6794,6 @@
         }
       }
     },
-    "Caps Lock is already mapped to F20 on this keyboard. If you use Raycast’s Hyper Key, open Raycast → Settings → Keyboard → Hyper Key, set it to None, then click Check Again." : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このキーボードでは、Caps LockがすでにF20にリマップされています。RaycastのHyper Keyを使っている場合は、Raycastの「Settings」→「Keyboard」→「Hyper Key」で「None」を選び、KeyPathの「再確認」をクリックしてください。"
-          }
-        }
-      }
-    },
     "Caps Lock\ntap + hold" : {
       "localizations" : {
         "ja" : {
@@ -6877,6 +6869,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Caps LockをEscapeに変更"
+          }
+        }
+      }
+    },
+    "Caps Lock is already mapped to %@ on this keyboard. macOS does not identify which app set the mapping. Turn off the existing mapping to use Caps Lock rules in KeyPath." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このキーボードではCaps Lockがすでに%@にマップされています。macOSはどのアプリが設定したかを識別できません。KeyPathのCaps Lockルールを使うには、既存のマッピングをオフにしてください。"
+          }
+        }
+      }
+    },
+    "Caps Lock is already mapped to F20 on this keyboard. If you use Raycast’s Hyper Key, open Raycast → Settings → Keyboard → Hyper Key, set it to None, then click Check Again." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このキーボードでは、Caps LockがすでにF20にリマップされています。RaycastのHyper Keyを使っている場合は、Raycastの「Settings」→「Keyboard」→「Hyper Key」で「None」を選び、KeyPathの「再確認」をクリックしてください。"
+          }
+        }
+      }
+    },
+    "Caps Lock is already remapped on this keyboard. macOS does not identify which app set the mapping. Check keyboard remapping apps and the Modifier Keys setting in System Settings." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このキーボードではCaps Lockがすでにリマップされています。macOSはどのアプリが設定したかを識別できません。キーボードリマップアプリとシステム設定の「修飾キー」を確認してください。"
           }
         }
       }
@@ -9210,6 +9232,7 @@
       }
     },
     "Config file does not exist at: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -9503,6 +9526,7 @@
       }
     },
     "Configuration validation failed (exit code: %@)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -13238,6 +13262,7 @@
       }
     },
     "External Kanata Conflicts (%lld)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -13248,6 +13273,7 @@
       }
     },
     "External Kanata processes that conflict with KeyPath" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -13798,6 +13824,7 @@
       }
     },
     "Failed to save mapping rule" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -13878,6 +13905,7 @@
       }
     },
     "Failed to validate configuration file: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -17713,6 +17741,7 @@
       }
     },
     "Kanata Not Installed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -17740,6 +17769,7 @@
       }
     },
     "Kanata binary missing at %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -17750,6 +17780,7 @@
       }
     },
     "Kanata binary not found at %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -18082,6 +18113,7 @@
       }
     },
     "Karabiner Grabber Conflict" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -18531,6 +18563,7 @@
       }
     },
     "Key mapping saved: %@ → %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -21576,6 +21609,7 @@
       }
     },
     "Missing input/output sequences" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -25628,6 +25662,7 @@
       }
     },
     "Press key combination..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -25638,6 +25673,7 @@
       }
     },
     "Press key sequence..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -26423,6 +26459,7 @@
       }
     },
     "Quit Karabiner-Elements or disable its key remapping" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -33258,6 +33295,7 @@
       }
     },
     "Terminate conflicting processes or let KeyPath auto-fix them" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -36452,6 +36490,7 @@
       }
     },
     "Use KeyPath's Installation Wizard to install Kanata automatically" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -36827,6 +36866,7 @@
       }
     },
     "Validation failed: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -39397,6 +39437,7 @@
       }
     },
     "karabiner_grabber is running and will prevent Kanata from starting" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -41032,6 +41073,7 @@
       }
     },
     "⚠️ %@ permission required for recording" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -41052,6 +41094,7 @@
       }
     },
     "⚠️ Failed to initialize keyboard capture" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -41089,6 +41132,7 @@
       }
     },
     "⚠️ Recording failed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -41099,6 +41143,7 @@
       }
     },
     "⚠️ Recording timed out - try again" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -41109,6 +41154,7 @@
       }
     },
     "⚠️ Recording timed out — try again." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -41292,6 +41338,7 @@
       }
     },
     "❌ Failed to start keyboard capture. Check KeyPath diagnostics." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -41302,6 +41349,7 @@
       }
     },
     "❌ Recording failed: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -41312,6 +41360,7 @@
       }
     },
     "❌ Recording requires %@ permission. Open the Installation Wizard to grant access." : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
