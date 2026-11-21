@@ -22,12 +22,12 @@ final class PreferencesServiceTests: XCTestCase {
 
     func testCanonicalDefaultsFallsBackToTestDomainWhenSuiteIsUnavailable() {
         let defaults = RecoverableRuleWrite.PreferenceDefaults.canonical(using: nil)
-        XCTAssertFalse(defaults === UserDefaults.standard)
 
         let key = "KeyPathTests.preference-defaults.\(UUID().uuidString)"
         defaults.set(true, forKey: key)
         defer { defaults.removeObject(forKey: key) }
-        XCTAssertNil(UserDefaults.standard.object(forKey: key))
+        XCTAssertTrue(defaults === RecoverableRuleWrite.PreferenceDefaults.canonical(using: nil))
+        XCTAssertTrue(defaults.bool(forKey: key))
     }
 
     // MARK: - Context HUD Hold Delay

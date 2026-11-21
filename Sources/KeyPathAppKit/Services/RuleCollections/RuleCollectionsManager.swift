@@ -155,6 +155,7 @@ final class RuleCollectionsManager {
     let eventListener: KanataEventListener
     let keymapPreferences: UserDefaults
     let preferencesService: PreferencesService
+    let notificationCenter: NotificationCenter
     var pendingLeaderKeyPreference: LeaderKeyPreference?
 
     struct LeaderPreferenceSnapshot: Sendable {
@@ -225,7 +226,8 @@ final class RuleCollectionsManager {
         eventListener: KanataEventListener = KanataEventListener(),
         keymapPreferences: UserDefaults = .standard,
         preferencesService: PreferencesService? = nil,
-        installedPackTracker: InstalledPackTracker = .shared
+        installedPackTracker: InstalledPackTracker = .shared,
+        notificationCenter: NotificationCenter = .default
     ) {
         self.ruleCollectionStore = ruleCollectionStore
         self.installedPackTracker = installedPackTracker
@@ -234,6 +236,7 @@ final class RuleCollectionsManager {
         self.eventListener = eventListener
         self.keymapPreferences = keymapPreferences
         self.preferencesService = preferencesService ?? PreferencesService.shared
+        self.notificationCenter = notificationCenter
     }
 
     /// Hold rule changes for the duration of a write, including reload

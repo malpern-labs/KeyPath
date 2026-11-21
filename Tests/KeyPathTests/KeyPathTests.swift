@@ -240,16 +240,6 @@ final class KeyPathTests: KeyPathTestCase {
         XCTAssertTrue(specialConfig.contains("!"))
     }
 
-    func testKeyboardCaptureAccessibility() {
-        let capture = KeyboardCapture()
-
-        // Test accessibility permission checking
-        let hasPermissions = capture.hasAccessibilityPermissions()
-
-        // This test depends on system state, so we just verify it returns a boolean
-        XCTAssertTrue(hasPermissions == true || hasPermissions == false)
-    }
-
     // MARK: - Auto-Start Tests
 
     func testAutoStartInitialization() {
@@ -669,9 +659,5 @@ extension KeyboardCapture {
         } else {
             return "key\(keyCode)"
         }
-    }
-
-    func hasAccessibilityPermissions() -> Bool {
-        PermissionOracle.shared.keyPathAccessibilityStatus().isReady
     }
 }

@@ -17,13 +17,16 @@ final class ConfigHotReloadServiceTests: KeyPathTestCase {
     var configService: ConfigurationService!
     var reloadHandlerCalled: Bool!
     var reloadHandlerResult: Bool!
+    private var tempDirectory: URL!
 
     override func setUp() async throws {
         try await super.setUp()
-        service = ConfigHotReloadService.shared
+        tempDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        service = ConfigHotReloadService()
         // Use short delay to avoid 2+ second waits in tests
         service.statusResetDelay = 0.01
-        configService = ConfigurationService(configDirectory: NSTemporaryDirectory())
+        configService = ConfigurationService.sessionTestService(configDirectory: tempDirectory.path)
         reloadHandlerCalled = false
         reloadHandlerResult = true
 
@@ -41,14 +44,12 @@ final class ConfigHotReloadServiceTests: KeyPathTestCase {
     }
 
     override func tearDown() async throws {
-        // Reset delay to default
-        service?.statusResetDelay = 2.0
-        // Avoid cross-test leakage since the service is a singleton.
-        service?.callbacks = .init()
+        try? FileManager.default.removeItem(at: tempDirectory)
         service = nil
         configService = nil
         reloadHandlerCalled = nil
         reloadHandlerResult = nil
+        tempDirectory = nil
         try await super.tearDown()
     }
 
@@ -263,8 +264,7 @@ final class ConfigHotReloadServiceTests: KeyPathTestCase {
     // MARK: - Helper Methods
 
     private func createTempConfigFile(content: String) -> URL {
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        let tempFile = tempDir.appendingPathComponent("test-config-\(UUID().uuidString).kbd")
+        let tempFile = tempDirectory.appendingPathComponent("config-\(UUID().uuidString).kbd")
 
         try! content.write(to: tempFile, atomically: true, encoding: .utf8)
 

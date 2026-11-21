@@ -89,14 +89,16 @@ public final class NotificationObserverManager: @unchecked Sendable {
     ///   - name: The notification name to observe.
     ///   - object: Optional object to filter notifications from.
     ///   - queue: The operation queue to invoke the handler on. Defaults to `.main`.
+    ///   - center: The notification center to use. Defaults to `.default`.
     ///   - handler: The closure to invoke with the notification's userInfo dictionary.
     public func observeUserInfo(
         _ name: Notification.Name,
         object: Any? = nil,
         queue: OperationQueue? = NotificationObserverManager.mainOperationQueue,
+        center: NotificationCenter = NotificationObserverManager.defaultCenter,
         handler: @escaping @Sendable ([AnyHashable: Any]?) -> Void
     ) {
-        observe(name, object: object, queue: queue) { notification in
+        observe(name, object: object, queue: queue, center: center) { notification in
             handler(notification.userInfo)
         }
     }

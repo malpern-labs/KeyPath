@@ -18,7 +18,7 @@ extension RuleCollectionsManager {
     func updateActiveLayerName(_ rawName: String) {
         // Only runtime observations provide heartbeat evidence, including an
         // unchanged layer. Local rule edits and rollback refreshes do not.
-        NotificationCenter.default.post(KanataHeartbeat())
+        notificationCenter.post(KanataHeartbeat())
         setDisplayedLayerName(rawName)
     }
 
