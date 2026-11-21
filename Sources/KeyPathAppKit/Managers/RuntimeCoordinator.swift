@@ -353,7 +353,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
         // Wire up RuleCollectionsManager callbacks
         ruleCollectionsManager.onRulesChanged = { [weak self] in
             guard let self else {
-                return ReloadResult(success: false, response: nil, errorMessage: "Runtime coordinator unavailable", protocol: nil, disposition: .failed)
+                return ReloadResult(success: false, response: nil, errorMessage: "Runtime coordinator unavailable", disposition: .failed)
             }
             return await applyPersistedRuleChanges()
         }
@@ -1127,7 +1127,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
             await AppContextService.shared.reloadMappings(afterRuntimeReload: true)
         }) { [weak self] in
             guard let self else {
-                return ReloadResult(success: false, response: nil, errorMessage: "Coordinator deallocated", protocol: nil, disposition: .failed)
+                return ReloadResult(success: false, response: nil, errorMessage: "Coordinator deallocated", disposition: .failed)
             }
             return await triggerConfigReload()
         }
@@ -1159,7 +1159,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
         let result = await saveCoordinator.editConfiguration(transform: transform, runtimeDidApply: {
             await AppContextService.shared.reloadMappings(afterRuntimeReload: true)
         }) { [weak self] in
-            guard let self else { return ReloadResult(success: false, response: nil, errorMessage: "Coordinator unavailable", protocol: nil, disposition: .failed) }
+            guard let self else { return ReloadResult(success: false, response: nil, errorMessage: "Coordinator unavailable", disposition: .failed) }
             return await triggerConfigReload()
         }
         saveStatus = saveCoordinator.saveStatus
@@ -1178,7 +1178,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
             runtimeDidApply: { await AppContextService.shared.reloadMappings(afterRuntimeReload: true) },
             reloadHandler: { [weak self] in
                 guard let self else {
-                    return ReloadResult(success: false, response: nil, errorMessage: "Coordinator deallocated", protocol: nil, disposition: .failed)
+                    return ReloadResult(success: false, response: nil, errorMessage: "Coordinator deallocated", disposition: .failed)
                 }
                 return await triggerConfigReload()
             }
@@ -1203,7 +1203,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
             ruleCollectionsManager: ruleCollectionsManager,
             reloadHandler: { [weak self] in
                 guard let self else {
-                    return ReloadResult(success: false, response: nil, errorMessage: "Coordinator deallocated", protocol: nil, disposition: .failed)
+                    return ReloadResult(success: false, response: nil, errorMessage: "Coordinator deallocated", disposition: .failed)
                 }
                 return await triggerConfigReload()
             }
@@ -1383,42 +1383,6 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
 
         recoveryCoordinator.logAutoFixResult(action, success: success)
         return success
-    }
-}
-
-// MARK: - Result Types
-
-enum ReloadDisposition: Sendable, Equatable {
-    case applied
-    case pending
-    case rejected
-    case failed
-}
-
-/// TCP reload result
-struct ReloadResult {
-    let success: Bool
-    let response: String?
-    let errorMessage: String?
-    let `protocol`: CommunicationProtocol?
-    let disposition: ReloadDisposition
-
-    var isSuccess: Bool {
-        disposition == .applied
-    }
-
-    init(
-        success: Bool,
-        response: String?,
-        errorMessage: String?,
-        protocol: CommunicationProtocol?,
-        disposition: ReloadDisposition? = nil
-    ) {
-        self.success = success
-        self.response = response
-        self.errorMessage = errorMessage
-        self.protocol = `protocol`
-        self.disposition = disposition ?? (success ? .applied : .failed)
     }
 }
 

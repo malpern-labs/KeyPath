@@ -164,6 +164,7 @@ class MainAppStateController {
     /// Configure with the specific sub-coordinators needed (not the full RuntimeCoordinator).
     func configure(
         serviceLifecycle: ServiceLifecycleCoordinator,
+        observeRuntime: Bool = true,
         onSystemHealthy: @escaping () -> Void
     ) {
         self.serviceLifecycle = serviceLifecycle
@@ -174,12 +175,7 @@ class MainAppStateController {
         // Existing user data is expected on relaunch, not evidence of app deletion.
         // Keep legacy cleanup out of startup: a modal alert here blocks bootstrap.
 
-        // Start service health monitoring to fix stale overlay state
-        if TestEnvironment.isRunningTests {
-            AppLogger.shared.debug(
-                "🧪 [MainAppStateController] Skipping background monitoring setup in test mode"
-            )
-        } else {
+        if observeRuntime {
             subscribeToServiceHealth()
             startPeriodicRefresh()
         }

@@ -446,7 +446,7 @@ final class SessionLifecycleInterleavingTests: KeyPathTestCase {
     func testWakeRecoveryPublishesCheckingWithoutPermissionOrHealthPolling() async {
         _ = await coordinator.startKanata()
         let controller = MainAppStateController()
-        controller.configure(serviceLifecycle: coordinator, onSystemHealthy: {})
+        controller.configure(serviceLifecycle: coordinator, observeRuntime: false, onSystemHealthy: {})
         controller.setValidator(StubSystemValidator(context: SystemContextBuilder(componentsInstalled: true).build()))
         controller.configureStartupGateTestingState(permissionsOverride: {
             XCTFail("Normal wake recovery must not probe locked-session permissions")

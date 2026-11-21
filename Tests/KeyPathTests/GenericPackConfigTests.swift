@@ -104,7 +104,7 @@ final class GenericPackConfigTests: XCTestCase {
         var reloads = 0
         manager.onRulesChanged = {
             reloads += 1
-            return ReloadResult(success: false, response: nil, errorMessage: "Keyboard not attached", protocol: nil, disposition: .pending)
+            return ReloadResult(success: false, response: nil, errorMessage: "Keyboard not attached", disposition: .pending)
         }
         _ = try await PackInstaller.testInstaller().install(
             PackRegistry.capsLockToEscape, collectionConfiguration: configuration,
@@ -907,7 +907,7 @@ final class GenericPackConfigTests: XCTestCase {
         var reloadCallbackCount = 0
         manager.onRulesChanged = {
             reloadCallbackCount += 1
-            return ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+            return ReloadResult(success: true, response: "ok", errorMessage: nil)
         }
 
         guard let catalogConfiguration = RuleCollectionCatalog().defaultCollections()

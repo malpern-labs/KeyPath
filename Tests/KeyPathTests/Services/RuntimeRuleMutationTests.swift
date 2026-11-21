@@ -29,7 +29,7 @@ private func makeTestRuntime() throws -> (RuntimeCoordinator, URL) {
 
     let runtime = RuntimeCoordinator(injectedConfigurationService: configuration,
                                      injectedRuleCollectionsManager: manager)
-    manager.onRulesChanged = { .init(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied) }
+    manager.onRulesChanged = { .init(success: true, response: nil, errorMessage: nil, disposition: .applied) }
     return (runtime, tempDir)
 }
 
@@ -73,7 +73,7 @@ struct RuntimeRuleBatchTests {
         var reloadCount = 0
         manager.onRulesChanged = {
             reloadCount += 1
-            return .init(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
+            return .init(success: true, response: nil, errorMessage: nil, disposition: .applied)
         }
 
         let disabledIDs = coordinator.ruleCollections
