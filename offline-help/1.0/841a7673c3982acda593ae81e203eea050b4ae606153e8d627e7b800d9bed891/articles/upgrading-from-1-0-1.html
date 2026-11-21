@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src file: data:; style-src file: 'unsafe-inline'; font-src file:; base-uri 'none'; form-action 'none'"><title>Move from KeyPath 1.0.1 to the new runtime</title><link rel="stylesheet" href="../assets/help-theme.css"></head><body><h1 id="move-from-keypath-101-to-the-new-runtime">Move from KeyPath 1.0.1 to the new runtime</h1>
+<p>Use this guide if you previously set up <strong>KeyPath 1.0.1</strong> and are switching to a session-runtime build. The new build requires <strong>macOS 27 or later on Apple Silicon</strong>. It runs in your user session. It does not remove the keyboard service or privileged helper that 1.0.1 installed.</p>
+<h2 id="1-back-up-your-rules-and-quit-keypath">1. Back up your rules and quit KeyPath</h2>
+<p>Copy <code>~/.config/keypath</code> to a backup folder. If you use a custom Kanata config, back it up separately. Quit KeyPath and turn off any old KeyPath background items in <strong>System Settings → General → Login Items</strong>. Look for KeyPath and its helper under the apps allowed to run in the background. If more than one person used 1.0.1 on this Mac, sign out those other accounts before continuing.</p>
+<h2 id="2-stop-the-old-keypath-services">2. Stop the old KeyPath services</h2>
+<p>In Terminal, run the following from the same macOS account you used for KeyPath 1.0.1. macOS asks for an administrator password.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> label <span class="kw">in</span> com.keypath.kanata com.keypath.helper <span class="dt">\</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  com.keypath.karabiner-vhiddaemon com.keypath.karabiner-vhidmanager com.keypath.logrotate</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cf">do</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sudo</span> launchctl bootout <span class="st">&quot;system/</span><span class="va">$label</span><span class="st">&quot;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sudo</span> launchctl bootout <span class="st">&quot;gui/</span><span class="va">$(</span><span class="fu">id</span> <span class="at">-u</span><span class="va">)</span><span class="st">/</span><span class="va">$label</span><span class="st">&quot;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code></pre></div>
+<p>Some stop commands can report <strong>No such process</strong> if that service was already absent. Check that every service stopped before removing files:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> label <span class="kw">in</span> com.keypath.kanata com.keypath.helper <span class="dt">\</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  com.keypath.karabiner-vhiddaemon com.keypath.karabiner-vhidmanager com.keypath.logrotate</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="cf">do</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sudo</span> launchctl print <span class="st">&quot;system/</span><span class="va">$label</span><span class="st">&quot;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sudo</span> launchctl print <span class="st">&quot;gui/</span><span class="va">$(</span><span class="fu">id</span> <span class="at">-u</span><span class="va">)</span><span class="st">/</span><span class="va">$label</span><span class="st">&quot;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code></pre></div>
+<p>Each check should report <strong>Could not find service</strong>. If any check still shows a service or reports a permissions problem, stop here before deleting its files.</p>
+<h2 id="3-remove-the-old-service-files">3. Remove the old service files</h2>
+<p>Remove only the listed KeyPath files. This leaves your rules and preferences in place.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm <span class="at">-f</span> <span class="dt">\</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  /Library/LaunchDaemons/com.keypath.kanata.plist <span class="dt">\</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  /Library/LaunchDaemons/com.keypath.helper.plist <span class="dt">\</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  /Library/LaunchDaemons/com.keypath.karabiner-vhiddaemon.plist <span class="dt">\</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  /Library/LaunchDaemons/com.keypath.karabiner-vhidmanager.plist <span class="dt">\</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  /Library/LaunchDaemons/com.keypath.logrotate.plist <span class="dt">\</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  /Library/PrivilegedHelperTools/com.keypath.helper <span class="dt">\</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  /Library/KeyPath/bin/kanata <span class="dt">\</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  /etc/newsyslog.d/com.keypath.conf <span class="dt">\</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  /usr/local/bin/keypath-logrotate.sh</span></code></pre></div>
+<p>You can also remove the old engine logs and empty engine folders:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm <span class="at">-f</span> /var/log/com.keypath.kanata.stdout.log /var/log/com.keypath.kanata.stderr.log</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rmdir /Library/KeyPath/bin /Library/KeyPath</span></code></pre></div>
+<p>An absent folder needs no action. If a folder contains other files, leave it in place.</p>
+<p>Keep the Karabiner VirtualHID driver if you use Karabiner-Elements or another tool that depends on it. The new KeyPath build does not need the driver. For optional removal, use the <a href="https://github.com/pqrs-org/Karabiner-DriverKit-VirtualHIDDevice">driver project's uninstall instructions</a>.</p>
+<h2 id="4-install-and-check-the-new-build">4. Install and check the new build</h2>
+<p>Replace KeyPath in <strong>Applications</strong> and remove extra copies of the old app from places such as <strong>Downloads</strong>. Restart your Mac so any remaining processes from the old build exit. Before opening KeyPath, repeat the service checks from step 2 to verify the old services stayed off. A stale KeyPath entry can remain in Login Items even after the services are gone. Then follow <a href="help://installation-wizard">Setting Up KeyPath</a> and try one remap from your rules. You can remove the old KeyPath Full Disk Access and Input Monitoring grants in System Settings.</p>
+</body></html>
