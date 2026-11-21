@@ -1,6 +1,4 @@
 import Foundation
-import KeyPathCore
-import KeyPathRulesCore
 
 /// What installing a pack would change, decided by the admission engine before
 /// anything is written (phase 4c; ADR-039 §5; decision 4).
@@ -13,6 +11,11 @@ public struct PackInstallPreview: Sendable {
         public let id = UUID()
         public let severity: AdmissionVerdict.Severity
         public let presentation: AdmissionPresentation
+
+        package init(severity: AdmissionVerdict.Severity, presentation: AdmissionPresentation) {
+            self.severity = severity
+            self.presentation = presentation
+        }
     }
 
     public let packID: String
@@ -21,6 +24,18 @@ public struct PackInstallPreview: Sendable {
     public let disableOptions: [(subject: AdmissionSubject, id: UUID, label: String)]
     /// Installed packs the user may remove to proceed.
     public let removeOptions: [(packID: String, label: String)]
+
+    package init(
+        packID: String,
+        items: [Item],
+        disableOptions: [(subject: AdmissionSubject, id: UUID, label: String)],
+        removeOptions: [(packID: String, label: String)]
+    ) {
+        self.packID = packID
+        self.items = items
+        self.disableOptions = disableOptions
+        self.removeOptions = removeOptions
+    }
 
     public var isBlocked: Bool {
         items.contains { $0.severity == .blocking }
