@@ -96,6 +96,8 @@ This ledger tracks outcomes toward the review goals: less unnecessary framework 
 
 P9 follow-up (November 21): `UtilitiesTests` now uses a UUID-scoped `AppLogger` and log directory for each test, flushing before teardown and deleting only its owned directory. Clear-log coverage verifies that pre-clear messages are removed and post-clear messages remain; the assertion-only singleton cleanup test was removed. The merged version retains the stronger cleanup assertion from master. The existing `UnitTestSuite.testLoggerConfiguration` path typo is corrected. The merged focused qualification passes all 18 Utilities tests under `--parallel` and the logger-configuration test (1 test). The merged safe suite passed 4,701 XCTest and 846 Swift Testing cases (27 expected skips), with zero failures or Swift, module-cache, or app warnings/errors. The focused Utilities suite also passes all 18 cases under parallel XCTest workers.
 
+The test base no longer mutates `AppLogger.shared` during setup and teardown. Console verbosity is selected once from the test-run environment when a logger is constructed, with explicit instance configuration taking precedence; focused tests cover quiet/verbose test runs and debug/release defaults. This removes another order-dependent process-global setting.
+
 ### Also done since the review (not in its list)
 
 - ADR-048 keyboard attribution: spike, matcher, and log-only matcher in the session worker (#1392, #1393, #1396, #1400, #1401).
