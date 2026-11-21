@@ -14,9 +14,24 @@ ADR-046 and the Swift client, not the fork's source.
 
 ## Status (updated 2026-11-21)
 
-Verified against `master` at `d3690c8d` through [#1580](https://github.com/malpern-labs/KeyPath/pull/1580), plus the unmerged P9 work recorded below. The findings below this status section describe the original review.
+Verified against `master` at `4bb160988172c08f564de1b31996a7e7248562e1`, after [#1604](https://github.com/malpern-labs/KeyPath/pull/1604) and [#1605](https://github.com/malpern-labs/KeyPath/pull/1605) merged. The findings below this status section describe the original review.
 
 Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 tracked privately
+
+### Progress toward the review goals
+
+Sixteen review-related PRs merged on November 21 (#1589–#1605, excluding the unrelated #1575 and the unmerged #1602). They advance the original review goals as follows:
+
+| Review goal | Progress represented by the overnight merges |
+|---|---|
+| **Reduce over-engineering (O7)** | #1589 and #1591–#1593 move configuration admission, rule operations, and generation out of the UI framework while retaining the pack gallery, confirmations, dependencies, and rollback. Three CLI files still need AppKit for pack mutations; that boundary remains open pending a shared decision/transaction contract. |
+| **Improve localization (P8)** | #1597 and #1598 fix and independently review Japanese strings; #1601 verifies the macOS 27 permission-pane name against Apple’s Japanese system strings. Live onboarding and overlay layout checks remain. |
+| **Improve concurrency and CI reliability (P6/P9)** | #1590 and #1603 remove obsolete runtime/test behavior and isolate shared test state; #1605 removes tests against the retired TCP listener. #1593 adds compiler-checked runtime readiness ownership. The full suite was qualified sequentially and with two XCTest workers before these merges; CI still needs the corresponding parallel test configuration and same-process isolation work remains open. |
+| **Reduce CI waste and agent friction** | #1594 removes a cache-warm workflow that warmed no PR job’s cache; #1595 and #1596 move worktrees off ephemeral storage and require bounded build slots and isolated tests. |
+| **Improve security and release behavior** | #1600 makes Caps Lock conflict attribution depend on verified ownership evidence and states the limits of macOS attribution; #1604 ignores environment log-level overrides in Release builds. |
+| **Keep process guidance accurate** | #1599 documents the organization’s merge queue so PRs are tested against current `master` before merge. |
+
+This is measurable progress toward the review: the merged changes reduce UI-framework coupling, correct Japanese content, narrow test side effects, remove stale CI work, and harden release behavior. It does **not** mean the review is complete. The remaining items are listed below with their required evidence; a merged PR or green CI does not substitute for live desktop, release, or lab verification.
 
 ### Top recommendations
 
