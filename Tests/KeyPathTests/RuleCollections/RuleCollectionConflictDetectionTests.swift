@@ -5,18 +5,37 @@ import XCTest
 
 @MainActor
 final class RuleCollectionConflictDetectionTests: XCTestCase {
-    private func makeManager() -> RuleCollectionsManager {
-        RuleCollectionsManager(
-            ruleCollectionStore: .shared,
-            customRulesStore: .shared,
-            configurationService: ConfigurationService()
+    private func makeManager() throws -> RuleCollectionsManager {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rule-conflicts-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+
+        let defaultsSuite = "KeyPathTests.rule-conflicts.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsSuite))
+        addTeardownBlock { defaults.removePersistentDomain(forName: defaultsSuite) }
+        let collectionStore = RuleCollectionStore(fileURL: directory.appendingPathComponent("RuleCollections.json"))
+        let customRulesStore = CustomRulesStore(fileURL: directory.appendingPathComponent("CustomRules.json"))
+
+        return RuleCollectionsManager(
+            ruleCollectionStore: collectionStore,
+            customRulesStore: customRulesStore,
+            configurationService: ConfigurationService.sessionTestService(
+                configDirectory: directory.path,
+                ruleCollectionStore: collectionStore,
+                customRulesStore: customRulesStore
+            ),
+            keymapPreferences: defaults,
+            preferencesService: PreferencesService(leaderDefaults: defaults, defaults: defaults),
+            installedPackTracker: InstalledPackTracker(fileURL: directory.appendingPathComponent("installed-packs.json")),
+            notificationCenter: NotificationCenter()
         )
     }
 
     // MARK: - normalizedKeys
 
-    func testNormalizedKeys_ExtractsInputKeys() {
-        let manager = makeManager()
+    func testNormalizedKeys_ExtractsInputKeys() throws {
+        let manager = try makeManager()
         let collection = RuleCollection(
             id: UUID(),
             name: "Test",
@@ -41,8 +60,8 @@ final class RuleCollectionConflictDetectionTests: XCTestCase {
 
     // MARK: - conflictInfo(for collection:)
 
-    func testConflictInfo_NoConflict_WhenNoOverlap() {
-        let manager = makeManager()
+    func testConflictInfo_NoConflict_WhenNoOverlap() throws {
+        let manager = try makeManager()
         let collection1 = RuleCollection(
             id: UUID(),
             name: "A",
@@ -73,8 +92,8 @@ final class RuleCollectionConflictDetectionTests: XCTestCase {
         XCTAssertNil(conflict)
     }
 
-    func testConflictInfo_DetectsOverlap_SameLayer() {
-        let manager = makeManager()
+    func testConflictInfo_DetectsOverlap_SameLayer() throws {
+        let manager = try makeManager()
         let collection1 = RuleCollection(
             id: UUID(),
             name: "First",
@@ -106,8 +125,8 @@ final class RuleCollectionConflictDetectionTests: XCTestCase {
         XCTAssertTrue(conflict!.keys.contains("a"))
     }
 
-    func testConflictInfo_NoConflict_DifferentLayers() {
-        let manager = makeManager()
+    func testConflictInfo_NoConflict_DifferentLayers() throws {
+        let manager = try makeManager()
         let collection1 = RuleCollection(
             id: UUID(),
             name: "Base",
@@ -138,8 +157,8 @@ final class RuleCollectionConflictDetectionTests: XCTestCase {
         XCTAssertNil(conflict)
     }
 
-    func testConflictInfo_IgnoresDisabledCollections() {
-        let manager = makeManager()
+    func testConflictInfo_IgnoresDisabledCollections() throws {
+        let manager = try makeManager()
         let collection1 = RuleCollection(
             id: UUID(),
             name: "Disabled",
@@ -172,8 +191,8 @@ final class RuleCollectionConflictDetectionTests: XCTestCase {
 
     // MARK: - conflictInfo(for customRule:)
 
-    func testConflictInfo_CustomRule_DetectsCollectionConflict() {
-        let manager = makeManager()
+    func testConflictInfo_CustomRule_DetectsCollectionConflict() throws {
+        let manager = try makeManager()
         let collection = RuleCollection(
             id: UUID(),
             name: "Caps Remap",
@@ -193,8 +212,8 @@ final class RuleCollectionConflictDetectionTests: XCTestCase {
         XCTAssertNotNil(conflict)
     }
 
-    func testConflictInfo_CustomRule_DetectsOtherCustomRuleConflict() {
-        let manager = makeManager()
+    func testConflictInfo_CustomRule_DetectsOtherCustomRuleConflict() throws {
+        let manager = try makeManager()
         manager.ruleCollections = []
 
         let existing = CustomRule(input: "a", action: .keystroke(key: "b"))
@@ -254,8 +273,8 @@ final class RuleCollectionConflictDetectionTests: XCTestCase {
         )
     }
 
-    func testConflictInfo_MappingConflictsWithOtherCollectionsActivator() {
-        let manager = makeManager()
+    func testConflictInfo_MappingConflictsWithOtherCollectionsActivator() throws {
+        let manager = try makeManager()
         manager.ruleCollections = [makeArrowsStyleCollection()]
 
         let candidate = RuleCollection(
@@ -276,8 +295,8 @@ final class RuleCollectionConflictDetectionTests: XCTestCase {
         XCTAssertEqual(conflict?.keys, ["f"])
     }
 
-    func testConflictInfo_ActivatorConflictsWithOtherCollectionsMapping() {
-        let manager = makeManager()
+    func testConflictInfo_ActivatorConflictsWithOtherCollectionsMapping() throws {
+        let manager = try makeManager()
         manager.ruleCollections = [
             RuleCollection(
                 id: UUID(),
@@ -298,10 +317,10 @@ final class RuleCollectionConflictDetectionTests: XCTestCase {
         XCTAssertEqual(conflict?.keys, ["f"])
     }
 
-    func testConflictInfo_HomeRowModsConfigKeysConflictWithActivator() {
+    func testConflictInfo_HomeRowModsConfigKeysConflictWithActivator() throws {
         // Home Row Mods has empty static mappings; its keys come from configuration.
         // normalizedKeys must use effectiveMappings so this conflict is visible (#953).
-        let manager = makeManager()
+        let manager = try makeManager()
         manager.ruleCollections = [makeArrowsStyleCollection()]
 
         let hrm = RuleCollection(

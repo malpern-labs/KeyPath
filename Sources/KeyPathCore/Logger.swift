@@ -63,12 +63,19 @@ public final class AppLogger: Sendable {
             allowsEnvironmentOverride: allowsEnvironmentOverride
         )
 
-        // Console logging (default: true in debug, false in release)
+        // Keep test output quiet by default without mutating the shared logger
+        // from each test's setup/teardown. Explicit per-instance configuration
+        // still takes precedence.
         #if DEBUG
-            let consoleEnabled = enableConsoleLogging ?? true
+            let isDebugBuild = true
         #else
-            let consoleEnabled = enableConsoleLogging ?? false
+            let isDebugBuild = false
         #endif
+        let consoleEnabled = enableConsoleLogging ?? Self.configuredConsoleLogging(
+            environment: ProcessInfo.processInfo.environment,
+            isDebugBuild: isDebugBuild,
+            isRunningTests: TestEnvironment.isRunningTests
+        )
 
         options = Mutex(Options(minimumLevel: configuredLevel, enableConsoleLogging: consoleEnabled))
 
@@ -122,6 +129,15 @@ public final class AppLogger: Sendable {
             }
         }
         return minimumLevel ?? AppLogLevel.defaultMinimumLevel
+    }
+
+    static func configuredConsoleLogging(
+        environment: [String: String], isDebugBuild: Bool, isRunningTests: Bool
+    ) -> Bool {
+        if isRunningTests {
+            return environment["KEYPATH_TEST_VERBOSE_LOGS"] == "1"
+        }
+        return isDebugBuild
     }
 
     /// Update minimum log level at runtime

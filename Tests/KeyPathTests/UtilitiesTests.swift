@@ -45,6 +45,17 @@ final class UtilitiesTests: XCTestCase {
         XCTAssertEqual(debugLevel, .trace)
     }
 
+    func testConsoleLoggingDefaultsAreEnvironmentScoped() {
+        XCTAssertFalse(AppLogger.configuredConsoleLogging(
+            environment: ["KEYPATH_TEST_VERBOSE_LOGS": "0"], isDebugBuild: true, isRunningTests: true
+        ))
+        XCTAssertTrue(AppLogger.configuredConsoleLogging(
+            environment: ["KEYPATH_TEST_VERBOSE_LOGS": "1"], isDebugBuild: true, isRunningTests: true
+        ))
+        XCTAssertTrue(AppLogger.configuredConsoleLogging(environment: [:], isDebugBuild: true, isRunningTests: false))
+        XCTAssertFalse(AppLogger.configuredConsoleLogging(environment: [:], isDebugBuild: false, isRunningTests: false))
+    }
+
     func testLoggerSingleton() {
         let logger1 = AppLogger.shared
         let logger2 = AppLogger.shared

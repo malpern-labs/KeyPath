@@ -110,8 +110,8 @@ final class KanataViewModelTests: KeyPathTestCase {
 
     func testRuleSetupSessionIsObservedAndCancellationReturnsToSave() async throws {
         _ = NSApplication.shared
-        defer { SettingsNavigationCoordinator.shared.clearIfMatches(.openSettingsRules) }
-        let manager = RuntimeCoordinator()
+        var requestedSettingsTab: Notification.Name?
+        let manager = RuntimeCoordinator { name, _ in requestedSettingsTab = name }
         let viewModel = KanataViewModel(manager: manager)
         let presentSetup = try XCTUnwrap(manager.ruleCollectionsManager.onPrerequisiteSetup)
         let context = RulePrerequisiteResolutionContext(
@@ -134,6 +134,7 @@ final class KanataViewModelTests: KeyPathTestCase {
         guard presentation == .completed else { return XCTFail("Rule setup did not present") }
         let session = try XCTUnwrap(viewModel.pendingRuleSetup)
         XCTAssertEqual(session.context, context)
+        XCTAssertEqual(requestedSettingsTab, .openSettingsRules)
 
         assertObserved({ viewModel.pendingRuleSetup?.id }, changing: {
             session.finish(.failure(CancellationError()))
@@ -145,8 +146,8 @@ final class KanataViewModelTests: KeyPathTestCase {
 
     func testConfirmingDependentResolutionClosesSheetAndResumesDisable() async {
         _ = NSApplication.shared
-        defer { SettingsNavigationCoordinator.shared.clearIfMatches(.openSettingsRules) }
-        let manager = RuntimeCoordinator()
+        var requestedSettingsTab: Notification.Name?
+        let manager = RuntimeCoordinator { name, _ in requestedSettingsTab = name }
         let viewModel = KanataViewModel(manager: manager)
         let context = RuleDependentResolutionContext(
             providerID: UUID(), providerName: "Leader Key",
@@ -158,6 +159,7 @@ final class KanataViewModelTests: KeyPathTestCase {
         let presentation = await XCTWaiter.fulfillment(of: [opened], timeout: 2)
         guard presentation == .completed else { return XCTFail("Dependent resolution did not present") }
         XCTAssertEqual(viewModel.pendingDependentResolution?.providerName, "Leader Key")
+        XCTAssertEqual(requestedSettingsTab, .openSettingsRules)
 
         assertObserved({ viewModel.showDependentResolutionDialog }, changing: {
             viewModel.resolveDependentResolution(with: .disableAnyway)

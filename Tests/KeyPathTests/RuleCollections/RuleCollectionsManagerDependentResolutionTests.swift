@@ -113,19 +113,22 @@ final class RuleCollectionsManagerDependentResolutionTests: XCTestCase {
         manager.ruleCollections = [first, second, consumer]
 
         var didPrompt = false
-        manager.onDependentResolution = { _ in
+        var promptedContext: RuleDependentResolutionContext?
+        manager.onDependentResolution = { context in
             didPrompt = true
+            promptedContext = context
             return nil
         }
 
-        let applied = await manager.toggleCollection(
+        let result = await manager.toggleCollectionResult(
             id: first.id,
             isEnabled: false,
             bypassOwnershipCheck: true
         )
+        let applied = result.success
 
-        XCTAssertTrue(applied)
-        XCTAssertFalse(didPrompt)
+        XCTAssertTrue(applied, "Mutation failed: \(String(describing: result.error))")
+        XCTAssertFalse(didPrompt, "Prompted context: \(String(describing: promptedContext))")
         XCTAssertTrue(manager.ruleCollections[id: first.id]?.isEnabled == false)
         XCTAssertTrue(manager.ruleCollections[id: second.id]?.isEnabled == true)
     }
@@ -295,17 +298,32 @@ final class RuleCollectionsManagerDependentResolutionTests: XCTestCase {
             at: directory,
             withIntermediateDirectories: true
         )
+        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+
+        let defaultsSuite = "KeyPathTests.dependent-resolution.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsSuite))
+        addTeardownBlock { defaults.removePersistentDomain(forName: defaultsSuite) }
+        let installedPackTracker = InstalledPackTracker(
+            fileURL: directory.appendingPathComponent("installed-packs.json")
+        )
+        let collectionStore = RuleCollectionStore(
+            fileURL: directory.appendingPathComponent("RuleCollections.json")
+        )
+        let customRulesStore = CustomRulesStore(
+            fileURL: directory.appendingPathComponent("CustomRules.json")
+        )
 
         return RuleCollectionsManager(
-            ruleCollectionStore: RuleCollectionStore(
-                fileURL: directory.appendingPathComponent("RuleCollections.json")
+            ruleCollectionStore: collectionStore,
+            customRulesStore: customRulesStore,
+            configurationService: ConfigurationService.sessionTestService(
+                configDirectory: directory.path,
+                ruleCollectionStore: collectionStore,
+                customRulesStore: customRulesStore
             ),
-            customRulesStore: CustomRulesStore(
-                fileURL: directory.appendingPathComponent("CustomRules.json")
-            ),
-            configurationService: ConfigurationService(
-                configDirectory: directory.path
-            )
+            keymapPreferences: defaults,
+            preferencesService: PreferencesService(leaderDefaults: defaults, defaults: defaults),
+            installedPackTracker: installedPackTracker
         )
     }
 

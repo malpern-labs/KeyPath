@@ -176,6 +176,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
     // Configuration file watching for hot reload
     @ObservationIgnored var configFileWatcher: ConfigFileWatcher?
     let configHotReloadService = ConfigHotReloadService.shared
+    @ObservationIgnored private let preferencesTabOpener: (Notification.Name, [AnyHashable: Any]?) -> Void
 
     var configPath: String {
         configurationManager.configPath
@@ -184,8 +185,12 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
     init(
         injectedConfigurationService: ConfigurationService? = nil,
         injectedRuleCollectionsManager: RuleCollectionsManager? = nil,
-        configRepairService: ConfigRepairService? = nil
+        configRepairService: ConfigRepairService? = nil,
+        preferencesTabOpener: @escaping (Notification.Name, [AnyHashable: Any]?) -> Void = { name, userInfo in
+            openPreferencesTab(name, userInfo: userInfo)
+        }
     ) {
+        self.preferencesTabOpener = preferencesTabOpener
         AppLogger.shared.log("🏗️ [RuntimeCoordinator] init() called")
         let isOneShotProbeMode = AppDelegate.isOneShotProbeEnvironment()
 
@@ -392,7 +397,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
                     self?.pendingRuleSetup = nil
                     continuation.resume(returning: result)
                 }
-                openPreferencesTab(.openSettingsRules)
+                preferencesTabOpener(.openSettingsRules, nil)
             }
         }
         ruleCollectionsManager.onPrerequisiteResolution = { [weak self] context in
@@ -1291,7 +1296,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
         prerequisiteResolutionContinuation = nil
 
         pendingPrerequisiteResolution = RulePrerequisiteDialogModel(context: context)
-        openPreferencesTab(.openSettingsRules)
+        preferencesTabOpener(.openSettingsRules, nil)
 
         return await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
@@ -1325,7 +1330,7 @@ public class RuntimeCoordinator: SaveCoordinatorDelegate {
         pendingDependentResolution = RuleDependentResolutionDialogModel(
             context: context
         )
-        openPreferencesTab(.openSettingsRules)
+        preferencesTabOpener(.openSettingsRules, nil)
 
         return await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in

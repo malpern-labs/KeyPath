@@ -5,18 +5,37 @@ import XCTest
 
 @MainActor
 final class RuleCollectionsManagerAPITests: XCTestCase {
-    private func makeManager() -> RuleCollectionsManager {
-        RuleCollectionsManager(
-            ruleCollectionStore: .shared,
-            customRulesStore: .shared,
-            configurationService: ConfigurationService()
+    private func makeManager() throws -> RuleCollectionsManager {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rule-manager-api-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+
+        let defaultsSuite = "KeyPathTests.rule-manager-api.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsSuite))
+        addTeardownBlock { defaults.removePersistentDomain(forName: defaultsSuite) }
+        let collectionStore = RuleCollectionStore(fileURL: directory.appendingPathComponent("RuleCollections.json"))
+        let customRulesStore = CustomRulesStore(fileURL: directory.appendingPathComponent("CustomRules.json"))
+
+        return RuleCollectionsManager(
+            ruleCollectionStore: collectionStore,
+            customRulesStore: customRulesStore,
+            configurationService: ConfigurationService.sessionTestService(
+                configDirectory: directory.path,
+                ruleCollectionStore: collectionStore,
+                customRulesStore: customRulesStore
+            ),
+            keymapPreferences: defaults,
+            preferencesService: PreferencesService(leaderDefaults: defaults, defaults: defaults),
+            installedPackTracker: InstalledPackTracker(fileURL: directory.appendingPathComponent("installed-packs.json")),
+            notificationCenter: NotificationCenter()
         )
     }
 
     // MARK: - enabledMappings
 
-    func testEnabledMappings_IncludesEnabledCollections() {
-        let manager = makeManager()
+    func testEnabledMappings_IncludesEnabledCollections() throws {
+        let manager = try makeManager()
         manager.ruleCollections = [
             RuleCollection(
                 id: UUID(),
@@ -38,8 +57,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
         XCTAssertEqual(mappings[0].input, "a")
     }
 
-    func testEnabledMappings_ExcludesDisabledCollections() {
-        let manager = makeManager()
+    func testEnabledMappings_ExcludesDisabledCollections() throws {
+        let manager = try makeManager()
         manager.ruleCollections = [
             RuleCollection(
                 id: UUID(),
@@ -60,8 +79,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
         XCTAssertTrue(mappings.isEmpty)
     }
 
-    func testEnabledMappings_IncludesEnabledCustomRules() {
-        let manager = makeManager()
+    func testEnabledMappings_IncludesEnabledCustomRules() throws {
+        let manager = try makeManager()
         manager.ruleCollections = []
         var rule = CustomRule(input: "x", action: .keystroke(key: "y"))
         rule.isEnabled = true
@@ -72,8 +91,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
         XCTAssertEqual(mappings[0].input, "x")
     }
 
-    func testEnabledMappings_ExcludesDisabledCustomRules() {
-        let manager = makeManager()
+    func testEnabledMappings_ExcludesDisabledCustomRules() throws {
+        let manager = try makeManager()
         manager.ruleCollections = []
         var rule = CustomRule(input: "x", action: .keystroke(key: "y"))
         rule.isEnabled = false
@@ -83,8 +102,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
         XCTAssertTrue(mappings.isEmpty)
     }
 
-    func testEnabledMappings_CombinesCollectionsAndCustomRules() {
-        let manager = makeManager()
+    func testEnabledMappings_CombinesCollectionsAndCustomRules() throws {
+        let manager = try makeManager()
         manager.ruleCollections = [
             RuleCollection(
                 id: UUID(),
@@ -109,8 +128,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
 
     // MARK: - makeCustomRule
 
-    func testMakeCustomRule_NewInput_CreatesNew() {
-        let manager = makeManager()
+    func testMakeCustomRule_NewInput_CreatesNew() throws {
+        let manager = try makeManager()
         manager.customRules = []
 
         let rule = manager.makeCustomRule(input: "caps", output: "esc")
@@ -119,8 +138,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
         XCTAssertTrue(rule.isEnabled)
     }
 
-    func testMakeCustomRule_ExistingInput_PreservesID() {
-        let manager = makeManager()
+    func testMakeCustomRule_ExistingInput_PreservesID() throws {
+        let manager = try makeManager()
         let existing = CustomRule(input: "caps", action: .keystroke(key: "tab"))
         manager.customRules = [existing]
 
@@ -129,8 +148,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
         XCTAssertEqual(rule.action, .keystroke(key: "esc"))
     }
 
-    func testMakeCustomRule_CaseInsensitiveMatch() {
-        let manager = makeManager()
+    func testMakeCustomRule_CaseInsensitiveMatch() throws {
+        let manager = try makeManager()
         let existing = CustomRule(input: "Caps", action: .keystroke(key: "tab"))
         manager.customRules = [existing]
 
@@ -138,8 +157,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
         XCTAssertEqual(rule.id, existing.id)
     }
 
-    func testMakeCustomRule_RawKanataOutput() {
-        let manager = makeManager()
+    func testMakeCustomRule_RawKanataOutput() throws {
+        let manager = try makeManager()
         manager.customRules = []
 
         let rule = manager.makeCustomRule(input: "a", output: "(multi lctl lsft)")
@@ -148,8 +167,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
 
     // MARK: - getCustomRule
 
-    func testGetCustomRule_Found() {
-        let manager = makeManager()
+    func testGetCustomRule_Found() throws {
+        let manager = try makeManager()
         let existing = CustomRule(input: "caps", action: .keystroke(key: "esc"))
         manager.customRules = [existing]
 
@@ -158,8 +177,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
         XCTAssertEqual(found?.id, existing.id)
     }
 
-    func testGetCustomRule_CaseInsensitive() {
-        let manager = makeManager()
+    func testGetCustomRule_CaseInsensitive() throws {
+        let manager = try makeManager()
         let existing = CustomRule(input: "Caps", action: .keystroke(key: "esc"))
         manager.customRules = [existing]
 
@@ -167,8 +186,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
         XCTAssertNotNil(found)
     }
 
-    func testGetCustomRule_NotFound() {
-        let manager = makeManager()
+    func testGetCustomRule_NotFound() throws {
+        let manager = try makeManager()
         manager.customRules = []
 
         let found = manager.getCustomRule(forInput: "nonexistent")
@@ -177,8 +196,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
 
     // MARK: - normalizedActivator
 
-    func testNormalizedActivator_WithActivator() {
-        let manager = makeManager()
+    func testNormalizedActivator_WithActivator() throws {
+        let manager = try makeManager()
         let collection = RuleCollection(
             id: UUID(),
             name: "Nav",
@@ -198,8 +217,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
         XCTAssertEqual(result?.layer, .navigation)
     }
 
-    func testNormalizedActivator_WithoutActivator() {
-        let manager = makeManager()
+    func testNormalizedActivator_WithoutActivator() throws {
+        let manager = try makeManager()
         let collection = RuleCollection(
             id: UUID(),
             name: "Base",
@@ -219,21 +238,21 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
 
     // MARK: - updateActiveLayerName
 
-    func testUpdateActiveLayerName_SetsCurrentLayerName() {
-        let manager = makeManager()
+    func testUpdateActiveLayerName_SetsCurrentLayerName() throws {
+        let manager = try makeManager()
         manager.updateActiveLayerName("nav")
         XCTAssertEqual(manager.currentLayerName, "Nav")
     }
 
-    func testUpdateActiveLayerName_EmptyString_DefaultsToBase() {
-        let manager = makeManager()
+    func testUpdateActiveLayerName_EmptyString_DefaultsToBase() throws {
+        let manager = try makeManager()
         manager.updateActiveLayerName("nav")
         manager.updateActiveLayerName("")
         XCTAssertEqual(manager.currentLayerName, "Base")
     }
 
-    func testUpdateActiveLayerName_CallsOnLayerChanged() {
-        let manager = makeManager()
+    func testUpdateActiveLayerName_CallsOnLayerChanged() throws {
+        let manager = try makeManager()
         var changedTo: String?
         manager.onLayerChanged = { changedTo = $0 }
 
@@ -241,8 +260,8 @@ final class RuleCollectionsManagerAPITests: XCTestCase {
         XCTAssertEqual(changedTo, "Nav")
     }
 
-    func testUpdateActiveLayerName_SameValue_DoesNotCallCallback() {
-        let manager = makeManager()
+    func testUpdateActiveLayerName_SameValue_DoesNotCallCallback() throws {
+        let manager = try makeManager()
         manager.updateActiveLayerName("nav")
 
         var called = false

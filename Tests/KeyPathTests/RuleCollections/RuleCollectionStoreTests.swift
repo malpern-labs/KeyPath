@@ -3,6 +3,14 @@ import KeyPathRulesCore
 @preconcurrency import XCTest
 
 final class RuleCollectionStoreTests: XCTestCase {
+    private func makeTempDirectory() throws -> URL {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("rule-collections-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+        return directory
+    }
+
     func testLoadFallsBackToDefaultsWhenFileMissing() async {
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("rule-collections-\(UUID().uuidString)")
@@ -15,9 +23,7 @@ final class RuleCollectionStoreTests: XCTestCase {
     }
 
     func testSaveAndLoadRoundTrip() async throws {
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("rule-collections-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = try makeTempDirectory()
         let fileURL = tempDir.appendingPathComponent("collections.json")
 
         let store = RuleCollectionStore.testStore(at: fileURL)
@@ -55,9 +61,7 @@ final class RuleCollectionStoreTests: XCTestCase {
     }
 
     func testLoadKeepsBuiltInCollectionsLocalUntilAnUpdateIsApproved() async throws {
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("rule-collections-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = try makeTempDirectory()
         let fileURL = tempDir.appendingPathComponent("collections.json")
 
         let legacyEntry: [String: Any] = [
@@ -89,9 +93,7 @@ final class RuleCollectionStoreTests: XCTestCase {
     }
 
     func testSaveWritesVersionedFormat() async throws {
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("rule-collections-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = try makeTempDirectory()
         let fileURL = tempDir.appendingPathComponent("collections.json")
 
         let store = RuleCollectionStore.testStore(at: fileURL)
@@ -117,9 +119,7 @@ final class RuleCollectionStoreTests: XCTestCase {
     }
 
     func testLoadReadsVersionedFormat() async throws {
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("rule-collections-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = try makeTempDirectory()
         let fileURL = tempDir.appendingPathComponent("collections.json")
 
         let store = RuleCollectionStore.testStore(at: fileURL)
@@ -137,9 +137,7 @@ final class RuleCollectionStoreTests: XCTestCase {
     // MARK: - Resilient Decode Tests
 
     func testLoadRecoversSurvivingCollectionsWhenOneIsBroken() async throws {
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("rule-collections-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = try makeTempDirectory()
         let fileURL = tempDir.appendingPathComponent("collections.json")
 
         // Build a versioned JSON with one valid collection and one broken one
@@ -183,9 +181,7 @@ final class RuleCollectionStoreTests: XCTestCase {
     }
 
     func testLoadCreatesBackupWhenDecodePartiallyFails() async throws {
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("rule-collections-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = try makeTempDirectory()
         let fileURL = tempDir.appendingPathComponent("collections.json")
 
         // Write versioned JSON with a broken collection (category is wrong type)
@@ -215,9 +211,7 @@ final class RuleCollectionStoreTests: XCTestCase {
     }
 
     func testLoadReturnsDefaultsForCompletelyCorruptFile() async throws {
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("rule-collections-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = try makeTempDirectory()
         let fileURL = tempDir.appendingPathComponent("collections.json")
 
         let garbageData = try XCTUnwrap("this is not json at all".data(using: .utf8))
@@ -232,9 +226,7 @@ final class RuleCollectionStoreTests: XCTestCase {
     }
 
     func testLoadPreservesEnabledStateWhenSiblingCollectionFails() async throws {
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("rule-collections-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = try makeTempDirectory()
         let fileURL = tempDir.appendingPathComponent("collections.json")
 
         let catalog = RuleCollectionCatalog()
@@ -283,9 +275,7 @@ final class RuleCollectionStoreTests: XCTestCase {
     }
 
     func testLoadAddsMissingCatalogDefaultsWhenFileHasSubset() async throws {
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("rule-collections-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = try makeTempDirectory()
         let fileURL = tempDir.appendingPathComponent("collections.json")
 
         let catalog = RuleCollectionCatalog()
@@ -314,9 +304,7 @@ final class RuleCollectionStoreTests: XCTestCase {
     }
 
     func testCatalogUpdateBackupCopiesThePersistedCollections() async throws {
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("rule-collections-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = try makeTempDirectory()
         let fileURL = tempDir.appendingPathComponent("collections.json")
         let store = RuleCollectionStore.testStore(at: fileURL)
         let original = RuleCollectionCatalog().defaultCollections()
