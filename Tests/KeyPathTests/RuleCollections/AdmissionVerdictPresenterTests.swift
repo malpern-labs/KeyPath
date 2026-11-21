@@ -105,8 +105,7 @@ final class AdmissionVerdictPresenterTests: XCTestCase {
     // MARK: - Toggle-time synthetic party
 
     func testToggleTimeShowsTheLeaderKeyWithoutOfferingToDisableIt() throws {
-        let manager = RuleCollectionsManager(ruleCollectionStore: .shared, customRulesStore: .shared,
-                                             configurationService: ConfigurationService())
+        let manager = try RuleCollectionsManagerTestFixture.makeManager(testCase: self)
         manager.preferencesService.leaderKeyPreference = LeaderKeyPreference(key: "space", targetLayer: .navigation, enabled: true)
         defer { manager.preferencesService.leaderKeyPreference = .default }
         let candidate = collection("Nav", [], activator: MomentaryActivator(input: "space", targetLayer: .custom("sym")))

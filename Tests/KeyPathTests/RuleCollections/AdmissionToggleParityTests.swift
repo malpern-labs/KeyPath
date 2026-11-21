@@ -6,9 +6,8 @@ import KeyPathRulesCore
 /// Phase 4a: toggle-time conflict checks ask the same engine as the save path.
 @MainActor
 final class AdmissionToggleParityTests: XCTestCase {
-    private func makeManager(collections: [RuleCollection], rules: [CustomRule] = []) -> RuleCollectionsManager {
-        let manager = RuleCollectionsManager(ruleCollectionStore: .shared, customRulesStore: .shared,
-                                             configurationService: ConfigurationService())
+    private func makeManager(collections: [RuleCollection], rules: [CustomRule] = []) throws -> RuleCollectionsManager {
+        let manager = try RuleCollectionsManagerTestFixture.makeManager(testCase: self)
         manager.ruleCollections = collections
         manager.customRules = rules
         return manager
@@ -25,7 +24,7 @@ final class AdmissionToggleParityTests: XCTestCase {
 
     /// For each scenario, enabling the candidate conflicts at toggle time exactly
     /// when the save-time detector would refuse the resulting state.
-    func testToggleTimeAgreesWithSaveTimeDetector() {
+    func testToggleTimeAgreesWithSaveTimeDetector() throws {
         let cases: [(others: [RuleCollection], rules: [CustomRule], candidate: RuleCollection)] = [
             ([collection("A", [("a", "1")])], [], collection("B", [("a", "2")])),
             ([collection("A", [("a", "1")])], [], collection("B", [("b", "2")])),
@@ -41,7 +40,7 @@ final class AdmissionToggleParityTests: XCTestCase {
         ]
         var conflicts = 0
         for (index, c) in cases.enumerated() {
-            let manager = makeManager(collections: c.others, rules: c.rules)
+            let manager = try makeManager(collections: c.others, rules: c.rules)
             var proposed = c.candidate
             proposed.isEnabled = true
             let saveTime = AdmissionEngine.mappingConflicts(
@@ -56,7 +55,7 @@ final class AdmissionToggleParityTests: XCTestCase {
 
     func testConflictReportsEveryCollidingKeyWithTheOtherParty() throws {
         let a = collection("A", [("a", "1"), ("b", "1"), ("c", "1")])
-        let manager = makeManager(collections: [a])
+        let manager = try makeManager(collections: [a])
         let info = try XCTUnwrap(manager.conflictInfo(for: collection("B", [("a", "2"), ("b", "2"), ("z", "2")])))
         XCTAssertEqual(info.keys, ["a", "b"])
         guard case let .collection(source) = info.source else { return XCTFail("expected a collection") }
@@ -64,10 +63,10 @@ final class AdmissionToggleParityTests: XCTestCase {
     }
 
     /// The old toggle-time check compared custom rules ignoring their layer.
-    func testCustomRulesOnDifferentLayersNoLongerConflict() {
+    func testCustomRulesOnDifferentLayersNoLongerConflict() throws {
         let base = CustomRule(title: "Base", input: "q", action: .keystroke(key: "1"))
         let nav = CustomRule(title: "Nav", input: "q", action: .keystroke(key: "2"), targetLayer: .navigation)
-        let manager = makeManager(collections: [], rules: [base])
+        let manager = try makeManager(collections: [], rules: [base])
         XCTAssertNil(manager.conflictInfo(for: nav))
         let sameLayer = CustomRule(title: "Same", input: "q", action: .keystroke(key: "3"))
         XCTAssertNotNil(manager.conflictInfo(for: sameLayer))
@@ -77,8 +76,8 @@ final class AdmissionToggleParityTests: XCTestCase {
         let neovim = try XCTUnwrap(RuleCollectionCatalog().defaultCollections().first { $0.id == RuleCollectionIdentifier.neovimTerminal })
         let key = try XCTUnwrap(KanataConfiguration.effectiveMappings(for: neovim).first?.input)
         let other = collection("Other", [(key, "x")], layer: neovim.targetLayer)
-        let manager = makeManager(collections: [other])
+        let manager = try makeManager(collections: [other])
         XCTAssertNil(manager.conflictInfo(for: neovim))
-        XCTAssertNil(makeManager(collections: [neovim]).conflictInfo(for: other))
+        XCTAssertNil(try makeManager(collections: [neovim]).conflictInfo(for: other))
     }
 }

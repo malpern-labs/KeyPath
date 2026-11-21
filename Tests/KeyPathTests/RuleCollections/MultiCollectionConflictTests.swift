@@ -5,12 +5,8 @@ import KeyPathRulesCore
 
 @MainActor
 final class MultiCollectionConflictTests: XCTestCase {
-    private func makeManager() -> RuleCollectionsManager {
-        RuleCollectionsManager(
-            ruleCollectionStore: .shared,
-            customRulesStore: .shared,
-            configurationService: ConfigurationService()
-        )
+    private func makeManager() throws -> RuleCollectionsManager {
+        try RuleCollectionsManagerTestFixture.makeManager(testCase: self)
     }
 
     private func collection(
@@ -84,8 +80,8 @@ final class MultiCollectionConflictTests: XCTestCase {
 
     // MARK: - Conflict Resolution Cascade
 
-    func testConflictInfo_RevealedConflictAfterDisabling() {
-        let manager = makeManager()
+    func testConflictInfo_RevealedConflictAfterDisabling() throws {
+        let manager = try makeManager()
         let first = collection(name: "First", mappings: [("a", "1")])
         let second = collection(name: "Second", mappings: [("a", "2")])
         let third = collection(name: "Third", mappings: [("a", "3")])
@@ -102,8 +98,8 @@ final class MultiCollectionConflictTests: XCTestCase {
         XCTAssertTrue(conflictWithFirst?.keys.contains("a") ?? false)
     }
 
-    func testConflictInfo_NoConflictAfterAllDisabled() {
-        let manager = makeManager()
+    func testConflictInfo_NoConflictAfterAllDisabled() throws {
+        let manager = try makeManager()
         var first = collection(name: "First", mappings: [("a", "1")])
         first.isEnabled = false
         var second = collection(name: "Second", mappings: [("a", "2")])
@@ -117,8 +113,8 @@ final class MultiCollectionConflictTests: XCTestCase {
 
     // MARK: - Activator Conflicts
 
-    func testConflictInfo_DifferentActivatorsSameKey() {
-        let manager = makeManager()
+    func testConflictInfo_DifferentActivatorsSameKey() throws {
+        let manager = try makeManager()
         let navA = collection(
             name: "Nav A",
             mappings: [("h", "left")],
@@ -140,8 +136,8 @@ final class MultiCollectionConflictTests: XCTestCase {
         )
     }
 
-    func testConflictInfo_IdenticalActivatorsNoConflict() {
-        let manager = makeManager()
+    func testConflictInfo_IdenticalActivatorsNoConflict() throws {
+        let manager = try makeManager()
         let navA = collection(
             name: "Nav A",
             mappings: [("h", "left")],
@@ -163,8 +159,8 @@ final class MultiCollectionConflictTests: XCTestCase {
         )
     }
 
-    func testConflictInfo_DifferentActivatorKeys() {
-        let manager = makeManager()
+    func testConflictInfo_DifferentActivatorKeys() throws {
+        let manager = try makeManager()
         let navA = collection(
             name: "Nav A",
             mappings: [("h", "left")],
@@ -188,8 +184,8 @@ final class MultiCollectionConflictTests: XCTestCase {
 
     // MARK: - Cross-Layer Edge Cases
 
-    func testConflictInfo_SameKeyDifferentLayersNoConflict() {
-        let manager = makeManager()
+    func testConflictInfo_SameKeyDifferentLayersNoConflict() throws {
+        let manager = try makeManager()
         let base = collection(name: "Base", mappings: [("h", "h")], layer: .base)
         let nav = collection(name: "Nav", mappings: [("h", "left")], layer: .navigation)
 
@@ -198,8 +194,8 @@ final class MultiCollectionConflictTests: XCTestCase {
         XCTAssertNil(conflict, "Same key on different layers should not conflict")
     }
 
-    func testConflictInfo_CustomLayerConflict() {
-        let manager = makeManager()
+    func testConflictInfo_CustomLayerConflict() throws {
+        let manager = try makeManager()
         let window1 = collection(name: "Window A", mappings: [("h", "left")], layer: .custom("window"))
         let window2 = collection(name: "Window B", mappings: [("h", "right")], layer: .custom("window"))
 
@@ -208,8 +204,8 @@ final class MultiCollectionConflictTests: XCTestCase {
         XCTAssertNotNil(conflict, "Same key on same custom layer should conflict")
     }
 
-    func testConflictInfo_DifferentCustomLayersNoConflict() {
-        let manager = makeManager()
+    func testConflictInfo_DifferentCustomLayersNoConflict() throws {
+        let manager = try makeManager()
         let window = collection(name: "Window", mappings: [("h", "left")], layer: .custom("window"))
         let symbols = collection(name: "Symbols", mappings: [("h", "!")])
 
@@ -273,8 +269,8 @@ final class MultiCollectionConflictTests: XCTestCase {
 
     // MARK: - Neovim Terminal Exclusion
 
-    func testConflictInfo_NeovimTerminalNeverConflicts() {
-        let manager = makeManager()
+    func testConflictInfo_NeovimTerminalNeverConflicts() throws {
+        let manager = try makeManager()
         let nav = collection(name: "Nav", mappings: [("h", "left")], layer: .navigation)
         manager.ruleCollections = [nav]
 
@@ -291,8 +287,8 @@ final class MultiCollectionConflictTests: XCTestCase {
         XCTAssertNil(conflict, "Neovim Terminal should never conflict")
     }
 
-    func testConflictInfo_ExistingNeovimDoesNotBlockNew() {
-        let manager = makeManager()
+    func testConflictInfo_ExistingNeovimDoesNotBlockNew() throws {
+        let manager = try makeManager()
         let neovim = RuleCollection(
             id: RuleCollectionIdentifier.neovimTerminal,
             name: "Neovim Terminal",
@@ -311,8 +307,8 @@ final class MultiCollectionConflictTests: XCTestCase {
 
     // MARK: - Custom Rule vs Collection Conflicts
 
-    func testConflictInfo_CustomRuleConflictsWithMultipleCollections() {
-        let manager = makeManager()
+    func testConflictInfo_CustomRuleConflictsWithMultipleCollections() throws {
+        let manager = try makeManager()
         let collA = collection(name: "A", mappings: [("caps", "esc")])
         manager.ruleCollections = [collA]
 
@@ -321,8 +317,8 @@ final class MultiCollectionConflictTests: XCTestCase {
         XCTAssertNotNil(conflict, "Custom rule should detect collection conflict")
     }
 
-    func testConflictInfo_CustomRuleNoConflictDifferentLayer() {
-        let manager = makeManager()
+    func testConflictInfo_CustomRuleNoConflictDifferentLayer() throws {
+        let manager = try makeManager()
         let nav = collection(name: "Nav", mappings: [("h", "left")], layer: .navigation)
         manager.ruleCollections = [nav]
 
@@ -332,8 +328,8 @@ final class MultiCollectionConflictTests: XCTestCase {
         XCTAssertNil(conflict, "Custom rule on different layer should not conflict")
     }
 
-    func testConflictInfo_CustomRuleConflictsWithOtherCustomRule() {
-        let manager = makeManager()
+    func testConflictInfo_CustomRuleConflictsWithOtherCustomRule() throws {
+        let manager = try makeManager()
         manager.ruleCollections = []
 
         var existing = CustomRule(input: "caps", action: .keystroke(key: "esc"))
@@ -345,8 +341,8 @@ final class MultiCollectionConflictTests: XCTestCase {
         XCTAssertNotNil(conflict)
     }
 
-    func testConflictInfo_DisabledCustomRuleNoConflict() {
-        let manager = makeManager()
+    func testConflictInfo_DisabledCustomRuleNoConflict() throws {
+        let manager = try makeManager()
         manager.ruleCollections = []
 
         var existing = CustomRule(input: "caps", action: .keystroke(key: "esc"))
@@ -360,8 +356,8 @@ final class MultiCollectionConflictTests: XCTestCase {
 
     // MARK: - Key Normalization in Conflicts
 
-    func testConflictInfo_NormalizesKeyNames() {
-        let manager = makeManager()
+    func testConflictInfo_NormalizesKeyNames() throws {
+        let manager = try makeManager()
         let collWithCaps = collection(name: "Caps", mappings: [("caps", "esc")])
         manager.ruleCollections = [collWithCaps]
 
@@ -370,8 +366,8 @@ final class MultiCollectionConflictTests: XCTestCase {
         XCTAssertNotNil(conflict, "'caps' and 'capslock' should normalize to same key")
     }
 
-    func testConflictInfo_NormalizesModifierNames() {
-        let manager = makeManager()
+    func testConflictInfo_NormalizesModifierNames() throws {
+        let manager = try makeManager()
         let collA = collection(name: "A", mappings: [("left shift", "x")])
         manager.ruleCollections = [collA]
 

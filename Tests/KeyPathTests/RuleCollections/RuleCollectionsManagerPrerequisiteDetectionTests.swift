@@ -4,8 +4,8 @@ import XCTest
 
 @MainActor
 final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
-    func testDefaultCatalogHasNoNewPrerequisites() {
-        let manager = makeManager()
+    func testDefaultCatalogHasNoNewPrerequisites() throws {
+        let manager = try makeManager()
         manager.ruleCollections = RuleCollectionCatalog().defaultCollections()
 
         let candidate = manager.ruleCollections[0]
@@ -13,8 +13,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         XCTAssertTrue(manager.prerequisites(for: candidate).isEmpty)
     }
 
-    func testForwardAnalysisFindsMissingLayerContentWithEvidence() {
-        let manager = makeManager()
+    func testForwardAnalysisFindsMissingLayerContentWithEvidence() throws {
+        let manager = try makeManager()
         let consumer = homeRowToggles(
             id: uuid(1),
             enabled: false,
@@ -38,8 +38,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         ])
     }
 
-    func testForwardAnalysisAppendsBrandNewCandidate() {
-        let manager = makeManager()
+    func testForwardAnalysisAppendsBrandNewCandidate() throws {
+        let manager = try makeManager()
         let candidate = homeRowToggles(
             id: uuid(3),
             enabled: false,
@@ -55,8 +55,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         ])
     }
 
-    func testForwardAnalysisFindsMissingActivationPath() {
-        let manager = makeManager()
+    func testForwardAnalysisFindsMissingActivationPath() throws {
+        let manager = try makeManager()
         let consumer = collection(
             id: uuid(2),
             name: "Symbols",
@@ -79,8 +79,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         ])
     }
 
-    func testForwardAnalysisFindsMissingHyperAlias() {
-        let manager = makeManager()
+    func testForwardAnalysisFindsMissingHyperAlias() throws {
+        let manager = try makeManager()
         let launcher = collection(
             id: RuleCollectionIdentifier.launcher,
             name: "Launcher",
@@ -99,7 +99,7 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
     }
 
     func testForwardAnalysisReturnsSingleDisabledProviderAsRecommendation() throws {
-        let manager = makeManager()
+        let manager = try makeManager()
         let provider = layerContentProvider(
             id: uuid(10),
             name: "Function",
@@ -122,7 +122,7 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
     }
 
     func testForwardAnalysisReturnsMultipleProvidersWithoutRecommendation() throws {
-        let manager = makeManager()
+        let manager = try makeManager()
         let first = layerContentProvider(
             id: uuid(20),
             name: "First Function",
@@ -153,8 +153,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         XCTAssertNil(prerequisite.recommendedProviderCollectionID)
     }
 
-    func testForwardAnalysisUsesProposedConfigurationInsteadOfStoredState() {
-        let manager = makeManager()
+    func testForwardAnalysisUsesProposedConfigurationInsteadOfStoredState() throws {
+        let manager = try makeManager()
         let stored = collection(
             id: uuid(30),
             name: "Home Row Mods",
@@ -179,8 +179,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         ])
     }
 
-    func testForwardProviderEditReportsNewlyOrphanedExistingConsumer() {
-        let manager = makeManager()
+    func testForwardProviderEditReportsNewlyOrphanedExistingConsumer() throws {
+        let manager = try makeManager()
         let provider = collection(
             id: uuid(31),
             name: "Navigation Activator",
@@ -209,8 +209,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         ])
     }
 
-    func testForwardAnalysisDoesNotRepeatPreexistingMissingRequirement() {
-        let manager = makeManager()
+    func testForwardAnalysisDoesNotRepeatPreexistingMissingRequirement() throws {
+        let manager = try makeManager()
         let broken = homeRowToggles(
             id: uuid(40),
             enabled: true,
@@ -226,8 +226,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         XCTAssertTrue(manager.prerequisites(for: unrelated).isEmpty)
     }
 
-    func testForwardAnalysisDoesNotRepeatMissingCapabilityWhenEvidenceChanges() {
-        let manager = makeManager()
+    func testForwardAnalysisDoesNotRepeatMissingCapabilityWhenEvidenceChanges() throws {
+        let manager = try makeManager()
         let stored = homeRowToggles(
             id: uuid(42),
             enabled: true,
@@ -243,8 +243,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         XCTAssertTrue(manager.prerequisites(for: proposed).isEmpty)
     }
 
-    func testReverseAnalysisDoesNotWarnWhenAnotherProviderRemainsActive() {
-        let manager = makeManager()
+    func testReverseAnalysisDoesNotWarnWhenAnotherProviderRemainsActive() throws {
+        let manager = try makeManager()
         let victim = layerContentProvider(
             id: uuid(50),
             name: "First Function",
@@ -267,8 +267,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         XCTAssertTrue(manager.dependents(ifDisabling: victim.id).isEmpty)
     }
 
-    func testReverseAnalysisDoesNotRepeatPreexistingOrphan() {
-        let manager = makeManager()
+    func testReverseAnalysisDoesNotRepeatPreexistingOrphan() throws {
+        let manager = try makeManager()
         let unrelatedVictim = layerContentProvider(
             id: uuid(53),
             name: "Symbols",
@@ -287,8 +287,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         )
     }
 
-    func testReverseAnalysisFindsOneOrphanAndRemainingDisabledProviders() {
-        let manager = makeManager()
+    func testReverseAnalysisFindsOneOrphanAndRemainingDisabledProviders() throws {
+        let manager = try makeManager()
         let victim = layerContentProvider(
             id: uuid(60),
             name: "Active Function",
@@ -323,8 +323,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         ])
     }
 
-    func testReverseAnalysisFindsMultipleOrphansInDisplayAndRequirementOrder() {
-        let manager = makeManager()
+    func testReverseAnalysisFindsMultipleOrphansInDisplayAndRequirementOrder() throws {
+        let manager = try makeManager()
         let function = layerContentProvider(
             id: uuid(70),
             name: "Function",
@@ -357,8 +357,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         ])
     }
 
-    func testForwardResultsUseDisplayThenCapabilityAndEvidenceOrder() {
-        let manager = makeManager()
+    func testForwardResultsUseDisplayThenCapabilityAndEvidenceOrder() throws {
+        let manager = try makeManager()
         let second = homeRowToggles(
             id: uuid(82),
             name: "Second",
@@ -385,12 +385,8 @@ final class RuleCollectionsManagerPrerequisiteDetectionTests: XCTestCase {
         ])
     }
 
-    private func makeManager() -> RuleCollectionsManager {
-        RuleCollectionsManager(
-            ruleCollectionStore: .shared,
-            customRulesStore: .shared,
-            configurationService: ConfigurationService()
-        )
+    private func makeManager() throws -> RuleCollectionsManager {
+        try RuleCollectionsManagerTestFixture.makeManager(testCase: self)
     }
 
     private func collection(
