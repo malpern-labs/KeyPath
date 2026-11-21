@@ -1,75 +1,71 @@
-# Manual test: upgrade from public 1.0.1 to the session runtime
+# Manual cleanup rehearsal: public KeyPath 1.0.1
 
-**Obsolete:** [ADR-047](../adr/adr-047-pre-release-cleanup.md) withdrew 1.0.1 upgrade support, and the in-app removal this test covered was deleted. Kept for history.
+The in-app migration and automatic removal path described by the original
+version of this test was withdrawn in [ADR-047](../adr/adr-047-pre-release-cleanup.md).
+This plan now verifies the **manual cleanup instructions published in**
+[`guides/upgrading-from-1-0-1.md`](../../guides/upgrading-from-1-0-1.md).
+It does not test or imply automatic migration support.
 
-Issue [#1353](https://github.com/malpern-labs/KeyPath/issues/1353), ADR-045 Upgrade Constraint.
+**Status: blocked before guest creation (November 21, 2026).** The official
+1.0.1 ZIP was downloaded and matched its release digest. The first Tart clone
+failed with `utimes(2) failed: Operation not permitted`. A later Parallels
+attempt selected the macOS 26 desktop base but failed while installing the
+lease SSH key (`PrlJob_GetResult: Invalid argument`). vm-lab recorded both
+owned leases as destroyed with cleanup complete. No guest-side steps ran.
+Retry only through `vm-lab` after the provider issue is diagnosed; do not use a
+developer Mac or bypass admission. Keep the lab's base fingerprint check.
 
-**Status: not yet run.** It needs a clean macOS VM from `vm-lab` on the mini.
-Record each run at the bottom, with the build under test and the lease.
+## Rehearsal
 
-## Setup
+1. Create a fresh desktop guest using the current lab admission procedure in
+   [`remote-installer-lab.md`](remote-installer-lab.md). Install the public
+   KeyPath 1.0.1 release from its official GitHub release asset and complete
+   its setup. Do not install or update the session-runtime build yet.
+2. Add a harmless sample rule and verify it works. Back up
+   `~/.config/keypath` outside the app's install directory; record its file
+   names and hashes without exposing any rule contents.
+3. Capture the legacy service state before cleanup:
 
-1. Create a clean macOS 26 desktop lease (and repeat on 27):
-   `vm-lab keypath create --macos 26 --lane unmanaged-ui --desktop --ttl 2h --commit <sha> --installer <signed build>`.
-   Follow `docs/testing/remote-installer-lab.md` for admission.
-2. Install public **1.0.1** from its GitHub release DMG. Finish its wizard:
-   helper, Karabiner driver, Input Monitoring, Accessibility, kanata daemon.
-3. Add one simple rule (for example `caps → esc`) and confirm it works.
-4. Record the starting state (all should show the 1.0.1 stack):
+   ```bash
+   sudo launchctl print system/com.keypath.kanata
+   sudo launchctl print system/com.keypath.helper
+   sudo launchctl print system/com.keypath.karabiner-vhiddaemon
+   sudo launchctl print system/com.keypath.karabiner-vhidmanager
+   sudo launchctl print system/com.keypath.logrotate
+   ls -l /Library/PrivilegedHelperTools/com.keypath.helper
+   find /Library/LaunchDaemons -maxdepth 1 -name 'com.keypath.*.plist' -print
    ```
-   sudo launchctl print system/com.keypath.kanata | head -5
-   sudo launchctl print system/com.keypath.helper | head -5
-   ps -axo user,pid,command | grep -E 'Library/(KeyPath|HelperTools)/' | grep -v grep
-   ls -l /Library/PrivilegedHelperTools/com.keypath.helper /Library/LaunchDaemons/com.keypath.*
-   systemextensionsctl list | grep -i karabiner
-   ```
 
-## Upgrade
+   Record which expected items exist. A missing item is not a reason to create
+   it; the guide is for cleanup of components actually installed by 1.0.1.
+4. Follow the public guide literally, including its stop-and-check step before
+   deleting files. Do not run a broad `rm -rf`, remove the Karabiner driver, or
+   remove anything not named in the guide. Capture command output and any
+   unexpected prompt or error.
+5. Re-run the service and file checks. Confirm each named launchd service is
+   absent, the listed KeyPath helper/plists are gone, and the backed-up user
+   rules still match the original hashes.
+6. Reboot the disposable guest and repeat the checks. This detects services
+   that were unloaded temporarily but remain configured to return at login or
+   boot.
+7. Install the current session-runtime build only when a valid signed artifact
+   is available. Complete its normal permission flow, restore/import the sample
+   rule, and verify one remap. If the current artifact cannot be installed,
+   record the cleanup rehearsal separately and leave the runtime-remap result
+   unverified.
 
-5. Install the build under test over 1.0.1 (drag to Applications, replace). Do
-   not reboot. Open it.
-6. Expect: remapping does not start. **Settings → Status** shows
-   "The keyboard service from KeyPath 1.0.1 is still running" with a
-   **Remove Old Service** button. The 1.0.1 rule may still work through the old
-   daemon; that is expected until removal.
-7. Choose **Remove Old Service**, then **cancel** the password prompt.
-   Expect: an error toast "Administrator authorization was cancelled."; the
-   refusal and button remain; the daemon is still loaded (step 4 commands).
-8. Choose **Remove Old Service** again and authenticate. Count prompts: exactly **one**.
-9. Expect: a success toast, KeyPath running, and a sentence about the Karabiner
-   driver (it is still installed). The `caps → esc` rule works through the
-   session runtime.
+## Acceptance
 
-## Verify
-
-10. Re-run the step 4 commands. Expect:
-    - both `launchctl print` commands report "Could not find service"
-    - no root process with a KeyPath bundle path
-    - no `/Library/PrivilegedHelperTools/com.keypath.helper`, no `/Library/LaunchDaemons/com.keypath.*`
-    - the Karabiner driver still listed by `systemextensionsctl` (not removed by design)
-11. `~/Library/Logs/KeyPath/keypath-debug.log` contains `[legacy-cleanup] Verified: nothing left`.
-12. Reboot. Log in. Expect: no 1.0.1 daemon or helper comes back, and KeyPath
-    starts with no refusal. Check System Settings → General → Login Items:
-    record whether a stale KeyPath background item is still listed (a
-    ServiceManagement record the app could not unregister; cosmetic, but note it).
-13. Follow the guide's driver removal command once (`Karabiner-VirtualHIDDevice-Manager deactivate`)
-    and record whether it works as written. Update `guides/upgrading-from-1-0-1.md` if not.
-
-## Variations
-
-- **Karabiner-Elements installed** before the upgrade: the toast says
-  Karabiner-Elements uses the driver; Karabiner-Elements still works afterwards.
-- **Sparkle update** from 1.0.1 instead of a manual replace, if 1.0.1's appcast
-  can reach the build under test.
-- **Already removed**: run step 8 a second time. Expect no password prompt.
-- **Switched off in 1.0.1**: turn remapping off in 1.0.1 before upgrading.
-  Expect "Turned off" after the upgrade; turning it on shows the refusal and the
-  button. Note whether the 1.0.1 daemon kept remapping while KeyPath said off.
-- **Two macOS users**: with a second account signed in (fast user switching)
-  running KeyPath, the cleanup must not stop that account's processes.
+- The cleanup guide's exact commands complete without undocumented changes.
+- No listed 1.0.1 service or file returns after reboot.
+- User rules remain intact.
+- If step 7 is completed, the current runtime starts with normal consent and
+  remaps the sample key.
+- The guest is destroyed through `vm-lab`; the base fingerprint is unchanged.
 
 ## Results
 
-| Date | Build | macOS | Lease | Result | Notes |
-| ---- | ----- | ----- | ----- | ------ | ----- |
-| — | — | — | — | not run | mini offline (Nov 2026) |
+| Date | 1.0.1 asset digest | macOS | Lease | Cleanup | Rule preservation | Reboot | Current runtime | Notes |
+| ---- | ------------------ | ----- | ----- | ------- | ----------------- | ------ | ---------------- | ----- |
+| 2026-11-21 | `cf4797c97b82e04081057bb7688389ab8f681d51e1e8b084a6887f8a68614296` | — | `cbx_af9cbb9f9e31` | not run | not run | not run | not run | Tart clone failed before guest creation (`utimes` permission error); vm-lab cleanup completed; no Parallels lease was touched. |
+| 2026-11-21 | `cf4797c97b82e04081057bb7688389ab8f681d51e1e8b084a6887f8a68614296` | 26 | `cbx_7d9285bef732` | not run | not run | not run | not run | Parallels failed during lease SSH-key installation (`PrlJob_GetResult: Invalid argument`); vm-lab destroyed the owned lease and confirmed cleanup complete; no guest-side steps ran. |
