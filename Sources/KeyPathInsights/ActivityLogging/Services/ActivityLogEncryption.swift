@@ -9,12 +9,11 @@ import Security
 public actor ActivityLogEncryption {
     // MARK: - Constants
 
-    /// Unit tests use a separate Keychain service so a test calling
-    /// `deleteKey()` (e.g. via `ActivityLogStorage.clearAll()`) can never
-    /// delete the production key and orphan real encrypted logs.
-    static let keychainService = TestEnvironment.isRunningTests
-        ? "com.keypath.activitylog.tests"
-        : "com.keypath.activitylog"
+    static let keychainService = "com.keypath.activitylog"
+    static var usesKeychain: Bool {
+        !TestEnvironment.isRunningTests
+    }
+
     private static let keychainAccount = "encryption-key"
 
     // MARK: - Errors
@@ -52,9 +51,10 @@ public actor ActivityLogEncryption {
 
     public static let shared = ActivityLogEncryption()
 
-    private init() {}
+    init() {}
 
     private var cachedKey: SymmetricKey?
+    private var testKey: SymmetricKey?
     private var userOpenedActivityHistory = false
 
     /// Called only by an explicit activity-history UI action, never plugin startup.
@@ -102,6 +102,11 @@ public actor ActivityLogEncryption {
     /// Delete the encryption key (used when resetting activity logging)
     public func deleteKey() throws {
         try requireUserAction()
+        if !Self.usesKeychain {
+            testKey = nil
+            cachedKey = nil
+            return
+        }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,
@@ -152,6 +157,11 @@ public actor ActivityLogEncryption {
     // MARK: - Private Keychain Helpers
 
     private func storeKeyInKeychain(_ key: SymmetricKey) throws {
+        if !Self.usesKeychain {
+            testKey = key
+            return
+        }
+
         // Convert key to Data
         let keyData = key.withUnsafeBytes { Data($0) }
 
@@ -171,6 +181,13 @@ public actor ActivityLogEncryption {
     }
 
     private func readKeyFromKeychain() throws -> SymmetricKey {
+        if !Self.usesKeychain {
+            guard let testKey else {
+                throw EncryptionError.keychainReadFailed(errSecItemNotFound)
+            }
+            return testKey
+        }
+
         // Activity logging runs in the background; it must never interrupt
         // setup with Keychain authorization dialogs.
         let context = LAContext()
