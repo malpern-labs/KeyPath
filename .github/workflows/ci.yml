@@ -222,10 +222,10 @@ jobs:
         KEYPATH_ALLOW_TEST_RUNNER_CRASH_SUCCESS: ${{ (vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && '0' || '1' }}
         KEYPATH_TEST_ENFORCE_CLEAN_SUMMARY: "1"
         KEYPATH_TEST_RESET_MODULE_CACHE: "0"
-        # The full safe suite passed on the mini with two XCTest worker
-        # processes (2026-11-21). Keep that proven bound in CI: it exposes
-        # cross-process fixture sharing and shortens the test phase.
-        SWIFT_TEST_ARGS: --parallel --num-workers 2
+        # Temporary qualification branch: compare four workers on the actual
+        # Mini CI runner. Keep only if the full lane passes cleanly and is
+        # faster without harming concurrent-job headroom.
+        SWIFT_TEST_ARGS: --parallel --num-workers 4
         # The mini (M4 Pro, 14 cores) can run two test jobs at once, one per
         # runner, so each takes about half its cores. Hosted VMs are smaller.
         KEYPATH_SWIFT_BUILD_JOBS: ${{ (vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && '4' || '6' }}
