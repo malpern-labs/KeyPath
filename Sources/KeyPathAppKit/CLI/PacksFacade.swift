@@ -91,7 +91,8 @@ public struct PacksFacade: Sendable {
                 quickSettingValues: settingValues,
                 manager: manager,
                 installedPackTracker: installedPackTracker,
-                mutationPermit: permit
+                mutationPermit: permit,
+                admission: .checked
             )
 
             var warnings: [String] = []

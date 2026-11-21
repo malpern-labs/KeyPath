@@ -283,6 +283,25 @@ final class CLIPackCRUDTests: XCTestCase {
         XCTAssertEqual(result.quickSettingValues["holdTimeout"], 200)
     }
 
+    func testInstallRequiresReviewBeforeDisablingAConflictingRule() async throws {
+        let ruleStore = try CustomRulesStore(fileURL: XCTUnwrap(tempDir).appendingPathComponent("CustomRules.json"))
+        let existingRule = CustomRule(title: "My Caps Lock rule", input: "caps", action: .keystroke(key: "tab"))
+        try await ruleStore.saveRules([existingRule])
+
+        do {
+            _ = try await facade.installPack(nameOrId: "caps-lock-to-escape")
+            XCTFail("CLI pack installation must not silently disable an existing custom rule")
+        } catch let error as PackInstaller.InstallError {
+            guard case .needsReview = error else { return XCTFail("Expected a review-required refusal, got \(error)") }
+        }
+
+        let persistedRules = await ruleStore.loadRules()
+        XCTAssertEqual(persistedRules.first?.id, existingRule.id)
+        XCTAssertTrue(persistedRules.first?.isEnabled == true)
+        let isInstalled = await installedPacks.isInstalled(packID: "com.keypath.pack.caps-lock-to-escape")
+        XCTAssertFalse(isInstalled)
+    }
+
     func testInstallRejectsOutOfRangeQuickSetting() async throws {
         try await ensureUninstalled("com.keypath.pack.home-row-mods")
 
