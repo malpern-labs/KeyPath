@@ -19,7 +19,7 @@ concurrency:
 # mini. Job names, and so the required checks, are the same either way.
 #   gh variable set KEYPATH_CI_RUNNER --repo malpern-labs/KeyPath --body hosted
 #   gh variable delete KEYPATH_CI_RUNNER --repo malpern-labs/KeyPath
-# Only ci.yml has the fallback. coverage, cache-warm and runner-health are
+# Only ci.yml has the fallback. coverage and runner-health are
 # mini-only jobs that do not gate PRs; they skip while this variable is set.
 #
 # A pull request from a fork always runs on the hosted image, whatever the

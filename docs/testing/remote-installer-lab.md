@@ -271,7 +271,7 @@ new lease would be unsafe. It is an infrastructure wait, not a product failure.
 `preflight` reports the current reserve evidence. Set
 `KEYPATH_MIN_FREE_DISK_GIB` only for a deliberately different host policy.
 
-The self-hosted CI, cache-warm and coverage workflows run
+The self-hosted CI and coverage workflows run
 `Scripts/lab/host-disk-reserve` before expensive compilation with a lower
 40 GiB threshold (`KEYPATH_MIN_FREE_DISK_GIB: "40"` in each workflow), and exit
 75 below it. A build needs far less than a VM clone, and the 90 GiB bar stopped
