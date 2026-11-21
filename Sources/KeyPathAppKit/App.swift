@@ -272,7 +272,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func finishApplicationLaunch() {
-        OverlayWindow.installAssignmentMenuItems(in: NSApp.mainMenu)
         NotificationCenter.default.removeObserver(
             self, name: NSApplication.didFinishLaunchingNotification, object: nil
         )

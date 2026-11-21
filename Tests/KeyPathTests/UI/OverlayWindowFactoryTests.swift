@@ -36,27 +36,21 @@ final class OverlayWindowFactoryTests: XCTestCase {
         XCTAssertTrue(window.remapUndoManager.canUndo)
     }
 
-    func testAssignmentCommandsJoinTheNativeEditMenuWithoutTakingTextShortcuts() {
-        let main = NSMenu()
-        let rootItem = NSMenuItem(title: "Localized menu", action: nil, keyEquivalent: "")
-        main.addItem(rootItem)
-        let edit = NSMenu()
-        rootItem.submenu = edit
-        let paste = NSMenuItem(title: "Text Paste", action: Selector(("performAction:")), keyEquivalent: "v")
-        edit.addItem(paste)
-        edit.addItem(NSMenuItem(title: "Select All", action: Selector(("performAction:")), keyEquivalent: "a"))
+    func testAssignmentMenuUsesTheCurrentSelectionAtInvocation() {
+        var commands: SelectedAssignmentCommands?
+        var copies = 0
+        let menu = OverlayAssignmentMenu { commands }
+        commands = SelectedAssignmentCommands(copy: { copies += 1 }, paste: nil, swap: {})
+        menu.refresh()
+        XCTAssertEqual(menu.enabled, [.copy, .swap])
+        menu.perform(.copy)
+        XCTAssertEqual(copies, 1)
 
-        OverlayWindow.installAssignmentMenuItems(in: main)
-        OverlayWindow.installAssignmentMenuItems(in: main)
-        XCTAssertEqual(edit.items.count, 5)
-        XCTAssertEqual(paste.keyEquivalent, "v")
-        let window = OverlayWindow(contentRect: .zero, styleMask: .borderless, backing: .buffered, defer: true)
-        for (item, action) in zip(edit.items.suffix(3), OverlayWindow.AssignmentMenuAction.allCases) {
-            XCTAssertEqual(item.action, action.selector)
-            XCTAssertNil(item.target)
-            XCTAssertTrue(item.keyEquivalent.isEmpty)
-            XCTAssertFalse(window.validateUserInterfaceItem(item))
-        }
+        commands = nil
+        menu.perform(.copy)
+        XCTAssertEqual(copies, 1)
+        menu.refresh()
+        XCTAssertTrue(menu.enabled.isEmpty)
     }
 
     func testDefaultOriginUsesBottomRightMargin() {

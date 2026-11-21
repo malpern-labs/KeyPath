@@ -168,7 +168,12 @@ final class OverlayWindow: NSWindow {
 
     override func becomeKey() {
         super.becomeKey()
-        Self.installAssignmentMenuItems(in: NSApp.mainMenu)
+        Task { OverlayAssignmentMenu.shared.refresh() }
+    }
+
+    override func resignKey() {
+        super.resignKey()
+        Task { OverlayAssignmentMenu.shared.refresh() }
     }
 
     @objc(undo:)
@@ -183,9 +188,6 @@ final class OverlayWindow: NSWindow {
                 menuItem.title = remapUndoManager.undoMenuItemTitle
             }
             return isKeyWindow && remapUndoManager.canUndo
-        }
-        if let action = AssignmentMenuAction.allCases.first(where: { $0.selector == item.action }) {
-            return assignmentMenuHandler(action) != nil
         }
         return super.validateUserInterfaceItem(item)
     }

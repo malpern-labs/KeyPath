@@ -97,7 +97,8 @@ extension LiveKeyboardOverlayView {
             )
         }
         .background {
-            OverlayAssignmentMenuBridge { isEditingLayer ? selectedAssignmentCommands() : nil }
+            let hasSelection = isEditingLayer && viewModel.selectedKeyCode != nil
+            OverlayAssignmentMenuBridge { hasSelection ? selectedAssignmentCommands() : nil }
                 .allowsHitTesting(false)
         }
         .environment(\.overlayAssignmentCommands, isEditingLayer ? assignmentCommands(layer: RuleCollectionLayer(kanataName: viewModel.currentLayerName)) : nil)

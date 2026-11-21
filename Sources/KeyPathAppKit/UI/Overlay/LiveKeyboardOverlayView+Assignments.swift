@@ -22,6 +22,47 @@ struct SelectedAssignmentCommands {
     let swap: (() -> Void)?
 }
 
+/// SwiftUI commands need an explicit bridge for the independently hosted overlay window.
+@MainActor
+final class OverlayAssignmentMenu: ObservableObject {
+    enum Action: CaseIterable {
+        case copy, paste, swap
+    }
+
+    static let shared = OverlayAssignmentMenu {
+        guard let window = NSApp.keyWindow as? OverlayWindow,
+              let source = window.assignmentMenuSource, source.window === window else { return nil }
+        return source.commands()
+    }
+
+    @Published private(set) var enabled: Set<Action> = []
+    private let selectedCommands: () -> SelectedAssignmentCommands?
+
+    init(selectedCommands: @escaping () -> SelectedAssignmentCommands?) {
+        self.selectedCommands = selectedCommands
+    }
+
+    func refresh() {
+        let commands = selectedCommands()
+        let available = Set(Action.allCases.filter { handler(for: $0, in: commands) != nil })
+        if available != enabled {
+            enabled = available
+        }
+    }
+
+    func perform(_ action: Action) {
+        handler(for: action, in: selectedCommands())?()
+    }
+
+    private func handler(for action: Action, in commands: SelectedAssignmentCommands?) -> (() -> Void)? {
+        switch action {
+        case .copy: commands?.copy
+        case .paste: commands?.paste
+        case .swap: commands?.swap
+        }
+    }
+}
+
 /// The overlay is hosted in its own AppKit window, outside SwiftUI's scene focus.
 struct OverlayAssignmentMenuBridge: NSViewRepresentable {
     let commands: () -> SelectedAssignmentCommands?
@@ -32,6 +73,8 @@ struct OverlayAssignmentMenuBridge: NSViewRepresentable {
 
     func updateNSView(_ view: MenuSource, context _: Context) {
         view.commands = commands
+        // Publish after SwiftUI finishes updating this view.
+        Task { OverlayAssignmentMenu.shared.refresh() }
     }
 
     final class MenuSource: NSView {
@@ -41,73 +84,6 @@ struct OverlayAssignmentMenuBridge: NSViewRepresentable {
             super.viewDidMoveToWindow()
             (window as? OverlayWindow)?.assignmentMenuSource = self
         }
-    }
-}
-
-extension OverlayWindow {
-    enum AssignmentMenuAction: CaseIterable {
-        case copy, paste, swap
-
-        var selector: Selector {
-            switch self {
-            case .copy: #selector(OverlayWindow.copyOverlayAssignment(_:))
-            case .paste: #selector(OverlayWindow.pasteOverlayAssignment(_:))
-            case .swap: #selector(OverlayWindow.swapOverlayAssignment(_:))
-            }
-        }
-
-        var title: String {
-            switch self {
-            case .copy: String(localized: "Copy Assignment")
-            case .paste: String(localized: "Paste Assignment")
-            case .swap: String(localized: "Swap Assignment…")
-            }
-        }
-
-        var identifier: NSUserInterfaceItemIdentifier {
-            switch self {
-            case .copy: NSUserInterfaceItemIdentifier("edit-copy-assignment")
-            case .paste: NSUserInterfaceItemIdentifier("edit-paste-assignment")
-            case .swap: NSUserInterfaceItemIdentifier("edit-swap-assignment")
-            }
-        }
-    }
-
-    static func installAssignmentMenuItems(in mainMenu: NSMenu?) {
-        // SwiftUI may wrap the standard actions in its own selectors. Their
-        // standard shortcuts identify the Edit menu independently of locale.
-        guard let edit = mainMenu?.items.compactMap(\.submenu).first(where: {
-            $0.items.contains { $0.keyEquivalent == "v" && $0.keyEquivalentModifierMask == .command }
-        }), let selectAllIndex = edit.items.lastIndex(where: {
-            $0.keyEquivalent == "a" && $0.keyEquivalentModifierMask == .command
-        }) else { return }
-        for (offset, action) in AssignmentMenuAction.allCases.enumerated() where !edit.items.contains(where: { $0.identifier == action.identifier }) {
-            let item = NSMenuItem(title: action.title, action: action.selector, keyEquivalent: "")
-            item.identifier = action.identifier
-            edit.insertItem(item, at: selectAllIndex + 1 + offset)
-        }
-    }
-
-    func assignmentMenuHandler(_ action: AssignmentMenuAction) -> (() -> Void)? {
-        guard isKeyWindow, let source = assignmentMenuSource, source.window === self,
-              let commands = source.commands() else { return nil }
-        switch action {
-        case .copy: return commands.copy
-        case .paste: return commands.paste
-        case .swap: return commands.swap
-        }
-    }
-
-    @objc func copyOverlayAssignment(_: Any?) {
-        assignmentMenuHandler(.copy)?()
-    }
-
-    @objc func pasteOverlayAssignment(_: Any?) {
-        assignmentMenuHandler(.paste)?()
-    }
-
-    @objc func swapOverlayAssignment(_: Any?) {
-        assignmentMenuHandler(.swap)?()
     }
 }
 
@@ -139,6 +115,7 @@ extension LiveKeyboardOverlayView {
                       let data = try? JSONEncoder().encode(assignment) else { return }
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setData(data, forType: Self.assignmentClipboardType)
+                OverlayAssignmentMenu.shared.refresh()
             },
             paste: { key in
                 guard let assignment = clipboardAssignment else { return }

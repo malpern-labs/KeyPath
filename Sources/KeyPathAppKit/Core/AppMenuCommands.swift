@@ -10,7 +10,21 @@ import SwiftUI
 struct AppMenuCommands: Commands {
     let viewModel: KanataViewModel
     let appDelegate: AppDelegate
+    @ObservedObject private var assignmentMenu = OverlayAssignmentMenu.shared
+
     var body: some Commands {
+        CommandGroup(after: .pasteboard) {
+            Button("Copy Assignment") { assignmentMenu.perform(.copy) }
+                .disabled(!assignmentMenu.enabled.contains(.copy))
+                .accessibilityIdentifier("edit-copy-assignment")
+            Button("Paste Assignment") { assignmentMenu.perform(.paste) }
+                .disabled(!assignmentMenu.enabled.contains(.paste))
+                .accessibilityIdentifier("edit-paste-assignment")
+            Button("Swap Assignment…") { assignmentMenu.perform(.swap) }
+                .disabled(!assignmentMenu.enabled.contains(.swap))
+                .accessibilityIdentifier("edit-swap-assignment")
+        }
+
         // Replace default "AppName" menu with "KeyPath" menu
         CommandGroup(replacing: .appInfo) {
             Button("About KeyPath") {
