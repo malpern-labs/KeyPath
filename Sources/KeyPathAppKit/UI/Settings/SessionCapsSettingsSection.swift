@@ -36,8 +36,15 @@ struct SessionCapsSettingsSection: View {
     @State private var boot = ""
     /// The saved selection's consent for `device`; nil until one is saved.
     @State private var saved: SessionCapsSelection?
-    /// Another app's Caps mapping on the chosen keyboard, if any.
+    /// An unowned Caps mapping on the chosen keyboard, if any. macOS does not
+    /// expose which process wrote a UserKeyMapping row.
     @State private var conflict: SessionCapsConflict?
+    /// Intermediate keys from verified, live KeyPath leases. This is the
+    /// provenance needed to distinguish KeyPath's own hidutil row from an
+    /// external mapping; saved preferences alone are not proof of ownership.
+    /// Nil means the lease journal could not be verified; do not label a
+    /// mapping as foreign when ownership evidence is unavailable.
+    @State private var activeLeaseIntermediates: [UInt64: UInt32]?
     @State private var raycastIsRunning = false
     @State private var fleetUncovered: [String] = []
     @State private var excludedIDs = SessionCapsRuntimeSupport.excludedKeyboardIDs()
@@ -422,31 +429,49 @@ struct SessionCapsSettingsSection: View {
                     ?? (gone ? stored?.rebound(among: devices, currentBoot: boot) : nil)
                 let excluded = SessionCapsRuntimeSupport.excludedKeyboardIDs()
                 var uncovered: [String] = []
-                if needsCaps, !SessionCapsRuntimeSupport.selectedKeyboardOnly() {
+                var activeIntermediates: [UInt64: UInt32]?
+                if needsCaps {
                     let fleet = SessionCapsMappingFleet(directory: SessionCapsRuntimeSupport.journalDirectory(),
                                                         backend: SessionCapsHIDUtilTransport.backend())
-                    let active = (try? fleet.activeDeviceIDs(bootSessionUUID: boot)) ?? []
-                    for keyboard in list.keyboards where !excluded.contains(SessionCapsRuntimeSupport.preferenceID(keyboard.device))
-                        && !active.contains(keyboard.id)
-                    {
-                        let conflict = try? SessionCapsRuntimeSupport.capsConflict(on: keyboard.device)
-                        let explanation = conflict.map { Self.conflictMessage($0, raycastIsRunning: raycastRunning) } ?? String(localized: "Caps Lock setup is not active on this keyboard yet.")
-                        uncovered.append("\(keyboard.name): \(explanation)")
+                    let selectedOnly = SessionCapsRuntimeSupport.selectedKeyboardOnly()
+                    do {
+                        let activeRecords = try fleet.activeRecords(bootSessionUUID: boot,
+                                                                    selectedKeyboardOnly: selectedOnly)
+                        activeIntermediates = activeRecords.reduce(into: [:]) { records, record in
+                            records[record.device.registryEntryID] = UInt32(record.intermediate & 0xFFFF_FFFF)
+                        }
+                    } catch {
+                        // Keep ownership unknown rather than misdiagnosing our
+                        // own live row as a third-party conflict.
+                        activeIntermediates = nil
+                    }
+                    let active = Set(activeIntermediates?.keys.map { $0 } ?? [])
+                    if !selectedOnly {
+                        for keyboard in list.keyboards where !excluded.contains(SessionCapsRuntimeSupport.preferenceID(keyboard.device))
+                            && !active.contains(keyboard.id)
+                        {
+                            let conflict = try? SessionCapsRuntimeSupport.capsConflict(on: keyboard.device)
+                            let explanation = conflict.map { Self.conflictMessage($0, raycastIsRunning: raycastRunning) } ?? String(localized: "Caps Lock setup is not active on this keyboard yet.")
+                            uncovered.append("\(keyboard.name): \(explanation)")
+                        }
                     }
                 }
-                return (list, boot, rebound ?? stored, gone && rebound == nil, uncovered, excluded)
+                return (list, boot, rebound ?? stored, gone && rebound == nil, uncovered, excluded, activeIntermediates)
             }.value
             boot = found.1
             keyboards = found.0.keyboards
             withheld = found.0.withheld
             fleetUncovered = found.4
             excludedIDs = found.5
+            activeLeaseIntermediates = found.6
             let stored = found.2
             device = Self.effectiveDevice(saved: stored?.device, connected: keyboards.map(\.device), withheld: withheld)
             saved = stored?.device == device ? stored : nil
             disconnected = found.3 && saved == nil ? SessionCapsSelectionStore.shared.savedName ?? String(localized: "Your keyboard") : nil
             if saved != nil { SessionCapsSelectionStore.shared.saveName(keyboards.first { $0.device == device }?.name) }
-            conflict = await Self.conflict(on: device, intermediate: saved?.intermediateUsage)
+            let ownedIntermediate = device.flatMap { activeLeaseIntermediates?[$0.registryEntryID] }
+            conflict = await Self.conflict(on: device, intermediate: ownedIntermediate,
+                                           ownershipKnown: activeLeaseIntermediates != nil)
             if !keepMessage { message = nil }
         } catch {
             keyboards = []
@@ -454,6 +479,7 @@ struct SessionCapsSettingsSection: View {
             device = nil
             disconnected = nil
             conflict = nil
+            activeLeaseIntermediates = nil
             fleetUncovered = []
             message = String(localized: "This keyboard could not be verified for Caps Lock setup. Profiles without Caps Lock rules can still run.")
         }
@@ -481,7 +507,10 @@ struct SessionCapsSettingsSection: View {
 
     /// A Caps row KeyPath did not write. KeyPath's own row (Caps to its
     /// intermediate while the session runs) is not a conflict.
-    static func conflict(on device: SessionCapsMappingPolicy.DeviceIdentity?, intermediate: UInt32?) async -> SessionCapsConflict? {
+    static func conflict(on device: SessionCapsMappingPolicy.DeviceIdentity?, intermediate: UInt32?,
+                         ownershipKnown: Bool = true) async -> SessionCapsConflict?
+    {
+        guard ownershipKnown else { return nil }
         guard let device else { return nil }
         let found = await Task.detached { try? SessionCapsRuntimeSupport.capsConflict(on: device) }.value
         return ownRow(found ?? nil, intermediate: intermediate) ? nil : found ?? nil

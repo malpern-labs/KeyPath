@@ -78,10 +78,26 @@ struct SessionCapsMappingFleet {
 
     /// Read-only status, never used to authorize a write. Only verified live
     /// worker records count; an old journal is not evidence of coverage.
-    func activeDeviceIDs(bootSessionUUID: String,
-                         processAlive: (Int32) -> Bool = SystemStateProvider.isProcessAlive) throws -> Set<UInt64>
+    func activeRecords(bootSessionUUID: String, selectedKeyboardOnly: Bool = false,
+                       processAlive: (Int32) -> Bool = SystemStateProvider.isProcessAlive) throws -> [Policy.Record]
     {
-        var active = Set<UInt64>()
+        var active: [Policy.Record] = []
+        if selectedKeyboardOnly {
+            // Selected-keyboard mode stores its single lease at the journal
+            // root; fleet mode stores one lease under keyboards/<registryID>.
+            // Both paths must verify the live worker before claiming ownership.
+            let lease = SessionCapsMappingLease(directory: directory, backend: backend)
+            if let record = try lease.pendingRecord(),
+               record.owner.bootSessionUUID == bootSessionUUID,
+               processAlive(record.owner.workerPID),
+               (try? SessionCapsRuntimeSupport.verifyActive(
+                   directory: directory, owner: record.owner, backend: backend,
+                   bootSessionUUID: { bootSessionUUID }
+               )) != nil
+            {
+                active.append(record)
+            }
+        }
         for record in try recordsOnDisk() where record.owner.bootSessionUUID == bootSessionUUID
             && processAlive(record.owner.workerPID)
         {
@@ -89,10 +105,19 @@ struct SessionCapsMappingFleet {
                 directory: deviceDirectory(record.device.registryEntryID), owner: record.owner,
                 backend: backend, bootSessionUUID: { bootSessionUUID }
             )) != nil {
-                active.insert(record.device.registryEntryID)
+                active.append(record)
             }
         }
         return active
+    }
+
+    /// IDs for callers that only need coverage. Keep the validated records
+    /// available to diagnostics too, so KeyPath can explain its own live map.
+    func activeDeviceIDs(bootSessionUUID: String,
+                         processAlive: (Int32) -> Bool = SystemStateProvider.isProcessAlive) throws -> Set<UInt64>
+    {
+        try Set(activeRecords(bootSessionUUID: bootSessionUUID, processAlive: processAlive)
+            .map(\.device.registryEntryID))
     }
 
     /// The worker calls this off the main run loop. A removed service is
