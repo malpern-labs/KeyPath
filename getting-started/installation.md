@@ -14,7 +14,7 @@ In two minutes, your keyboard will be able to launch apps, tile windows, fire sh
 
 Setup asks for **one permission** and installs nothing outside the app: no keyboard driver, no background system service, and no admin-level helper.
 
-> This page describes current builds. KeyPath 1.0.1 and earlier used a different setup that installed a privileged helper and asked for more permissions.
+> This guide is for **session-runtime builds on macOS 27 or later**. If your download is **KeyPath 1.0.1**, use the [1.0.1 setup guide](https://github.com/malpern-labs/KeyPath/blob/v1.0.1/getting-started/installation.md). If you already installed 1.0.1 and are switching to a session-runtime build, [remove the old keyboard service first]({{ '/guides/upgrading-from-1-0-1/' | relative_url }}).
 
 ---
 
@@ -140,9 +140,7 @@ KeyPath does not remap keys in password fields and other Secure Input contexts, 
 ## Updating and Removing
 
 - **Update:** KeyPath checks for updates once a day and installs them when you quit. Choose **Check for Updates…** in the KeyPath menu to check now, or change this in **Settings → General → Updates**. Your rules are stored separately and are kept.
-- **Remove:** use **Settings → Repair/Remove → Uninstall KeyPath**. It saves a backup of your settings to Downloads, removes your rules and preferences, and moves the app to the Trash. Diagnostic logs in `~/Library/Logs/KeyPath/` stay, and so does the Accessibility grant (remove it in System Settings). Uninstall also removes the command-line tool's link. A copy from a version before November 2026 at `/usr/local/bin/keypath-cli` stays; remove it with `sudo rm /usr/local/bin/keypath-cli`.
-
-If you upgraded from KeyPath 1.0.1 or earlier, files from the old system service may remain; see [Privacy & Permissions]({{ '/guides/privacy/' | relative_url }}) for where they are.
+- **Remove:** see [Uninstall KeyPath]({{ '/guides/uninstall/' | relative_url }}) to back up your rules and remove the session-runtime build.
 
 ---
 

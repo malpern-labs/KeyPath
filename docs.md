@@ -27,6 +27,7 @@ theme: parchment
 <p>Install KeyPath and get your keyboard remapping in two minutes flat.</p>
 <ul class="docs-card-links">
 <li><a href="{{ '/getting-started/installation/' | relative_url }}">Setting Up KeyPath</a></li>
+<li><a href="{{ '/guides/upgrading-from-1-0-1/' | relative_url }}">Move from KeyPath 1.0.1</a></li>
 <li><a href="{{ '/guides/concepts/' | relative_url }}">Keyboard Concepts</a></li>
 <li><a href="{{ '/guides/use-cases/' | relative_url }}">What You Can Build</a></li>
 </ul>

@@ -248,22 +248,9 @@ may remain on a Mac that was upgraded:
 | `/Library/KeyPath/bin/kanata` | The remapping engine binary |
 | `/var/log/com.keypath.kanata.*.log` | Service logs |
 
-Current builds do not remove these files. To remove them yourself, run in
-Terminal (each asks for an administrator password):
-
-```bash
-sudo launchctl bootout system/com.keypath.kanata
-sudo rm -f /Library/LaunchDaemons/com.keypath.kanata.plist
-sudo rm -f /Library/KeyPath/bin/kanata
-sudo rmdir /Library/KeyPath/bin /Library/KeyPath
-sudo rm -f /var/log/com.keypath.kanata.*.log
-```
-
-The first command reports an error if the service is not running, and
-`rmdir` refuses if a folder still holds other files; both are fine.
-
-A Full Disk Access or Input Monitoring grant made for an earlier version is
-not revoked automatically. You can remove it in System Settings.
+Current builds leave these files in place. Follow the
+[KeyPath 1.0.1 cleanup guide](https://malpern-labs.github.io/KeyPath/guides/upgrading-from-1-0-1/)
+for the old service, helper, and permissions.
 
 ---
 

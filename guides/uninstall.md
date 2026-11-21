@@ -7,7 +7,9 @@ permalink: /guides/uninstall/
 
 # Uninstall KeyPath
 
-Open **Settings → Advanced → Uninstall KeyPath…**, then choose **Back Up and Uninstall**.
+These steps apply to the session-runtime build. For the system service and helper installed by **KeyPath 1.0.1**, see [Move from KeyPath 1.0.1 to the new runtime]({{ '/guides/upgrading-from-1-0-1/' | relative_url }}).
+
+Open **Settings → Repair/Remove → Uninstall KeyPath…**, then choose **Back Up and Uninstall**.
 
 KeyPath stops remapping and restores keyboard mappings it owns. It saves your rules,
 preferences, and app data in a private **KeyPath-Uninstall-Backup-…** folder in
@@ -28,6 +30,12 @@ before retrying.
 
 Dragging the app to Trash in Finder keeps your settings. Use the Settings action
 when you want a fresh reinstall.
+
+## Older command-line link
+
+If you installed the CLI with an earlier KeyPath version, check
+`ls -l /usr/local/bin/keypath-cli`. If it is a symbolic link to the old
+KeyPath app, you can remove that link with `sudo rm /usr/local/bin/keypath-cli`.
 
 ## From the command line
 
