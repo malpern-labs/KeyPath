@@ -113,6 +113,7 @@ final class KindaVimStateAdapterTests: XCTestCase {
     private func makeTempEnvironmentFile(contents: String) throws -> URL {
         let dir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
         let fileURL = dir.appendingPathComponent("environment.json")
         try contents.write(to: fileURL, atomically: true, encoding: .utf8)
         return fileURL
