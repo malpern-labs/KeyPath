@@ -13,14 +13,16 @@ private func makeTestRuntime() throws -> (RuntimeCoordinator, URL) {
         .appendingPathComponent("runtime-rule-mutation-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-    let configuration = ConfigurationService(configDirectory: tempDir.path)
+    let collections = RuleCollectionStore.testStore(at: tempDir.appendingPathComponent("RuleCollections.json"))
+    let rules = CustomRulesStore.testStore(at: tempDir.appendingPathComponent("CustomRules.json"))
+    let configuration = ConfigurationService.sessionTestService(
+        configDirectory: tempDir.path,
+        ruleCollectionStore: collections,
+        customRulesStore: rules
+    )
     let manager = RuleCollectionsManager(
-        ruleCollectionStore: RuleCollectionStore(
-            fileURL: tempDir.appendingPathComponent("RuleCollections.json")
-        ),
-        customRulesStore: CustomRulesStore(
-            fileURL: tempDir.appendingPathComponent("CustomRules.json")
-        ),
+        ruleCollectionStore: collections,
+        customRulesStore: rules,
         configurationService: configuration,
         eventListener: KanataEventListener()
     )

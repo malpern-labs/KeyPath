@@ -134,6 +134,7 @@ final class PreferencesService: Sendable {
     nonisolated static let leaderKeyPreferenceKey = RecoverableRuleWrite.PreferenceRole.leader.key
     private let defaults: UserDefaults
     private let leaderDefaults: UserDefaults
+    private let notificationCenter: NotificationCenter
     var persistenceDefaults: UserDefaults {
         leaderDefaults
     }
@@ -178,7 +179,7 @@ final class PreferencesService: Sendable {
             defaults.set(verboseKanataLogging, forKey: Keys.verboseKanataLogging)
             AppLogger.shared.log("📊 [Preferences] verboseKanataLogging = \(verboseKanataLogging)")
             // Post notification so RuntimeCoordinator can restart with new flags
-            NotificationCenter.default.post(name: .verboseLoggingChanged, object: nil)
+            notificationCenter.post(name: .verboseLoggingChanged, object: nil)
         }
     }
 
@@ -190,7 +191,7 @@ final class PreferencesService: Sendable {
         didSet {
             defaults.set(accessibilityTestMode, forKey: Keys.accessibilityTestMode)
             AppLogger.shared.log("🧪 [Preferences] accessibilityTestMode = \(accessibilityTestMode)")
-            NotificationCenter.default.post(name: .accessibilityTestModeChanged, object: nil)
+            notificationCenter.post(name: .accessibilityTestModeChanged, object: nil)
         }
     }
 
@@ -297,7 +298,7 @@ final class PreferencesService: Sendable {
                 Array(overlaySuppressedBundleIDs).sorted(),
                 forKey: Keys.overlaySuppressedBundleIDs
             )
-            NotificationCenter.default.post(
+            notificationCenter.post(
                 name: .overlaySuppressedBundleIDsChanged,
                 object: nil
             )
@@ -467,10 +468,12 @@ final class PreferencesService: Sendable {
 
     init(
         leaderDefaults: UserDefaults = RecoverableRuleWrite.PreferenceDefaults.canonical,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = RecoverableRuleWrite.PreferenceDefaults.applicationDefaults,
+        notificationCenter: NotificationCenter = .default
     ) {
         self.defaults = defaults
         self.leaderDefaults = leaderDefaults
+        self.notificationCenter = notificationCenter
         // The command-action feature was removed in #879. Clear its retired
         // preference so older installs do not retain a misleading security flag.
         defaults.removeObject(forKey: "KeyPath.Security.ConfigCommandActionsEnabled")

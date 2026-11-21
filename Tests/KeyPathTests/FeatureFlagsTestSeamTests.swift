@@ -2,19 +2,13 @@ import KeyPathCore
 import XCTest
 
 final class FeatureFlagsTestSeamTests: XCTestCase {
-    func testScopedSetterDoesNotTouchUserDefaults() {
-        let key = "SIMULATOR_AND_VIRTUAL_KEYS_ENABLED"
-        let persistedBefore = UserDefaults.standard.object(forKey: key)
-
+    func testScopedSetterIsIsolatedFromProcessDefaults() {
         FeatureFlags.$testOverrides.withValue(.init()) {
             FeatureFlags.setSimulatorAndVirtualKeysEnabled(false)
             XCTAssertFalse(FeatureFlags.simulatorAndVirtualKeysEnabled)
         }
 
         XCTAssertTrue(FeatureFlags.simulatorAndVirtualKeysEnabled)
-        XCTAssertEqual(
-            persistedBefore as? Bool, UserDefaults.standard.object(forKey: key) as? Bool
-        )
     }
 
     func testNestedScopeHasIndependentDefaultsAndRestoresOuterValues() {
@@ -50,15 +44,9 @@ final class FeatureFlagsTestSeamTests: XCTestCase {
         }
     }
 
-    func testUnscopedSetterDoesNotTouchUserDefaults() {
-        let key = "SIMULATOR_AND_VIRTUAL_KEYS_ENABLED"
-        let persistedBefore = UserDefaults.standard.object(forKey: key)
-
+    func testUnscopedSetterUsesCompiledDefaultInTests() {
         FeatureFlags.setSimulatorAndVirtualKeysEnabled(false)
 
         XCTAssertTrue(FeatureFlags.simulatorAndVirtualKeysEnabled)
-        XCTAssertEqual(
-            persistedBefore as? Bool, UserDefaults.standard.object(forKey: key) as? Bool
-        )
     }
 }

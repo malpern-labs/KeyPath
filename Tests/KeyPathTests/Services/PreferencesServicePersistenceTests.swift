@@ -6,22 +6,25 @@ import KeyPathRulesCore
 final class PreferencesServicePersistenceTests: XCTestCase {
     private var defaults: UserDefaults!
     private var defaultsSuite: String!
+    private var notificationCenter: NotificationCenter!
 
     override func setUp() async throws {
         try await super.setUp()
         defaultsSuite = "keypath-preference-test-\(UUID().uuidString)"
         defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsSuite))
+        notificationCenter = NotificationCenter()
     }
 
     override func tearDown() async throws {
         if let defaultsSuite { defaults?.removePersistentDomain(forName: defaultsSuite) }
         defaults = nil
         defaultsSuite = nil
+        notificationCenter = nil
         try await super.tearDown()
     }
 
     private func makePreferences() -> PreferencesService {
-        PreferencesService(leaderDefaults: defaults, defaults: defaults)
+        PreferencesService(leaderDefaults: defaults, defaults: defaults, notificationCenter: notificationCenter)
     }
 
     private static let preferenceKeys = [
@@ -171,7 +174,7 @@ final class PreferencesServicePersistenceTests: XCTestCase {
         withPreservedDefaults {
             let prefs = makePreferences()
             let recorder = NotificationRecorder()
-            let center = NotificationCenter.default
+            let center = notificationCenter!
             let observedNames: [Notification.Name] = [
                 .verboseLoggingChanged,
                 .accessibilityTestModeChanged,

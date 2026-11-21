@@ -270,7 +270,7 @@ extension ServiceLifecycleCoordinator {
     /// runtime (startup) or the previous one (wake). Validation published from
     /// it would show a false setup issue right after a successful start.
     func invalidatePermissionsForNewSessionRuntime() async {
-        await SystemStateProvider.shared.invalidatePermissionSnapshot()
+        await invalidatePermissionSnapshot()
     }
 
     private func adoptRunningSession(generation: UInt64, responding: Bool) async -> Bool {

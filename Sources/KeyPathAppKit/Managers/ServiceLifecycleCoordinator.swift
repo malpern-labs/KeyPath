@@ -32,6 +32,7 @@ final class ServiceLifecycleCoordinator {
     private(set) var sessionConfigurationAdmission: KanataHostBridgeValidationResult?
     var sessionSupervisionTask: Task<Void, Never>?
     var sessionCleanupTask: Task<Void, Never>?
+    let invalidatePermissionSnapshot: @Sendable () async -> Void
     var sessionTerminationGuard: SessionCapsMappingLease.TerminationGuard?
     var sessionWakeRecoveryRevision: UInt64 = 0
     var sessionWakeRecovery: (generation: UInt64, id: UUID)?
@@ -218,7 +219,12 @@ final class ServiceLifecycleCoordinator {
 
     // MARK: - Init
 
-    init() {
+    init(
+        invalidatePermissionSnapshot: @escaping @Sendable () async -> Void = {
+            await SystemStateProvider.shared.invalidatePermissionSnapshot()
+        }
+    ) {
+        self.invalidatePermissionSnapshot = invalidatePermissionSnapshot
         #if DEBUG
             if TestEnvironment.isRunningTests {
                 testSessionStart = { _ in false }

@@ -15,6 +15,7 @@ final class ConfigReloadCoordinator {
 
     private let reloadEngine: @MainActor @Sendable () async -> TCPReloadResult
     private let reloadSafetyMonitor: ReloadSafetyMonitor
+    private let notificationCenter: NotificationCenter
     private let cooldownWait: @MainActor @Sendable (TimeInterval) async throws -> Void
     private let healthStatusProvider: @MainActor @Sendable () async -> ServiceHealthStatus
     private let isRuntimeTransitioning: @MainActor @Sendable () -> Bool
@@ -47,6 +48,7 @@ final class ConfigReloadCoordinator {
 
     init(
         reloadSafetyMonitor: ReloadSafetyMonitor,
+        notificationCenter: NotificationCenter = .default,
         healthStatusProvider: @escaping @MainActor @Sendable () async -> ServiceHealthStatus,
         isRuntimeTransitioning: @escaping @MainActor @Sendable () -> Bool = { false },
         reloadEngine: @escaping @MainActor @Sendable () async -> TCPReloadResult = ConfigReloadCoordinator.reloadThroughEngineSocket,
@@ -74,6 +76,7 @@ final class ConfigReloadCoordinator {
         self.cooldownWait = cooldownWait
         self.reloadEngine = reloadEngine
         self.reloadSafetyMonitor = reloadSafetyMonitor
+        self.notificationCenter = notificationCenter
         self.healthStatusProvider = healthStatusProvider
         self.isRuntimeTransitioning = isRuntimeTransitioning
         self.transitionRetryMaximumPolls = transitionRetryMaximumPolls
@@ -177,7 +180,7 @@ final class ConfigReloadCoordinator {
             // Successful reload -> clear stale diagnostics
             onReloadSuccess?()
             // Notify UI that we recovered from a previous reload failure.
-            NotificationCenter.default.post(name: .configReloadRecovered, object: self)
+            notificationCenter.post(name: .configReloadRecovered, object: self)
             return ReloadResult(
                 success: true,
                 response: tcpResult.response ?? "",
@@ -218,7 +221,7 @@ final class ConfigReloadCoordinator {
                     scheduleDeferredReloadAfterCooldown()
                 }
             } else if notifyOnFailure {
-                NotificationCenter.default.post(
+                notificationCenter.post(
                     name: .configReloadFailed,
                     object: self,
                     userInfo: [
@@ -351,7 +354,7 @@ final class ConfigReloadCoordinator {
 
         let message = String(localized: "Kanata did not become ready after restarting; config reload was not applied")
         AppLogger.shared.warnUnlessQuietTest("⚠️ [Reload] \(message)")
-        NotificationCenter.default.post(
+        notificationCenter.post(
             name: .configReloadFailed,
             object: self,
             userInfo: ["message": message, "response": ""]
@@ -375,7 +378,7 @@ final class ConfigReloadCoordinator {
         case .rejected:
             let message = result.errorMessage ?? String(localized: "Config reload was rejected")
             AppLogger.shared.warnUnlessQuietTest("⚠️ [Reload] Deferred config reload rejected: \(message)")
-            NotificationCenter.default.post(
+            notificationCenter.post(
                 name: .configReloadFailed,
                 object: self,
                 userInfo: [

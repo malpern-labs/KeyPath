@@ -20,9 +20,14 @@ final class PreferencesServiceTests: XCTestCase {
         PreferencesService(leaderDefaults: fixture.defaults, defaults: fixture.defaults)
     }
 
-    func testCanonicalDefaultsFallsBackToStandardWhenSuiteIsUnavailable() {
+    func testCanonicalDefaultsFallsBackToTestDomainWhenSuiteIsUnavailable() {
         let defaults = RecoverableRuleWrite.PreferenceDefaults.canonical(using: nil)
-        XCTAssertTrue(defaults === UserDefaults.standard)
+
+        let key = "KeyPathTests.preference-defaults.\(UUID().uuidString)"
+        defaults.set(true, forKey: key)
+        defer { defaults.removeObject(forKey: key) }
+        XCTAssertTrue(defaults === RecoverableRuleWrite.PreferenceDefaults.canonical(using: nil))
+        XCTAssertTrue(defaults.bool(forKey: key))
     }
 
     // MARK: - Context HUD Hold Delay

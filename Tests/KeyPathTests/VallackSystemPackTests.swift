@@ -394,7 +394,11 @@ final class VallackSystemPackTests: XCTestCase {
 
         let collections = RuleCollectionStore.testStore(at: tempDir.appendingPathComponent("RuleCollections.json"))
         let rules = CustomRulesStore.testStore(at: tempDir.appendingPathComponent("CustomRules.json"))
-        let service = ConfigurationService(configDirectory: tempDir.path, ruleCollectionStore: collections, customRulesStore: rules)
+        let service = ConfigurationService.sessionTestService(
+            configDirectory: tempDir.path,
+            ruleCollectionStore: collections,
+            customRulesStore: rules
+        )
         let manager = RuleCollectionsManager(
             ruleCollectionStore: collections,
             customRulesStore: rules,
@@ -526,7 +530,7 @@ final class VallackSystemPackTests: XCTestCase {
             customRulesStore: CustomRulesStore(
                 fileURL: tempDir.appendingPathComponent("CustomRules.json")
             ),
-            configurationService: ConfigurationService(configDirectory: tempDir.path),
+            configurationService: .sessionTestService(configDirectory: tempDir.path),
             eventListener: KanataEventListener(),
             keymapPreferences: preferences.defaults,
             preferencesService: PreferencesService(leaderDefaults: preferences.defaults, defaults: preferences.defaults),
@@ -617,7 +621,7 @@ final class VallackSystemPackTests: XCTestCase {
             customRulesStore: CustomRulesStore(
                 fileURL: tempDir.appendingPathComponent("CustomRules.json")
             ),
-            configurationService: ConfigurationService(configDirectory: tempDir.path),
+            configurationService: .sessionTestService(configDirectory: tempDir.path),
             eventListener: KanataEventListener(),
             keymapPreferences: preferences.defaults,
             preferencesService: PreferencesService(leaderDefaults: preferences.defaults, defaults: preferences.defaults),

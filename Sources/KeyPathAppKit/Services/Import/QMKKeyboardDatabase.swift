@@ -74,12 +74,14 @@ actor QMKKeyboardDatabase {
     ]
 
     /// Disk cache directory for fetched keyboard layouts
-    private let cacheDirectory: URL = {
+    private let cacheDirectory: URL
+
+    private static var defaultCacheDirectory: URL {
         guard let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
             fatalError("Caches directory unavailable")
         }
         return caches.appendingPathComponent("KeyPath/qmk", isDirectory: true)
-    }()
+    }
 
     /// For test injection: override the full search index
     private var seededIndex: [IndexEntry]?
@@ -87,7 +89,16 @@ actor QMKKeyboardDatabase {
     /// For test injection: override metadata
     private var seededMetadata: [String: KeyboardMeta]?
 
-    private init() {}
+    private init() {
+        cacheDirectory = Self.defaultCacheDirectory
+    }
+
+    // Isolated cache path for package tests. Production callers use `shared`.
+    #if DEBUG
+        package init(cacheDirectory: URL) {
+            self.cacheDirectory = cacheDirectory
+        }
+    #endif
 
     // MARK: - Types
 

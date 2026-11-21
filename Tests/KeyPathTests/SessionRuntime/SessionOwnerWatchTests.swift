@@ -122,6 +122,32 @@ final class SessionShutdownFallbackTests: XCTestCase {
         XCTAssertTrue(fallback.arm(after: 0.01) { XCTFail("Armed twice") })
         wait(for: [fired], timeout: 2)
     }
+
+    func testOrderlyShutdownWaitsForAnAlreadyRunningFallbackAction() {
+        let fallback = SessionShutdownFallback()
+        let actionStarted = DispatchSemaphore(value: 0)
+        let finishAction = DispatchSemaphore(value: 0)
+        let shutdownStarted = DispatchSemaphore(value: 0)
+        let shutdownFinished = DispatchSemaphore(value: 0)
+        let queue = DispatchQueue(label: "SessionShutdownFallbackTests.race")
+
+        XCTAssertTrue(fallback.arm(after: 0, queue: queue) {
+            actionStarted.signal()
+            finishAction.wait()
+        })
+        XCTAssertEqual(actionStarted.wait(timeout: .now() + 2), .success)
+
+        DispatchQueue.global().async {
+            shutdownStarted.signal()
+            fallback.shutdownBegins()
+            shutdownFinished.signal()
+        }
+        XCTAssertEqual(shutdownStarted.wait(timeout: .now() + 2), .success)
+        XCTAssertEqual(shutdownFinished.wait(timeout: .now() + 0.05), .timedOut)
+
+        finishAction.signal()
+        XCTAssertEqual(shutdownFinished.wait(timeout: .now() + 2), .success)
+    }
 }
 
 private final class Locked<Value>: @unchecked Sendable {

@@ -9,9 +9,12 @@ import Foundation
 /// type instead of hand-rolling `TestEnvironment.isRunningTests` checks.
 public enum AppPaths {
     /// Per-process sandbox root used in place of the real home directory while tests run.
+    /// The random component prevents a recycled PID from reusing stale files left in TMPDIR.
+    private static let testRunID = UUID().uuidString
+
     public static let testSandboxDirectory: URL = FileManager.default.temporaryDirectory
         .appendingPathComponent(
-            "keypath-tests-\(ProcessInfo.processInfo.processIdentifier)",
+            "keypath-tests-\(ProcessInfo.processInfo.processIdentifier)-\(testRunID)",
             isDirectory: true
         )
 

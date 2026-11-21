@@ -31,9 +31,21 @@ final class ActivityLogStorageSandboxTests: XCTestCase {
         XCTAssertEqual(dir.lastPathComponent, "ActivityLog")
     }
 
-    func testKeychainServiceIsSandboxed() {
-        // clearAll() deletes the encryption key; during tests that must target
-        // a separate Keychain item, never the production key.
-        XCTAssertEqual(ActivityLogEncryption.keychainService, "com.keypath.activitylog.tests")
+    func testActivityEncryptionUsesAnInMemoryKeyInTests() async throws {
+        XCTAssertFalse(ActivityLogEncryption.usesKeychain)
+
+        let encryption = ActivityLogEncryption()
+        let input = Data("isolated test activity".utf8)
+        let encrypted = try await encryption.encrypt(input)
+        let decrypted = try await encryption.decrypt(encrypted)
+        let keyExistsBeforeDelete = await encryption.keyExists()
+
+        XCTAssertNotEqual(encrypted, input)
+        XCTAssertEqual(decrypted, input)
+        XCTAssertTrue(keyExistsBeforeDelete)
+
+        try await encryption.deleteKey()
+        let keyExistsAfterDelete = await encryption.keyExists()
+        XCTAssertFalse(keyExistsAfterDelete)
     }
 }

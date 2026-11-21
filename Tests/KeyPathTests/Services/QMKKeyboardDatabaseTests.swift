@@ -4,6 +4,28 @@ import KeyPathRulesCore
 import XCTest
 
 final class QMKKeyboardDatabaseTests: XCTestCase {
+    private var cacheDirectories: [URL] = []
+
+    private func makeDatabase() -> QMKKeyboardDatabase {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("qmk-tests-\(UUID().uuidString)", isDirectory: true)
+        cacheDirectories.append(directory)
+        return QMKKeyboardDatabase(cacheDirectory: directory)
+    }
+
+    override func setUp() {
+        super.setUp()
+        cacheDirectories = []
+    }
+
+    override func tearDown() {
+        for directory in cacheDirectories {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        cacheDirectories = []
+        super.tearDown()
+    }
+
     // MARK: - Error Description Tests
 
     func testNetworkErrorDescription() {
@@ -166,7 +188,7 @@ final class QMKKeyboardDatabaseTests: XCTestCase {
     // MARK: - Search Integration Tests (with seeded data)
 
     func testSearchWithSeededIndexReturnsResults() async throws {
-        let database = QMKKeyboardDatabase.shared
+        let database = makeDatabase()
 
         await database.seedIndex(with: [
             .init(path: "crkbd/rev1"),
@@ -182,7 +204,7 @@ final class QMKKeyboardDatabaseTests: XCTestCase {
     }
 
     func testSearchByVendor() async throws {
-        let database = QMKKeyboardDatabase.shared
+        let database = makeDatabase()
 
         await database.seedIndex(with: [
             .init(path: "mode/m65s"),
@@ -198,7 +220,7 @@ final class QMKKeyboardDatabaseTests: XCTestCase {
     }
 
     func testSearchUsesMetadataNames() async throws {
-        let database = QMKKeyboardDatabase.shared
+        let database = makeDatabase()
 
         await database.seedIndex(with: [.init(path: "crkbd/rev1")])
         await database.seedBundledKeyboards(with: [])
@@ -213,7 +235,7 @@ final class QMKKeyboardDatabaseTests: XCTestCase {
     }
 
     func testBundledKeyboardsPrioritizedInSearch() async throws {
-        let database = QMKKeyboardDatabase.shared
+        let database = makeDatabase()
 
         let bundled = KeyboardMetadata(
             id: "crkbd/rev1",
@@ -235,7 +257,7 @@ final class QMKKeyboardDatabaseTests: XCTestCase {
     }
 
     func testEmptySearchReturnsBundledOnly() async throws {
-        let database = QMKKeyboardDatabase.shared
+        let database = makeDatabase()
 
         let bundled = [
             KeyboardMetadata(id: "crkbd/rev1", name: "Corne", isBundled: true),
@@ -254,7 +276,7 @@ final class QMKKeyboardDatabaseTests: XCTestCase {
     }
 
     func testSearchResultsCappedAt50() async throws {
-        let database = QMKKeyboardDatabase.shared
+        let database = makeDatabase()
 
         let entries = (0 ..< 60).map {
             QMKKeyboardDatabase.IndexEntry(path: "test/board\($0)")
@@ -268,7 +290,7 @@ final class QMKKeyboardDatabaseTests: XCTestCase {
     }
 
     func testSearchIsCaseInsensitive() async throws {
-        let database = QMKKeyboardDatabase.shared
+        let database = makeDatabase()
 
         await database.seedIndex(with: [.init(path: "ErgoDox/ez")])
         await database.seedBundledKeyboards(with: [])
@@ -279,7 +301,7 @@ final class QMKKeyboardDatabaseTests: XCTestCase {
     }
 
     func testSearchResultsRankedByRelevance() async throws {
-        let database = QMKKeyboardDatabase.shared
+        let database = makeDatabase()
 
         await database.seedIndex(with: [
             .init(path: "ibm/model_m"),
@@ -302,7 +324,7 @@ final class QMKKeyboardDatabaseTests: XCTestCase {
     // MARK: - Multi-Word Search Integration
 
     func testMultiWordSearchFindsResults() async throws {
-        let database = QMKKeyboardDatabase.shared
+        let database = makeDatabase()
 
         await database.seedIndex(with: [
             .init(path: "mode/m80h"),
@@ -321,7 +343,7 @@ final class QMKKeyboardDatabaseTests: XCTestCase {
     }
 
     func testMultiWordSearchExcludesPartialMatches() async throws {
-        let database = QMKKeyboardDatabase.shared
+        let database = makeDatabase()
 
         await database.seedIndex(with: [
             .init(path: "mode/m65s"),
@@ -348,7 +370,7 @@ final class QMKKeyboardDatabaseTests: XCTestCase {
     }
 
     func testSearchResultsIncludeBuiltInLayoutId() async throws {
-        let database = QMKKeyboardDatabase.shared
+        let database = makeDatabase()
 
         await database.seedIndex(with: [
             .init(path: "crkbd/rev1"),
@@ -369,7 +391,7 @@ final class QMKKeyboardDatabaseTests: XCTestCase {
     // MARK: - Legacy seedCache compatibility
 
     func testSeedCacheSetsBundledKeyboards() async throws {
-        let database = QMKKeyboardDatabase.shared
+        let database = makeDatabase()
 
         let kb = KeyboardMetadata(id: "legacy-test", name: "Legacy Board")
         await database.seedCache(with: [kb])

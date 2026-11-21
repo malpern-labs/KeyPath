@@ -70,21 +70,19 @@ final class PermissionOracleInvalidationTests: XCTestCase {
 @MainActor
 final class SessionStartPermissionSnapshotTests: KeyPathTestCase {
     func testSuccessfulSessionStartDiscardsPermissionSnapshotSampledBeforeIt() async {
-        let coordinator = ServiceLifecycleCoordinator()
+        let oracle = PermissionOracle()
+        let coordinator = ServiceLifecycleCoordinator {
+            await oracle.invalidateCache()
+        }
         coordinator.testSessionConfigurationValidation = { .valid }
         let counter = SnapshotCounter()
-        // Let the coordinator's own provider registration settle first.
-        for _ in 0 ..< 50 {
-            await Task.yield()
-        }
-        await PermissionOracle.shared.setTestSnapshotGenerator {
+        await oracle.setTestSnapshotGenerator {
             await counter.increment()
             return snapshot(runtimeReady: false)
         }
-        addTeardownBlock { await PermissionOracle.shared.setTestSnapshotGenerator(nil) }
 
-        _ = await SystemStateProvider.shared.currentPermissionSnapshot()
-        _ = await SystemStateProvider.shared.currentPermissionSnapshot()
+        _ = await oracle.currentSnapshot()
+        _ = await oracle.currentSnapshot()
         let primed = await counter.count
         XCTAssertEqual(primed, 1, "Precondition: the pre-runtime snapshot is cached")
 
@@ -93,7 +91,7 @@ final class SessionStartPermissionSnapshotTests: KeyPathTestCase {
         let started = await coordinator.startKanata()
         XCTAssertTrue(started)
 
-        _ = await SystemStateProvider.shared.currentPermissionSnapshot()
+        _ = await oracle.currentSnapshot()
         let afterStart = await counter.count
         XCTAssertEqual(afterStart, 2, "Validation after a successful start must not reuse pre-runtime permissions")
     }

@@ -9,15 +9,26 @@ import Observation
 final class CustomRuleMutationRecoveryTests: KeyPathTestCase {
     private var directory: URL!
     private var manager: RuleCollectionsManager!
+    private var notificationCenter: NotificationCenter!
 
     override func setUp() async throws {
         try await super.setUp()
         directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        notificationCenter = NotificationCenter()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let collections = RuleCollectionStore.testStore(at: directory.appendingPathComponent("RuleCollections.json"))
         let rules = CustomRulesStore.testStore(at: directory.appendingPathComponent("CustomRules.json"))
-        let service = ConfigurationService(configDirectory: directory.path, ruleCollectionStore: collections, customRulesStore: rules)
-        manager = RuleCollectionsManager(ruleCollectionStore: collections, customRulesStore: rules, configurationService: service)
+        let service = ConfigurationService.sessionTestService(
+            configDirectory: directory.path,
+            ruleCollectionStore: collections,
+            customRulesStore: rules
+        )
+        manager = RuleCollectionsManager(
+            ruleCollectionStore: collections,
+            customRulesStore: rules,
+            configurationService: service,
+            notificationCenter: notificationCenter
+        )
         manager.ruleCollections = []
         manager.customRules = [CustomRule(input: "f20", action: .keystroke(key: "f19"), createdAt: Date(timeIntervalSince1970: 42))]
         manager.ruleCollections = await collections.loadCollectionsDetailed().collections
@@ -32,6 +43,7 @@ final class CustomRuleMutationRecoveryTests: KeyPathTestCase {
     override func tearDown() async throws {
         try? FileManager.default.removeItem(at: directory)
         manager = nil
+        notificationCenter = nil
         directory = nil
         try await super.tearDown()
     }
@@ -432,7 +444,7 @@ final class CustomRuleMutationRecoveryTests: KeyPathTestCase {
     func testRejectedMutationRefreshesNormallyCommittedPeerRevisionBeforeSnapshot() async throws {
         let peerCollections = RuleCollectionStore.testStore(at: directory.appendingPathComponent("RuleCollections.json"))
         let peerRules = CustomRulesStore.testStore(at: directory.appendingPathComponent("CustomRules.json"))
-        let peerService = ConfigurationService(
+        let peerService = ConfigurationService.sessionTestService(
             configDirectory: directory.path,
             ruleCollectionStore: peerCollections,
             customRulesStore: peerRules
@@ -608,10 +620,10 @@ final class CustomRuleMutationRecoveryTests: KeyPathTestCase {
 
     func testLocalLayerRefreshDoesNotEmitRuntimeHeartbeat() {
         var heartbeats = 0
-        let token = NotificationCenter.default.addObserver(for: KanataHeartbeat.self) { _ in
+        let token = notificationCenter.addObserver(for: KanataHeartbeat.self) { _ in
             heartbeats += 1
         }
-        defer { NotificationCenter.default.removeObserver(token) }
+        defer { notificationCenter.removeObserver(token) }
         manager.refreshLayerIndicatorState()
         XCTAssertEqual(heartbeats, 0)
         manager.updateActiveLayerName("base")

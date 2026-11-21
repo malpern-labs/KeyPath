@@ -65,17 +65,19 @@ struct NotificationObserverManagerTests {
     @Test("observe increments observerCount")
     func observeIncrementsObserverCount() {
         let manager = NotificationObserverManager()
+        let center = NotificationCenter()
         let name = Notification.Name("test-\(UUID())")
-        manager.observe(name, queue: nil) { _ in }
+        manager.observe(name, queue: nil, center: center) { _ in }
         #expect(manager.observerCount == 1)
     }
 
     @Test("multiple observers tracked")
     func multipleObserversTracked() {
         let manager = NotificationObserverManager()
+        let center = NotificationCenter()
         for i in 0 ..< 3 {
             let name = Notification.Name("test-multi-\(i)-\(UUID())")
-            manager.observe(name, queue: nil) { _ in }
+            manager.observe(name, queue: nil, center: center) { _ in }
         }
         #expect(manager.observerCount == 3)
     }
@@ -83,9 +85,10 @@ struct NotificationObserverManagerTests {
     @Test("removeAll resets count to zero")
     func removeAllResetsCountToZero() {
         let manager = NotificationObserverManager()
+        let center = NotificationCenter()
         for i in 0 ..< 3 {
             let name = Notification.Name("test-remove-\(i)-\(UUID())")
-            manager.observe(name, queue: nil) { _ in }
+            manager.observe(name, queue: nil, center: center) { _ in }
         }
         #expect(manager.observerCount == 3)
         manager.removeAll()
@@ -97,27 +100,29 @@ struct NotificationObserverManagerTests {
     @Test("observer receives posted notification")
     func observerReceivesPostedNotification() {
         let manager = NotificationObserverManager()
+        let center = NotificationCenter()
         let name = Notification.Name("test-\(UUID())")
         let received = SendableFlag()
-        manager.observe(name, queue: nil) { _ in
+        manager.observe(name, queue: nil, center: center) { _ in
             received.set()
         }
-        NotificationCenter.default.post(name: name, object: nil)
+        center.post(name: name, object: nil)
         #expect(received.value)
     }
 
     @Test("observeUserInfo receives userInfo")
     func observeUserInfoReceivesUserInfo() {
         let manager = NotificationObserverManager()
+        let center = NotificationCenter()
         let name = Notification.Name("test-userinfo-\(UUID())")
         let receivedKey = SendableBox<String>()
         let receivedNumber = SendableBox<Int>()
-        manager.observeUserInfo(name, queue: nil) { info in
+        manager.observeUserInfo(name, queue: nil, center: center) { info in
             receivedKey.set(info?["key"] as? String ?? "")
             receivedNumber.set(info?["number"] as? Int ?? -1)
         }
         let userInfo: [AnyHashable: Any] = ["key": "value", "number": 42]
-        NotificationCenter.default.post(name: name, object: nil, userInfo: userInfo)
+        center.post(name: name, object: nil, userInfo: userInfo)
         #expect(receivedKey.value == "value")
         #expect(receivedNumber.value == 42)
     }
@@ -125,17 +130,18 @@ struct NotificationObserverManagerTests {
     @Test("observer does not fire after removeAll")
     func observerDoesNotFireAfterRemoveAll() {
         let manager = NotificationObserverManager()
+        let center = NotificationCenter()
         let name = Notification.Name("test-nofire-\(UUID())")
         let callCount = SendableCounter()
-        manager.observe(name, queue: nil) { _ in
+        manager.observe(name, queue: nil, center: center) { _ in
             callCount.increment()
         }
         // Fire once before removeAll to confirm it works
-        NotificationCenter.default.post(name: name, object: nil)
+        center.post(name: name, object: nil)
         #expect(callCount.value == 1)
         manager.removeAll()
         // Fire again after removeAll -- should not increment
-        NotificationCenter.default.post(name: name, object: nil)
+        center.post(name: name, object: nil)
         #expect(callCount.value == 1)
     }
 
@@ -155,21 +161,22 @@ struct NotificationObserverManagerTests {
 
     @Test("deinit removes observers")
     func deinitRemovesObservers() {
+        let center = NotificationCenter()
         let name = Notification.Name("test-deinit-\(UUID())")
         let callCount = SendableCounter()
 
         // Create manager in a limited scope so it deallocates
         do {
             let manager = NotificationObserverManager()
-            manager.observe(name, queue: nil) { _ in
+            manager.observe(name, queue: nil, center: center) { _ in
                 callCount.increment()
             }
             // Verify it works while alive
-            NotificationCenter.default.post(name: name, object: nil)
+            center.post(name: name, object: nil)
             #expect(callCount.value == 1)
         }
         // Manager has been deallocated -- observer should be removed
-        NotificationCenter.default.post(name: name, object: nil)
+        center.post(name: name, object: nil)
         #expect(callCount.value == 1, "Handler should not fire after manager is deallocated")
     }
 
@@ -178,18 +185,19 @@ struct NotificationObserverManagerTests {
     @Test("observers from different notification names are independent")
     func observersFromDifferentNamesAreIndependent() {
         let manager = NotificationObserverManager()
+        let center = NotificationCenter()
         let nameA = Notification.Name("test-A-\(UUID())")
         let nameB = Notification.Name("test-B-\(UUID())")
         let receivedA = SendableFlag()
         let receivedB = SendableFlag()
-        manager.observe(nameA, queue: nil) { _ in
+        manager.observe(nameA, queue: nil, center: center) { _ in
             receivedA.set()
         }
-        manager.observe(nameB, queue: nil) { _ in
+        manager.observe(nameB, queue: nil, center: center) { _ in
             receivedB.set()
         }
         // Post only nameA
-        NotificationCenter.default.post(name: nameA, object: nil)
+        center.post(name: nameA, object: nil)
         #expect(receivedA.value)
         #expect(!receivedB.value, "Handler for nameB should not fire when only nameA is posted")
     }

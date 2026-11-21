@@ -84,10 +84,24 @@ final class SessionShutdownFallback: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         guard !shutdownBegan, pending == nil else { return !shutdownBegan }
-        let item = DispatchWorkItem(block: action)
+        let item = DispatchWorkItem { [weak self] in
+            self?.fireIfShutdownHasNotBegun(action)
+        }
         pending = item
         queue.asyncAfter(deadline: .now() + grace, execute: item)
         return true
+    }
+
+    /// Serialize the hard exit with the orderly-shutdown claim. Cancelling an
+    /// already-enqueued DispatchWorkItem alone does not prevent its body from
+    /// running. The production action is `_exit`, so it cannot re-enter this
+    /// object and does not hold the lock for a meaningful interval.
+    private func fireIfShutdownHasNotBegun(_ action: @Sendable () -> Void) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !shutdownBegan else { return }
+        pending = nil
+        action()
     }
 
     func shutdownBegins() {
