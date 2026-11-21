@@ -108,8 +108,14 @@ Notes:
   **integration-only**: keep it on `master` for merging and pulling. Do NOT do
   feature work or run `swift build`/`swift test` there — that is the root cause
   of SwiftPM lock/CPU contention and cross-thread collisions.
-- Create work in a fresh worktree:
-  `git worktree add -b <branch> <path> master`; build and open the PR from it.
+- Create work in a fresh worktree under `~/local-code/keypath-worktrees/`:
+  `git worktree add -b <branch> ~/local-code/keypath-worktrees/<name> master`;
+  build and open the PR from it. **Never put a worktree in `/tmp` or
+  `/private/tmp`.** macOS empties it on restart: on 2026-11-20 a restart of the
+  Air deleted 49 worktrees there, with any uncommitted work in them.
+- Commit and push early. Commits survive a lost folder because branches live in
+  the main repository, but uncommitted edits and unpushed branches exist only on
+  that machine.
 - After a PR merges, prune its worktree: `git worktree remove <path>`. It refuses
   when there is uncommitted work — that is a feature: inspect that work before
   deleting; never `--force`-remove blindly. Gate pruning on the **PR being
