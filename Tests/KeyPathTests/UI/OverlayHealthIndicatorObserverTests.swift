@@ -258,9 +258,4 @@ final class HealthObserverInitializationOrderTests: XCTestCase {
 
         XCTAssertTrue(controller.isConfigured, "Controller is configured after setValidator()")
     }
-
-    @MainActor
-    func testSharedControllerConfigurationCheckExists() {
-        _ = MainAppStateController.shared.isConfigured
-    }
 }

@@ -3,15 +3,13 @@
 @testable import KeyPathInstallationWizard
 import XCTest
 
-/// Resets shared singleton state to prevent cross-test contamination.
+/// Configures test-wide behavior that cannot be injected at the call site.
 ///
-/// Called from KeyPathTestCase.setUp and can be called directly by any
-/// test that modifies singleton state.
+/// Called from KeyPathTestCase setup.
 @MainActor
-enum TestSingletonReset {
-    /// Reset all known mutable singletons to their default state.
-    /// Call this in setUp() of any test that touches shared state.
-    static func resetAll() {
+enum TestGlobalSetup {
+    /// Keep test logging quiet unless a run explicitly requests console logs.
+    static func configure() {
         // Negative-path tests log expected [ERROR]/[WARN] lines, and the test
         // log guardrail counts them. Keep app logs in the log file unless the
         // run asks for verbose output. (This used to happen by accident: the
@@ -20,11 +18,5 @@ enum TestSingletonReset {
         AppLogger.shared.setConsoleLoggingEnabled(
             ProcessInfo.processInfo.environment["KEYPATH_TEST_VERBOSE_LOGS"] == "1"
         )
-
-        // MainAppStateController — most common source of flakiness
-        let controller = MainAppStateController.shared
-        controller.validationState = nil
-        controller.issues = []
-        controller.lastValidationDate = nil
     }
 }

@@ -105,6 +105,8 @@ final class UnitTestSuite: XCTestCase {
             try? FileManager.default.removeItem(at: logDirectory)
         }
 
+        logger.overrideLogDirectory(directory.path)
+        XCTAssertNoThrow(logger.log("Test message", level: .error))
         XCTAssertNoThrow(logger.log("Test message", level: .error))
         logger.flushBuffer()
         XCTAssertTrue(FileManager.default.fileExists(atPath: logDirectory.appendingPathComponent("keypath-debug.log").path))

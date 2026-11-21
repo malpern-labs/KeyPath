@@ -6,7 +6,7 @@ import KeyPathWizardCore
 /// Base test case class that provides common test seam setup for KeyPath tests.
 ///
 /// Use this base class for any test that uses `InstallerEngine`,
-/// `RuntimeCoordinator`, or `SystemValidator`. It resets shared singletons and
+/// `RuntimeCoordinator`, or `SystemValidator`. It configures test logging and
 /// installs a `SystemValidator` in `InstallerServices.current`.
 ///
 /// ## Usage
@@ -32,7 +32,7 @@ open class KeyPathTestCase: XCTestCase {
     override open func setUp() {
         super.setUp()
         MainActor.assumeIsolated {
-            TestSingletonReset.resetAll()
+            TestGlobalSetup.configure()
             if InstallerServices.current.systemValidator == nil {
                 InstallerServices.current.systemValidator = SystemValidator.readyTestFixture()
             }
@@ -42,7 +42,7 @@ open class KeyPathTestCase: XCTestCase {
     override open func tearDown() {
         MainActor.assumeIsolated {
             InstallerServices.current = InstallerServices()
-            TestSingletonReset.resetAll()
+            TestGlobalSetup.configure()
         }
         super.tearDown()
     }
@@ -54,7 +54,7 @@ open class KeyPathAsyncTestCase: XCTestCase {
     override open func setUp() async throws {
         try await super.setUp()
         await MainActor.run {
-            TestSingletonReset.resetAll()
+            TestGlobalSetup.configure()
             if InstallerServices.current.systemValidator == nil {
                 InstallerServices.current.systemValidator = SystemValidator.readyTestFixture()
             }
@@ -64,7 +64,7 @@ open class KeyPathAsyncTestCase: XCTestCase {
     override open func tearDown() async throws {
         await MainActor.run {
             InstallerServices.current = InstallerServices()
-            TestSingletonReset.resetAll()
+            TestGlobalSetup.configure()
         }
         try await super.tearDown()
     }
