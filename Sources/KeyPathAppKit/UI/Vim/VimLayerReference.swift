@@ -154,13 +154,15 @@ enum VimLayerReference {
     /// Keyed by the (localized) full title, so a lookup matches whatever `curated` produced.
     /// Built with `uniquingKeysWith` because two English titles may share one translation.
     private static let capTitles: [String: String] = Dictionary([
-        (String(localized: "Line start"), String(localized: "Start", comment: "Vim keycap: start of line")),
+        // Its own key: "Start" alone is also the wizard's Start button, which Japanese translates as 開始, not 行頭.
+        (String(localized: "Line start"), String(localized: "vim.keycap.line-start", defaultValue: "Start", comment: "Vim keycap: start of line")),
         (String(localized: "Line end"), String(localized: "End", comment: "Vim keycap: end of line")),
         (String(localized: "Top of document"), String(localized: "Top", comment: "Vim keycap: top of document")),
         (String(localized: "Bottom of document"), String(localized: "Bottom", comment: "Vim keycap: bottom of document")),
         (String(localized: "Delete character"), String(localized: "Delete", comment: "Vim keycap: delete character")),
         (String(localized: "Delete previous word"), String(localized: "Del ←", comment: "Vim keycap: delete previous word")),
-        (String(localized: "New line below"), String(localized: "Open", comment: "Vim keycap: new line below")),
+        // Own key: "Open" alone is also the Status tab's Open button (開く), not this Vim command (挿入).
+        (String(localized: "New line below"), String(localized: "vim.keycap.open-line", defaultValue: "Open", comment: "Vim keycap: new line below")),
         (String(localized: "New line above"), String(localized: "Open ↑", comment: "Vim keycap: new line above")),
         (String(localized: "Next match"), String(localized: "Next", comment: "Vim keycap: next search match")),
         (String(localized: "Previous match"), String(localized: "Prev", comment: "Vim keycap: previous search match")),

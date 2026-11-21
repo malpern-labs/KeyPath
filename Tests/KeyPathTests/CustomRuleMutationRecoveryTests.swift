@@ -1,5 +1,6 @@
 import Foundation
 @testable import KeyPathAppKit
+@testable import KeyPathCLISupport
 import KeyPathRulesCore
 import Observation
 @preconcurrency import XCTest
