@@ -396,12 +396,22 @@ final class DeploymentScriptContractTests: XCTestCase {
         let safeRunner = "runs-on: [self-hosted, macOS, keypath, swiftpm-safe]"
 
         // ci.yml selects its runner with an expression so a repo variable can move
-        // it to GitHub-hosted runners; the self-hosted branch keeps the safe label.
+        // it to GitHub-hosted runners. Since test isolation (P9), both required
+        // jobs take either mini runner, so two PRs can test at once.
         let safeRunnerChoice = #"'["self-hosted", "macOS", "keypath", "swiftpm-safe"]'"#
+        let anyMiniRunnerChoice = #"'["self-hosted", "macOS", "keypath"]'"#
+        XCTAssertFalse(
+            ci.contains(safeRunnerChoice),
+            "build-and-test runs on either mini runner; ci.yml should not require swiftpm-safe."
+        )
         XCTAssertEqual(
-            ci.components(separatedBy: safeRunnerChoice).count - 1,
-            1,
-            "Only build-and-test should require the SwiftPM-safe interactive runner in ci.yml, written as \(safeRunnerChoice) inside its runs-on expression."
+            ci.components(separatedBy: anyMiniRunnerChoice).count - 1,
+            2,
+            "Both required jobs should select either mini runner with \(anyMiniRunnerChoice) inside their runs-on expression."
+        )
+        XCTAssertFalse(
+            ci.contains("/tmp/keypath-ci-swift-tests.lock"),
+            "Test runs may overlap on the mini; a shared test lock would serialize them again."
         )
         // Both required jobs move to the hosted image together, either by the repo
         // variable or because the pull request comes from a fork (S5). The fork
@@ -429,8 +439,8 @@ final class DeploymentScriptContractTests: XCTestCase {
         XCTAssertTrue(runnerHealth.contains("Headless keypath-mini must not carry swiftpm-safe"))
         XCTAssertTrue(runnerHealth.contains("Interactive keypath-mini-2 must carry swiftpm-safe"))
         XCTAssertTrue(
-            installer.contains("Do not assign this registration the swiftpm-safe label"),
-            "The headless service installer must preserve the macOS 27 AppSSO routing boundary."
+            installer.contains("The swiftpm-safe label now routes only the coverage workflow"),
+            "The headless service installer should say what the swiftpm-safe label still routes."
         )
     }
 }

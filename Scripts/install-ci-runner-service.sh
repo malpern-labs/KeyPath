@@ -163,8 +163,8 @@ cat > "$PLIST" <<PLIST_EOF
       AppSSO once trapped SwiftPM binary-artifact requests from this system
       launch domain. Since 2026-10-19 both mini runners are daemons and the full
       Swift test job runs on either one; keypath-mini-2's cold builds have not
-      hit the trap. The swiftpm-safe label now routes only the coverage
-      workflow, so do not assign it to this registration.
+      hit the trap. Do not assign this registration swiftpm-safe:
+      The swiftpm-safe label now routes only the coverage workflow.
       ProcessType is Standard, not Background: Background makes macOS throttle
       CPU and I/O, which made CI jobs about 10x slower (2026-10-19).
     -->
