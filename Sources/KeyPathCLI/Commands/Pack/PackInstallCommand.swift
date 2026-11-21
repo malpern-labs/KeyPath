@@ -139,6 +139,11 @@ struct PackInstall: AsyncParsableCommand, Sendable {
                     installErr.errorDescription ?? installErr.localizedDescription,
                     hint: "Install \(name) first"
                 )
+            case .needsReview:
+                CLIError.conflict(
+                    installErr.errorDescription ?? installErr.localizedDescription,
+                    hint: "Review the pack's changes in KeyPath's Packs gallery before installing it"
+                )
             default:
                 CLIError.validation(installErr.errorDescription ?? installErr.localizedDescription)
             }
