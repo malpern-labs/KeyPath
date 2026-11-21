@@ -13,6 +13,7 @@ struct OverlayKeycapView: View {
     let isPressed: Bool
     /// Scale factor from keyboard resize (1.0 = default size)
     let scale: CGFloat
+    var actionLegendCapacity = KeycapActionLegend.visibleLimit
     /// Whether dark mode is active (for backlight glow)
     var isDarkMode: Bool = false
     /// Whether caps lock is engaged (for indicator light)

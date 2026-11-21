@@ -29,7 +29,10 @@ struct LayerKeyInfo: Equatable, Sendable {
     /// When set, overlay prefers this over displayLabel for VIM layer keys
     let vimLabel: String?
     /// Custom shifted output label (overrides the system default shift symbol on the keycap)
-    let customShiftLabel: String?
+    var customShiftLabel: String?
+    /// Additional trigger outcomes from this layer. The tap simulation fields remain authoritative
+    /// for existing consumers such as remap highlighting.
+    var actionLegends: [KeycapActionLegend] = []
 
     init(
         displayLabel: String,

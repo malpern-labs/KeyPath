@@ -225,6 +225,12 @@ final class PreferencesService: Sendable {
         }
     }
 
+    var overlayHidesActionLegends: Bool {
+        didSet {
+            defaults.set(overlayHidesActionLegends, forKey: Keys.overlayHidesActionLegends)
+        }
+    }
+
     /// Whether the overlay fades out after a while without typing.
     var overlayFadesWhenIdle: Bool {
         didSet {
@@ -423,6 +429,7 @@ final class PreferencesService: Sendable {
         static let keyLabelStyle = "KeyPath.Display.KeyLabelStyle"
         static let unmappedLayerKeyStyle = "KeyPath.Overlay.UnmappedLayerKeyStyle"
         static let overlayOpacity = "KeyPath.Overlay.Opacity"
+        static let overlayHidesActionLegends = "KeyPath.Overlay.HidesActionLegends"
         static let overlayFadesWhenIdle = "KeyPath.Overlay.FadesWhenIdle"
         static let overlayShowsOnlyWhileLayerHeld = "KeyPath.Overlay.ShowsOnlyWhileLayerHeld"
         static let overlayHiddenHintShowCount = "KeyPath.Education.OverlayHiddenHintShowCount"
@@ -509,6 +516,7 @@ final class PreferencesService: Sendable {
         overlayOpacity = Self.clampedOverlayOpacity(
             defaults.object(forKey: Keys.overlayOpacity) as? Double ?? Defaults.overlayOpacity
         )
+        overlayHidesActionLegends = defaults.bool(forKey: Keys.overlayHidesActionLegends)
         overlayFadesWhenIdle = defaults.object(forKey: Keys.overlayFadesWhenIdle) as? Bool
             ?? Defaults.overlayFadesWhenIdle
         overlayShowsOnlyWhileLayerHeld = defaults.object(forKey: Keys.overlayShowsOnlyWhileLayerHeld) as? Bool

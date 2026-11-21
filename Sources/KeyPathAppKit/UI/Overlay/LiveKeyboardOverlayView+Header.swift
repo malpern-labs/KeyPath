@@ -83,45 +83,6 @@ private struct DragHandleTexture: View {
     }
 }
 
-/// A tooltip modifier that uses a separate floating window (avoids clipping issues)
-private struct WindowTooltip: ViewModifier {
-    let text: String
-    let id: String
-
-    func body(content: Content) -> some View {
-        content
-            .background(
-                GeometryReader { geo in
-                    Color.clear
-                        .onHover { hovering in
-                            if hovering {
-                                // Convert local frame to screen coordinates
-                                if let window = NSApp.windows.first(where: { $0.isVisible && $0.level == .floating }) {
-                                    let localFrame = geo.frame(in: .global)
-                                    let windowFrame = window.frame
-                                    let screenRect = NSRect(
-                                        x: windowFrame.origin.x + localFrame.origin.x,
-                                        y: windowFrame.origin.y + windowFrame.height - localFrame.origin.y - localFrame.height,
-                                        width: localFrame.width,
-                                        height: localFrame.height
-                                    )
-                                    TooltipWindowController.shared.show(text: text, id: id, anchorRect: screenRect)
-                                }
-                            } else {
-                                TooltipWindowController.shared.dismiss(id: id)
-                            }
-                        }
-                }
-            )
-    }
-}
-
-private extension View {
-    func windowTooltip(_ text: String, id: String) -> some View {
-        modifier(WindowTooltip(text: text, id: id))
-    }
-}
-
 extension EnvironmentValues {
     @Entry var overlayLayerShortcutsEnabled = false
 }
@@ -322,7 +283,7 @@ struct OverlayDragHeader: View {
                     }
                     .buttonStyle(.plain)
                     .onHover { isHoveringButton = $0 }
-                    .windowTooltip(isInspectorOpen ? "Close Settings" : "Open Settings", id: "drawer")
+                    .windowTooltip(.text(isInspectorOpen ? "Close Settings" : "Open Settings"), id: "drawer")
                     .accessibilityIdentifier("overlay-drawer-toggle")
                     .accessibilityLabel(isInspectorOpen ? "Close settings drawer" : "Open settings drawer")
                 }

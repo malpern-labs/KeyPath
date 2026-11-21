@@ -10850,6 +10850,7 @@
         }
       }
     },
+    "Custom action" : {},
     "Custom key mapping" : {
       "localizations" : {
         "ja" : {
@@ -15284,6 +15285,7 @@
         }
       }
     },
+    "Hide detailed key legends" : {},
     "Hide Details" : {
       "localizations" : {
         "ja" : {
@@ -30729,6 +30731,7 @@
         }
       }
     },
+    "Show fewer labels on keys with multiple actions." : {},
     "Show Keyboard" : {
       "localizations" : {
         "ja" : {
@@ -32815,6 +32818,9 @@
           }
         }
       }
+    },
+    "Tap %lld times" : {
+      "comment" : "Keycap hover trigger for a tap dance step"
     },
     "Tap (2×)" : {
       "localizations" : {

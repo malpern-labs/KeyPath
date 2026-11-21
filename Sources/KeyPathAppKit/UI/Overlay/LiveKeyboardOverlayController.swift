@@ -610,6 +610,7 @@ final class LiveKeyboardOverlayController: NSObject, NSWindowDelegate {
     }
 
     func hideWindow() {
+        TooltipWindowController.shared.dismissImmediately()
         let token = UUID()
         visibilityAnimationToken = token
         // Save frame BEFORE closing inspector (which modifies the frame)

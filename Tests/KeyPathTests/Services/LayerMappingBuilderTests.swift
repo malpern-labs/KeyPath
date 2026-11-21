@@ -5,6 +5,85 @@ import Testing
 
 @Suite("LayerMappingBuilder")
 struct LayerMappingBuilderTests {
+    @Test("Tap dance legends are ordered and scoped to the displayed layer")
+    func tapDanceLegendsFollowDisplayedLayer() throws {
+        let dance = TapDanceBehavior(
+            windowMs: 500,
+            steps: ["left", "down", "up", "right", "home"].map {
+                TapDanceStep(label: $0, action: .keystroke(key: $0))
+            }
+        )
+        let rule = CustomRule(
+            input: "h",
+            action: .keystroke(key: "left"),
+            behavior: .tapOrTapDance(.tapDance(dance)),
+            targetLayer: .custom("nav")
+        )
+        // The one-tap simulator can miss outputs when the dance window is long.
+        let fallback = LayerKeyInfo.transparent(fallbackLabel: "H")
+        let base = LayerMappingBuilder.enrichWithActionLegends(
+            mapping: [4: fallback], customRules: [rule], ruleCollections: [], currentLayerName: "Base"
+        )
+        #expect(base[4] == fallback)
+
+        let nav = LayerMappingBuilder.enrichWithActionLegends(
+            mapping: [4: fallback], customRules: [rule], ruleCollections: [], currentLayerName: "Nav"
+        )
+        let legends = try #require(nav[4]?.actionLegends)
+        #expect(legends.map(\.trigger) == [.tap, .repeatedTap(2), .repeatedTap(3), .repeatedTap(4), .repeatedTap(5)])
+        #expect(legends.prefix(KeycapActionLegend.visibleLimit).map(\.glyph) == ["←", "↓", "↑", "→"])
+        #expect(nav[4]?.isTransparent == fallback.isTransparent)
+        #expect(nav[4]?.outputKeyCode == fallback.outputKeyCode)
+    }
+
+    @Test("Disabled overrides and punctuation aliases preserve the effective hold legend")
+    func dualRoleLegendsResolvePunctuationAliases() throws {
+        let behavior = MappingBehavior.dualRole(.homeRowMod(letter: "semicolon", modifier: "lctl"))
+        let rule = CustomRule(input: "scln", action: .keystroke(key: "semicolon"), behavior: behavior)
+        let disabled = CustomRule(input: ";", action: .keystroke(key: "a"), isEnabled: false)
+        let layer = LayerMappingBuilder.enrichWithActionLegends(
+            mapping: [41: .mapped(displayLabel: ";", outputKey: ";", outputKeyCode: 41)],
+            customRules: [disabled, rule],
+            ruleCollections: [],
+            currentLayerName: "base"
+        )
+        let legends = try #require(layer[41]?.actionLegends)
+        #expect(legends.map(\.trigger) == [.tap, .hold])
+        #expect(legends.map(\.glyph) == [";", "⌃"])
+        let keyInfo = try #require(layer[41])
+        #expect(OverlayKeyboardView.shouldHideFloatingLabel(for: keyInfo, baseLabel: ";", inputKeyName: ";"))
+        #expect(!OverlayKeyboardView.shouldHideFloatingLabel(
+            for: keyInfo, baseLabel: ";", inputKeyName: ";", showsActionLegends: false
+        ))
+    }
+
+    @Test("A layer activator displays its tap and hold on its source layer")
+    func baseActivatorUsesItsSourceLayer() throws {
+        let nav = RuleCollection(
+            name: "Navigation",
+            summary: "",
+            category: .custom,
+            mappings: [],
+            targetLayer: .navigation,
+            momentaryActivator: MomentaryActivator(input: "space", targetLayer: .navigation)
+        )
+        let competingRule = CustomRule(input: "spc", action: .keystroke(key: "esc"))
+        let key = LayerKeyInfo.layerSwitch(displayLabel: "Space")
+
+        let base = LayerMappingBuilder.enrichWithActionLegends(
+            mapping: [49: key], customRules: [competingRule], ruleCollections: [nav], currentLayerName: "base"
+        )
+        let legends = try #require(base[49]?.actionLegends)
+        #expect(legends.map(\.trigger) == [.tap, .hold])
+        #expect(legends.map(\.action) == [.keystroke(key: "spc"), .activateLayer(name: nav.targetLayer.kanataName)])
+        #expect(base[49]?.isLayerSwitch == true)
+
+        let target = LayerMappingBuilder.enrichWithActionLegends(
+            mapping: [49: key], customRules: [competingRule], ruleCollections: [nav], currentLayerName: nav.targetLayer.kanataName
+        )
+        #expect(target[49] == key)
+    }
+
     // MARK: - mergeAugmentation
 
     @Test("vimLabel preserved from original through merge")
