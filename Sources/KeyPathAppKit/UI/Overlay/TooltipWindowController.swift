@@ -36,15 +36,19 @@ final class TooltipWindowController {
         showTask = Task { @MainActor in
             try? await Task.sleep(for: .seconds(showDelay))
             guard !Task.isCancelled, currentTooltipId == id,
-                  let anchorRect = anchor.screenRect
+                  let anchorRect = anchor.hoveredScreenRect
             else { return }
             showWindow(content: content, anchorRect: anchorRect)
         }
     }
 
     /// Dismiss the tooltip for a specific id
-    func dismiss(id: String) {
+    func dismiss(id: String, immediately: Bool = false) {
         guard currentTooltipId == id else { return }
+        if immediately {
+            dismissImmediately()
+            return
+        }
         showTask?.cancel()
         showTask = nil
         dismissWithFade()
@@ -145,23 +149,85 @@ enum OverlayTooltipContent: Equatable {
 final class TooltipAnchor {
     weak var view: NSView?
 
-    var screenRect: CGRect? {
-        guard let view, let window = view.window, window.isVisible else { return nil }
+    var hoveredScreenRect: CGRect? {
+        guard let view, let window = view.window, view.containsOverlayPointer else { return nil }
         return window.convertToScreen(view.convert(view.bounds, to: nil))
+    }
+}
+
+private extension NSView {
+    var containsOverlayPointer: Bool {
+        guard let window, window.isVisible, !window.ignoresMouseEvents else { return false }
+        let pointer = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        return bounds.intersection(visibleRect).contains(pointer)
     }
 }
 
 private struct TooltipAnchorView: NSViewRepresentable {
     let anchor: TooltipAnchor
+    let onHover: (Bool) -> Void
 
-    func makeNSView(context _: Context) -> NSView {
-        let view = NSView()
+    func makeNSView(context _: Context) -> TrackingView {
+        let view = TrackingView()
         anchor.view = view
+        view.onHover = onHover
         return view
     }
 
-    func updateNSView(_ view: NSView, context _: Context) {
+    func updateNSView(_ view: TrackingView, context _: Context) {
         anchor.view = view
+        view.onHover = onHover
+    }
+
+    final class TrackingView: NSView {
+        var onHover: ((Bool) -> Void)?
+        private var hoverTrackingArea: NSTrackingArea?
+        private var isHovering = false
+
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+            if let hoverTrackingArea { removeTrackingArea(hoverTrackingArea) }
+            hoverTrackingArea = nil
+            let trackingRect = bounds.intersection(visibleRect)
+            guard !trackingRect.isEmpty else {
+                updateHover(false)
+                return
+            }
+
+            let pointerIsInside = containsOverlayPointer
+            var options: NSTrackingArea.Options = [.mouseEnteredAndExited, .mouseMoved, .activeAlways]
+            if pointerIsInside { options.insert(.assumeInside) }
+            let area = NSTrackingArea(rect: trackingRect, options: options, owner: self, userInfo: nil)
+            addTrackingArea(area)
+            hoverTrackingArea = area
+            // The overlay can wake after the pointer has already reached the key.
+            updateHover(pointerIsInside)
+        }
+
+        override func mouseEntered(with event: NSEvent) {
+            guard event.trackingArea === hoverTrackingArea else { return }
+            updateHover(containsOverlayPointer)
+        }
+
+        override func mouseMoved(with _: NSEvent) {
+            updateHover(containsOverlayPointer)
+        }
+
+        override func mouseExited(with event: NSEvent) {
+            guard event.trackingArea === hoverTrackingArea else { return }
+            updateHover(false)
+        }
+
+        private func updateHover(_ hovering: Bool) {
+            guard isHovering != hovering else { return }
+            isHovering = hovering
+            onHover?(hovering)
+        }
+
+        /// Track hover without changing how the overlay handles clicks and drags.
+        override func hitTest(_: NSPoint) -> NSView? {
+            nil
+        }
     }
 }
 
@@ -176,18 +242,22 @@ private struct WindowTooltip: ViewModifier {
         content
             .background {
                 if !tooltip.isEmpty {
-                    TooltipAnchorView(anchor: anchor)
-                        .allowsHitTesting(false)
+                    TooltipAnchorView(anchor: anchor) { hovering in
+                        if hovering {
+                            TooltipWindowController.shared.show(content: tooltip, id: id, anchor: anchor)
+                        } else {
+                            TooltipWindowController.shared.dismiss(id: id)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .onHover { hovering in
-                if hovering, !tooltip.isEmpty {
-                    TooltipWindowController.shared.show(content: tooltip, id: id, anchor: anchor)
-                } else {
-                    TooltipWindowController.shared.dismiss(id: id)
+            .onChange(of: tooltip) { previous, _ in
+                // A newly mounted tracking area can already have scheduled the first hover.
+                if !previous.isEmpty {
+                    TooltipWindowController.shared.dismiss(id: id, immediately: true)
                 }
             }
-            .onChange(of: tooltip) { _, _ in TooltipWindowController.shared.dismiss(id: id) }
             .onDisappear { TooltipWindowController.shared.dismiss(id: id) }
     }
 }
