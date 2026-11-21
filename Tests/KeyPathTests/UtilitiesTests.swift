@@ -5,6 +5,27 @@ import Foundation
 @preconcurrency import XCTest
 
 final class UtilitiesTests: XCTestCase {
+    private var loggers: [AppLogger] = []
+    private var logDirectories: [URL] = []
+
+    override func tearDown() {
+        loggers.forEach { $0.flushBuffer() }
+        logDirectories.forEach { try? FileManager.default.removeItem(at: $0) }
+        loggers.removeAll()
+        logDirectories.removeAll()
+        super.tearDown()
+    }
+
+    private func makeLogger() -> AppLogger {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("keypath-logger-\(UUID().uuidString)", isDirectory: true)
+        let logger = AppLogger(enableConsoleLogging: false)
+        logger.overrideLogDirectory(directory.path)
+        loggers.append(logger)
+        logDirectories.append(directory)
+        return logger
+    }
+
     // MARK: - Logger Tests
 
     func testLogLevelEnvironmentOverrideIsExplicitlyControlled() {
@@ -32,7 +53,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerBasicLogging() {
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         // Test basic logging doesn't crash
         logger.log("Test message")
@@ -43,7 +64,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerLongMessages() {
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         // Test very long message
         let longMessage = String(repeating: "A", count: 10000)
@@ -57,7 +78,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerEmptyMessages() {
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         // Test edge cases
         logger.log("")
@@ -83,7 +104,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerClearAllLogs() {
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         // Log some messages
         logger.log("Message before clear")
@@ -99,7 +120,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerLogSize() {
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         // Test log size methods
         let currentSize = logger.getCurrentLogSize()
@@ -112,13 +133,13 @@ final class UtilitiesTests: XCTestCase {
     func testLoggerDirectoryCreation() {
         // Test that logger initializes without crashing even if directory creation fails
         // This is handled in the logger's init method
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         XCTAssertNotNil(logger, "Logger should initialize even with directory issues")
     }
 
     func testLoggerFileInformation() {
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         // Test logging with file information
         logger.log("Test message with file info", file: #file, function: #function, line: #line)
@@ -136,7 +157,7 @@ final class UtilitiesTests: XCTestCase {
         if ProcessInfo.processInfo.environment["CI_ENVIRONMENT"] == "true" {
             throw XCTSkip("Skipped on CI — timing flake, no real assertion (#922)")
         }
-        let logger = AppLogger.shared
+        let logger = makeLogger()
         let expectation = expectation(description: "Concurrent logging")
         expectation.expectedFulfillmentCount = 10
 
@@ -153,7 +174,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerRotationBehavior() {
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         // We can't easily test actual rotation without creating large files,
         // but we can test that the rotation methods exist and don't crash
@@ -173,7 +194,7 @@ final class UtilitiesTests: XCTestCase {
     // MARK: - Error Handling Tests
 
     func testLoggerErrorHandling() throws {
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         // Test logging during error conditions
         do {
@@ -188,7 +209,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerMemoryPressure() {
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         // Test logger behavior under memory pressure
         // Log many large messages rapidly
@@ -204,7 +225,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerPathHandling() {
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         // Test that logger handles path issues gracefully
         // The logger should fallback to temp directory if project path fails
@@ -222,7 +243,7 @@ final class UtilitiesTests: XCTestCase {
     // MARK: - Performance Tests
 
     func testLoggerPerformance() {
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         measure {
             for i in 0 ..< 1000 {
@@ -232,7 +253,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerFlushPerformance() {
-        let logger = AppLogger.shared
+        let logger = makeLogger()
 
         // Fill up buffer
         for i in 0 ..< 50 {
@@ -242,23 +263,5 @@ final class UtilitiesTests: XCTestCase {
         measure {
             logger.flushBuffer()
         }
-    }
-
-    // MARK: - Cleanup Tests
-
-    func testLoggerCleanupOnDeinit() {
-        weak var weakLogger: AppLogger?
-
-        // Test that logger cleanup works properly
-        // Note: We can't easily test AppLogger.shared deinit since it's a singleton,
-        // but we can test the cleanup methods
-        let logger = AppLogger.shared
-        weakLogger = logger
-
-        // Test cleanup methods
-        logger.flushBuffer()
-        logger.clearAllLogs()
-
-        XCTAssertNotNil(weakLogger, "Singleton should remain in memory")
     }
 }

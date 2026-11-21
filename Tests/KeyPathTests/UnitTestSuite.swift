@@ -105,7 +105,7 @@ final class UnitTestSuite: XCTestCase {
             try? FileManager.default.removeItem(at: logDirectory)
         }
 
-        logger.overrideLogDirectory(directory.path)
+        logger.overrideLogDirectory(logDirectory.path)
         XCTAssertNoThrow(logger.log("Test message", level: .error))
         XCTAssertNoThrow(logger.log("Test message", level: .error))
         logger.flushBuffer()
