@@ -154,7 +154,8 @@ enum VimLayerReference {
     /// Keyed by the (localized) full title, so a lookup matches whatever `curated` produced.
     /// Built with `uniquingKeysWith` because two English titles may share one translation.
     private static let capTitles: [String: String] = Dictionary([
-        (String(localized: "Line start"), String(localized: "Start", comment: "Vim keycap: start of line")),
+        // Its own key: "Start" alone is also the wizard's Start button, which Japanese translates as 開始, not 行頭.
+        (String(localized: "Line start"), String(localized: "vim.keycap.line-start", defaultValue: "Start", comment: "Vim keycap: start of line")),
         (String(localized: "Line end"), String(localized: "End", comment: "Vim keycap: end of line")),
         (String(localized: "Top of document"), String(localized: "Top", comment: "Vim keycap: top of document")),
         (String(localized: "Bottom of document"), String(localized: "Bottom", comment: "Vim keycap: bottom of document")),

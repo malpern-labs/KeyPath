@@ -2524,7 +2524,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スキップしたルール%@: %lld件"
+            "value" : "スキップしたルール%2$@: %1$lld件"
           }
         }
       }
@@ -6437,7 +6437,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "括弧、演算子、Shift記号をすべてホームロウの下に。Space → Sを長押しで有効になります。プリセットのレイアウトから選べます。\n\nVimナビゲーションまたは別のリーダーパックが必要です。"
+            "value" : "括弧、演算子、Shift記号をすべてホームロウの下に。Spaceを押したままSを押すと有効になります。プリセットのレイアウトから選べます。\n\nVimナビゲーションまたは別のリーダーパックが必要です。"
           }
         }
       }
@@ -10639,7 +10639,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "現在%1$lldパーセント。ウインドウ開始時の%2$lldパーセントから減少しています。"
+            "value" : "現在%1$lldパーセント。集計期間の開始時の%2$lldパーセントから減少しています。"
           }
         }
       }
@@ -10655,7 +10655,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "現在%1$lldパーセント。ウインドウ開始時の%2$lldパーセントから横ばいです。"
+            "value" : "現在%1$lldパーセント。集計期間の開始時の%2$lldパーセントから横ばいです。"
           }
         }
       }
@@ -10671,7 +10671,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "現在%1$lldパーセント。ウインドウ開始時の%2$lldパーセントから増加しています。"
+            "value" : "現在%1$lldパーセント。集計期間の開始時の%2$lldパーセントから増加しています。"
           }
         }
       }
@@ -30707,7 +30707,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "何も表示しない"
+            "value" : "キーボードオーバーレイを表示"
           }
         }
       }
@@ -30727,7 +30727,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キーボードオーバーレイを表示"
+            "value" : "何も表示しない"
           }
         }
       }
@@ -31509,7 +31509,6 @@
       }
     },
     "Start" : {
-      "comment" : "Vim keycap: start of line",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -34815,7 +34814,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "バックグラウンド項目でKeyPathをONに切り替えてから、ここに戻ってください。"
+            "value" : "「システム設定」→「一般」→「ログイン項目と機能拡張」の「アプリのバックグラウンドでのアクティビティ」でKeyPathをオンにしてから、ここに戻ってください。"
           }
         }
       }
@@ -37976,7 +37975,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キーボード中心のアプリで多くの時間を過ごしています"
+            "value" : "kindaVimがキーボードフォールバックで動作するアプリをよく使っています"
           }
         }
       }
@@ -38362,7 +38361,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "右手がテンキーになり、左手で演算子を入力します。Space → ;を長押しして有効にします。\n\nVimナビゲーションまたはほかのリーダーパックが必要です。"
+            "value" : "右手がテンキーになり、左手で演算子を入力します。Spaceを押したまま;を押すと有効になります。\n\nVimナビゲーションまたはほかのリーダーパックが必要です。"
           }
         }
       }
@@ -40425,6 +40424,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "上"
+          }
+        }
+      }
+    },
+    "vim.keycap.line-start" : {
+      "comment" : "Vim keycap: start of line",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "行頭"
           }
         }
       }
