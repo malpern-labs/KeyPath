@@ -1,19 +1,18 @@
 import Foundation
-import KeyPathCore
 
 /// Consent belongs to one keyboard in one boot. It names one event-service
 /// instance; the only substitute is the same keyboard plugged back into the
 /// same port in the same boot (`rebound`). It also names the intermediate key
 /// reserved for the substitution. Version 1 had no
 /// choice: `reservesF18: true` meant F18, and such records still decode.
-struct SessionCapsSelection: Codable, Sendable, Equatable {
-    let version: Int
-    let bootSessionUUID: String
-    let device: SessionCapsMappingPolicy.DeviceIdentity
-    let intermediateUsage: UInt32
+package struct SessionCapsSelection: Codable, Sendable, Equatable {
+    package let version: Int
+    package let bootSessionUUID: String
+    package let device: SessionCapsMappingPolicy.DeviceIdentity
+    package let intermediateUsage: UInt32
 
-    init(device: SessionCapsMappingPolicy.DeviceIdentity, bootSessionUUID: String,
-         intermediateUsage: UInt32 = SessionCapsIntermediate.defaultUsage)
+    package init(device: SessionCapsMappingPolicy.DeviceIdentity, bootSessionUUID: String,
+                 intermediateUsage: UInt32 = SessionCapsIntermediate.defaultUsage)
     {
         version = 2
         self.device = device
@@ -21,7 +20,7 @@ struct SessionCapsSelection: Codable, Sendable, Equatable {
         self.intermediateUsage = intermediateUsage
     }
 
-    func with(intermediateUsage: UInt32) -> Self {
+    package func with(intermediateUsage: UInt32) -> Self {
         Self(device: device, bootSessionUUID: bootSessionUUID, intermediateUsage: intermediateUsage)
     }
 
@@ -29,7 +28,7 @@ struct SessionCapsSelection: Codable, Sendable, Equatable {
         case version, bootSessionUUID, device, intermediateUsage, reservesF18
     }
 
-    init(from decoder: Decoder) throws {
+    package init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         // A version-1 record is upgraded in memory and re-saved as version 2.
         let stored = try values.decode(Int.self, forKey: .version)
@@ -47,7 +46,7 @@ struct SessionCapsSelection: Codable, Sendable, Equatable {
         }
     }
 
-    func encode(to encoder: Encoder) throws {
+    package func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(version, forKey: .version)
         try values.encode(bootSessionUUID, forKey: .bootSessionUUID)
@@ -55,11 +54,11 @@ struct SessionCapsSelection: Codable, Sendable, Equatable {
         try values.encode(intermediateUsage, forKey: .intermediateUsage)
     }
 
-    func approvedDevice(currentBoot: String) throws -> SessionCapsMappingPolicy.DeviceIdentity {
+    package func approvedDevice(currentBoot: String) throws -> SessionCapsMappingPolicy.DeviceIdentity {
         guard version == 2, SessionCapsIntermediate.isCandidate(intermediateUsage),
               let approvedBoot = UUID(uuidString: bootSessionUUID),
               approvedBoot == UUID(uuidString: currentBoot) else { throw SessionCapsRuntimeSupport.Refusal.selection }
-        _ = try SessionCapsHIDUtilTransport.selector(device)
+        try SessionCapsMappingPolicy.validateLocator(device)
         return device
     }
 
@@ -67,7 +66,7 @@ struct SessionCapsSelection: Codable, Sendable, Equatable {
     /// connected instance with the same VID, PID, LocationID and serial (or
     /// the same absence of one). nil across a reboot, at another port, when
     /// twins match, or while the original instance still exists.
-    func rebound(among devices: [SessionCapsMappingPolicy.DeviceIdentity], currentBoot: String) -> Self? {
+    package func rebound(among devices: [SessionCapsMappingPolicy.DeviceIdentity], currentBoot: String) -> Self? {
         guard let chosen = try? approvedDevice(currentBoot: currentBoot),
               let location = chosen.locationID, location != 0 else { return nil }
         let matches = devices.filter {
@@ -79,7 +78,7 @@ struct SessionCapsSelection: Codable, Sendable, Equatable {
         return Self(device: match, bootSessionUUID: bootSessionUUID, intermediateUsage: intermediateUsage)
     }
 
-    func verifyConnected(devices: [SessionCapsMappingPolicy.DeviceIdentity], currentBoot: String) throws {
+    package func verifyConnected(devices: [SessionCapsMappingPolicy.DeviceIdentity], currentBoot: String) throws {
         do {
             try SessionCapsMappingPolicy.requireUnique(approvedDevice(currentBoot: currentBoot), among: devices)
         } catch {
@@ -87,7 +86,7 @@ struct SessionCapsSelection: Codable, Sendable, Equatable {
         }
     }
 
-    static func decode(_ data: Data, currentBoot: String) throws -> Self {
+    package static func decode(_ data: Data, currentBoot: String) throws -> Self {
         guard data.count <= 4096,
               let fields = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               Set(fields.keys) == Set(["version", "bootSessionUUID", "device", "reservesF18"])
@@ -101,65 +100,5 @@ struct SessionCapsSelection: Codable, Sendable, Equatable {
         let selection = try JSONDecoder().decode(Self.self, from: data)
         _ = try selection.approvedDevice(currentBoot: currentBoot)
         return selection
-    }
-}
-
-@MainActor
-struct SessionCapsSelectionStore {
-    static let shared = Self(defaults: .standard)
-
-    private let defaults: UserDefaults
-
-    init(defaults: UserDefaults) {
-        self.defaults = defaults
-    }
-
-    func save(_ selection: SessionCapsSelection?) throws {
-        if let selection {
-            let data = try JSONEncoder().encode(selection)
-            _ = try SessionCapsSelection.decode(data, currentBoot: SessionCapsRuntimeSupport.bootSessionUUID())
-            defaults.set(data, forKey: SessionCapsRuntimeSupport.selectionKey)
-        } else {
-            defaults.removeObject(forKey: SessionCapsRuntimeSupport.selectionKey)
-            defaults.removeObject(forKey: SessionCapsRuntimeSupport.selectionNameKey)
-            setDisplaced(nil, name: nil)
-        }
-    }
-
-    private static let displacedKey = "keypath.session.caps.displaced.v1"
-
-    /// The choice whose keyboard disconnected, with its name. Kept so that
-    /// keyboard, back at the same port in the same boot, gets its choice back
-    /// even after automatic setup moved Caps rules to another keyboard.
-    /// Cleared by any explicit choice, by turning setup off, and on re-bind.
-    var displaced: (data: Data, name: String?)? {
-        guard let record = defaults.dictionary(forKey: Self.displacedKey),
-              let data = record["selection"] as? Data, data.count <= 4096 else { return nil }
-        return (data, record["name"] as? String)
-    }
-
-    func setDisplaced(_ data: Data?, name: String?) {
-        guard let data else {
-            defaults.removeObject(forKey: Self.displacedKey)
-            return
-        }
-        var record: [String: Any] = ["selection": data]
-        if let name { record["name"] = name }
-        defaults.set(record, forKey: Self.displacedKey)
-    }
-
-    /// Remember what the chosen keyboard is called, for messages after it
-    /// disconnects. Display only; the selection alone identifies the device.
-    /// An unknown name clears the old one rather than naming the wrong keyboard.
-    func saveName(_ name: String?) {
-        guard let name, !name.isEmpty, name.utf8.count <= 256 else {
-            defaults.removeObject(forKey: SessionCapsRuntimeSupport.selectionNameKey)
-            return
-        }
-        defaults.set(name, forKey: SessionCapsRuntimeSupport.selectionNameKey)
-    }
-
-    var savedName: String? {
-        defaults.string(forKey: SessionCapsRuntimeSupport.selectionNameKey)
     }
 }
