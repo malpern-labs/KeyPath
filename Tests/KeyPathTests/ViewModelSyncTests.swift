@@ -90,7 +90,7 @@ struct WindowSnappingActivationModeTests {
         manager.onError = { errors.append($0) }
         manager.onRulesChanged = {
             reloads += 1
-            return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
+            return ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .applied)
         }
         _ = await manager.updateWindowSnappingActivationMode(id: RuleCollectionIdentifier.windowSnapping, mode: .quickLauncher)
         #expect(reloads == 0)

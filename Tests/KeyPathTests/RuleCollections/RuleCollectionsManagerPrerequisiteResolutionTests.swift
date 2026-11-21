@@ -179,7 +179,7 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
         manager.onBeforeSave = { regenerationCount += 1 }
         manager.onRulesChanged = {
             reloadCount += 1
-            return ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+            return ReloadResult(success: true, response: "ok", errorMessage: nil)
         }
 
         let applied = await manager.applyLauncherConfig(
@@ -222,7 +222,7 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
         manager.onBeforeSave = { regenerationCount += 1 }
         manager.onRulesChanged = {
             reloadCount += 1
-            return ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+            return ReloadResult(success: true, response: "ok", errorMessage: nil)
         }
 
         let applied = await manager.applyLauncherConfig(
@@ -268,7 +268,7 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
         manager.onBeforeSave = { regenerationCount += 1 }
         manager.onRulesChanged = {
             reloadCount += 1
-            return ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+            return ReloadResult(success: true, response: "ok", errorMessage: nil)
         }
 
         var proposed = try XCTUnwrap(
@@ -846,7 +846,7 @@ final class RuleCollectionsManagerPrerequisiteResolutionTests: KeyPathTestCase {
         manager.onRulesChanged = {
             reloads += 1
             return ReloadResult(success: reloads != 1, response: nil,
-                                errorMessage: reloads == 1 ? "Rejected for test" : nil, protocol: nil)
+                                errorMessage: reloads == 1 ? "Rejected for test" : nil)
         }
         manager.onPrerequisiteSetup = { _, apply in
             let rejected = await apply([provider.id])

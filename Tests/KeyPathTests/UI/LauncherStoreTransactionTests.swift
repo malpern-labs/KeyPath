@@ -28,7 +28,7 @@ final class LauncherStoreTransactionTests: KeyPathTestCase {
         manager.ruleCollections = [launcher]
         manager.customRules = []
         try await service.saveRuleState(ruleCollections: [launcher], customRules: [], collectionStore: collections, customStore: rules)
-        manager.onRulesChanged = { ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied) }
+        manager.onRulesChanged = { ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .applied) }
         store = LauncherStore(testMappings: [first, second], manager: manager)
     }
 
@@ -48,7 +48,7 @@ final class LauncherStoreTransactionTests: KeyPathTestCase {
         var reloads = 0
         manager.onRulesChanged = {
             reloads += 1
-            return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
+            return ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .applied)
         }
         let result = await manager.restoreConfigurationBackup(backup)
         XCTAssertTrue(result.success, "\(String(describing: result.error))")
@@ -75,7 +75,7 @@ final class LauncherStoreTransactionTests: KeyPathTestCase {
         )
         XCTAssertTrue(changed)
         manager.onRulesChanged = {
-            ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .pending)
+            ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .pending)
         }
         let result = await manager.restoreConfigurationBackup(backup)
         XCTAssertTrue(result.success, "\(String(describing: result.error))")
@@ -96,7 +96,7 @@ final class LauncherStoreTransactionTests: KeyPathTestCase {
         var reloads = 0
         manager.onRulesChanged = {
             reloads += 1
-            return ReloadResult(success: reloads > 1, response: nil, errorMessage: "Rejected test candidate", protocol: nil,
+            return ReloadResult(success: reloads > 1, response: nil, errorMessage: "Rejected test candidate",
                                 disposition: reloads > 1 ? .applied : .rejected)
         }
         let result = await manager.restoreConfigurationBackup(backup)

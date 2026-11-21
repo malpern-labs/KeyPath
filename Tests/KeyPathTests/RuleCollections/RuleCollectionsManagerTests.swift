@@ -93,7 +93,7 @@ final class RuleCollectionsManagerTests: XCTestCase {
         try await manager.ruleCollectionStore.saveCollections(collections)
         manager.ruleCollections = collections
         manager.onRulesChanged = {
-            ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
+            ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .applied)
         }
 
         let result = await manager.applyCatalogUpdates(ids: [RuleCollectionIdentifier.vimNavigation])

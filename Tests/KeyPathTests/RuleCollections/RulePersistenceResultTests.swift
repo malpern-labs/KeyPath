@@ -42,7 +42,7 @@ final class RulePersistenceResultTests: KeyPathTestCase {
                 XCTAssertTrue(FileManager.default.fileExists(atPath: self.service.configurationPath))
                 let stored = await self.manager.ruleCollectionStore.loadCollections()
                 XCTAssertTrue(stored.contains { $0.name == "Test" })
-                return ReloadResult(success: disposition == .applied, response: "response", errorMessage: "detail", protocol: nil, disposition: disposition)
+                return ReloadResult(success: disposition == .applied, response: "response", errorMessage: "detail", disposition: disposition)
             }
             let result = await manager.persistRules()
             guard case let .persisted(reloadResult) = result else {
@@ -58,7 +58,7 @@ final class RulePersistenceResultTests: KeyPathTestCase {
 
     func testCompatibilityBooleanStillMeansPersistedAfterRejectedReload() async {
         manager.onRulesChanged = {
-            ReloadResult(success: false, response: nil, errorMessage: "rejected", protocol: nil, disposition: .rejected)
+            ReloadResult(success: false, response: nil, errorMessage: "rejected", disposition: .rejected)
         }
         let persisted = await manager.regenerateConfigFromCollections()
         XCTAssertTrue(persisted, "Do not trigger partial caller rollback before transaction migration")
@@ -67,7 +67,7 @@ final class RulePersistenceResultTests: KeyPathTestCase {
     func testSkippedAndAbsentCallbacksDoNotInventApplicationResult() async {
         manager.onRulesChanged = {
             XCTFail("Explicitly skipped reload must not run")
-            return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+            return ReloadResult(success: true, response: nil, errorMessage: nil)
         }
         let skipped = await manager.persistRules(skipReload: true)
         manager.onRulesChanged = nil
@@ -85,7 +85,7 @@ final class RulePersistenceResultTests: KeyPathTestCase {
         try "blocked".write(to: directory, atomically: true, encoding: .utf8)
         manager.onRulesChanged = {
             XCTFail("Persistence failure must not reload")
-            return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+            return ReloadResult(success: true, response: nil, errorMessage: nil)
         }
         let result = await manager.persistRules()
         guard case let .failed(error) = result else { return XCTFail("Expected persistence failure") }
@@ -101,7 +101,7 @@ final class RulePersistenceResultTests: KeyPathTestCase {
         var reloadCount = 0
         manager.onRulesChanged = {
             reloadCount += 1
-            return ReloadResult(success: false, response: nil, errorMessage: "pending detail", protocol: nil, disposition: .pending)
+            return ReloadResult(success: false, response: nil, errorMessage: "pending detail", disposition: .pending)
         }
         let conflict = KeyPathError.configuration(.mappingConflicts(conflicts: [
             KeyPathError.MappingConflictInfo(inputKey: "a", layer: "Base", conflictingCollections: [first.name, second.name])

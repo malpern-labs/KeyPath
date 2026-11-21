@@ -176,7 +176,6 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
                     success: disposition == .applied,
                     response: nil,
                     errorMessage: disposition == .rejected ? "rejected" : nil,
-                    protocol: nil,
                     disposition: disposition
                 )
             }
@@ -222,7 +221,6 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
                     success: disposition == .applied,
                     response: nil,
                     errorMessage: disposition == .rejected ? "rejected" : nil,
-                    protocol: nil,
                     disposition: disposition
                 )
             }
@@ -358,7 +356,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
         manager.onError = { errors.append($0) }
         manager.onRulesChanged = {
             reloadCount += 1
-            return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
+            return ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .applied)
         }
 
         await manager.updateLeaderKey("tab")
@@ -378,7 +376,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
         let newer = LeaderKeyPreference(key: "f17", targetLayer: .navigation, enabled: true)
         try defaults.set(JSONEncoder().encode(newer), forKey: PreferencesService.leaderKeyPreferenceKey)
         manager.onRulesChanged = {
-            ReloadResult(success: false, response: nil, errorMessage: "rejected", protocol: nil, disposition: .rejected)
+            ReloadResult(success: false, response: nil, errorMessage: "rejected", disposition: .rejected)
         }
 
         await manager.updateLeaderKey("tab")
@@ -400,7 +398,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
         }
         manager.onRulesChanged = {
             reloadCount += 1
-            return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
+            return ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .applied)
         }
 
         await manager.updateLeaderKey("tab")
@@ -436,7 +434,7 @@ final class DurableConfigPreferenceRecoveryTests: KeyPathTestCase {
 
         let (recoveringManager, _) = try await makeManager(at: directory)
         recoveringManager.onRulesChanged = {
-            ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil, disposition: .applied)
+            ReloadResult(success: true, response: nil, errorMessage: nil, disposition: .applied)
         }
         await recoveringManager.bootstrap()
 

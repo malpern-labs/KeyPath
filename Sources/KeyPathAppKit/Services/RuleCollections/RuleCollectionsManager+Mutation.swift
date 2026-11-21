@@ -101,7 +101,6 @@ extension RuleCollectionsManager {
                     success: restarted,
                     response: nil,
                     errorMessage: restarted ? nil : String(localized: "Kanata could not restart with the selected keyboards"),
-                    protocol: nil,
                     disposition: restarted ? .applied : .rejected
                 )
             }
