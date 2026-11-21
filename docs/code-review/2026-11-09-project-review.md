@@ -117,6 +117,8 @@ P9 follow-up details (November 21): `UnitTestSuite.testLoggerConfiguration` now 
 
 P9 follow-up (November 21, PR #1613): `KeyPathTestCase` no longer calls a test-wide setup hook that changed `AppLogger.shared` before and after every case. The now-unused `GlobalTestSetup.swift` was removed. New logger instances choose quiet console output from the test environment at construction, while explicit instance configuration still takes precedence; focused tests cover quiet and verbose test runs plus debug and release defaults. The Utilities tests pass in parallel (19 tests), the logger-configuration test passes independently, and the merged-branch full safe suite reports 5,490 passes with no failures or Swift, module-cache, app warnings or errors (276 seconds). The review gate selected the remote route, so GitHub `claude-review` remains required before merge. This removes another process-global test mutation; same-process repetition and remaining shared fixture audits are still open.
 
+The full safe suite on this branch also passed with two XCTest workers (November 21): SwiftPM dispatched 4,729 XCTest cases and reported 847 Swift Testing passes; the run exited 0 with no Swift, module-cache, app warnings or errors (330 seconds total). This qualifies full-suite worker-process concurrency after the logger changes. It does not simulate XCTest case repetition inside one process; SwiftPM's built-in repetition remains Swift Testing-only.
+
 P2's normal usage prompt passed on a fresh macOS 27 guest. B7's current permission
 screenshot is published at gh-pages `99a2200b6`: the public guide returned HTTP
 200 with the new caption, and the downloaded PNG hash matched the verified
