@@ -225,7 +225,7 @@ jobs:
         # Temporary qualification branch: compare four workers on the actual
         # Mini CI runner. Keep only if the full lane passes cleanly and is
         # faster without harming concurrent-job headroom.
-        SWIFT_TEST_ARGS: --parallel --num-workers 2
+        SWIFT_TEST_ARGS: --parallel --num-workers 4
         # The mini (M4 Pro, 14 cores) can run two test jobs at once, one per
         # runner, so each takes about half its cores. Hosted VMs are smaller.
         KEYPATH_SWIFT_BUILD_JOBS: ${{ (vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && '4' || '6' }}
