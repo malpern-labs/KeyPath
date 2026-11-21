@@ -220,16 +220,25 @@ Notes:
   `swift test --filter <TestClassOrMethod>`
 - Run the full Swift suite for code PRs, release candidates, and broad
   shared-code changes.
-- Avoid running broad Swift builds/tests concurrently across worktrees. Before
-  full test, release-candidate, or expensive build work, check for active Swift
-  compiles:
-  `pgrep -fl 'swift-test|swift-build|swift-frontend|swift-driver'`
-- If another worktree/agent is compiling and you must continue, reduce local
-  parallelism:
-  `swift test --jobs 4`
-  `swift build --jobs 4`
+- Run every `swift build`, `swift test` and other multi-minute compile through
+  `build-slot` (installed from dotfiles on the maintainer's Macs; where it is
+  not installed, run the command directly):
+  `build-slot swift test --filter FooTests`,
+  `build-slot -- ./Scripts/run-tests-safe.sh`.
+  It allows a few at a time per machine (3 on the Air, 4 on the Mini) and makes
+  the rest wait; `build-slot status` shows who holds each slot. On 2026-11-20
+  about 37 agent processes building at once stalled the Air until it was
+  restarted, although every agent had been told to check for other compiles
+  first. While waiting, do work that does not compile, or move to the Mini.
 - Do not delete `.build` or run clean builds unless diagnosing cache/build-state
   problems; preserving incremental build products is usually faster.
+- **Every new or changed test is isolated.** It must pass alone, in parallel and
+  in any order. Give it its own temporary directory and its own defaults suite
+  or store; never write to the real `$HOME`, `~/Library`, `UserDefaults.standard`,
+  the Keychain or launchd; never rely on a `.shared` or `.default` instance that
+  another test changes; derive paths, ports and identifiers from the test.
+  KeyPath's suite shared state for months, which forced CI to run one Swift test
+  job at a time and took review item P9 to undo. Do not add to it.
 - If a full suite stalls after compilation, triage it as a test failure/hang,
   not compile slowness. Capture the failing test name and log path in the
   handoff.
