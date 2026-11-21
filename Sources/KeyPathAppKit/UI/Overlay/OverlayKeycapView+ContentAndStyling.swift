@@ -247,7 +247,7 @@ extension OverlayKeycapView {
             .accessibilityIdentifier(keycapAccessibilityId)
             .accessibilityLabel(keycapAccessibilityLabel)
             .accessibilityValue(keycapAccessibilityValue)
-            .accessibilityHint(hoverActionLegends.map(\.hoverLine).joined(separator: "\n"))
+            .accessibilityHint(actionLegendsForDetails.map(\.hoverLine).joined(separator: "\n"))
             .windowTooltip(
                 .actions(key: key.keyCode == 57 ? String(localized: "Caps Lock") : keyMenuName,
                          layer: currentLayerName, actions: hoverActionLegends),

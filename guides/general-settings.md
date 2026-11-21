@@ -15,7 +15,7 @@ Open KeyPath → Settings → General.
   - The **Layer change notification** (a banner and sound) is here too.
   - The same choice is in the menu bar under **While a Layer Is Active**.
 - **Keyboard Appearance:** compare key-label previews, choose whether unmapped keys stay normal or dim, set how see-through the overlay is (**Overlay opacity**), and choose whether it fades after a while without typing (**Fade when idle**).
-  - Turn on **Hide detailed key legends** to use the simpler keycap layout. You can still hover over a key in Mapper to see its actions.
+  - Turn on **Hide detailed key legends** to use the simpler keycap layout. You can still hover over a key on the overlay to see its actions.
   - Turn on **Show when a layer is active** if you want the overlay out of the way on the base layer. It stays hidden when KeyPath starts, appears when a hold, one-shot, or toggled layer becomes active, and hides shortly after returning to base. It follows the Hold or Tap choice above: with Hold, a quick move like Space then J doesn't bring it up. Ordinary typing and modifier keys never show it. You can still open it yourself with ⌥⌘K. Turning the setting off doesn't reopen the overlay; open it with ⌥⌘K when you want it.
 - **Recording:** choose sequences or combinations, and whether recording captures physical keys or includes your mappings.
 - **Keyboard Setup:** Caps Lock rules apply to every compatible keyboard by default, with per-keyboard exceptions and an advanced one-keyboard mode ([details](driverless-caps-lock.md)). Manual keyboard setup is available under its disclosure. You can also import Karabiner rules here.
