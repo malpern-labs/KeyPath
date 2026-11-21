@@ -7,8 +7,16 @@ import XCTest
 final class AppLoggerSystemLogTests: XCTestCase {
     func testAWarningReachesTheUnifiedLogUnderItsSourceFile() throws {
         let start = Date().addingTimeInterval(-1)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("keypath-system-log-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let logger = AppLogger(minimumLevel: .trace, enableConsoleLogging: false)
+        logger.overrideLogDirectory(directory.path)
+        logger.setMinimumLevel(.trace)
+        logger.flushBuffer()
 
-        AppLogger.shared.warn("system log wiring check")
+        logger.warn("system log wiring check \(UUID().uuidString)")
+        logger.flushBuffer()
 
         let entry = try XCTUnwrap(
             try entries(since: start).first { $0.category == "AppLoggerSystemLogTests" },
