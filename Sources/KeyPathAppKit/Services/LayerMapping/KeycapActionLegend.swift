@@ -78,6 +78,7 @@ struct KeycapActionLegend: Equatable, Sendable {
     }
 
     var glyph: String {
+        if action.isHyper { return "✦" }
         if let targetLayer { return LayerInfo.displayName(for: targetLayer) }
         switch action {
         case let .keystroke(key):
@@ -90,6 +91,7 @@ struct KeycapActionLegend: Equatable, Sendable {
     }
 
     var symbol: String? {
+        if action.isHyper { return nil }
         if let targetLayer { return LayerInfo.iconName(for: targetLayer) }
         switch action {
         case .keystroke, .rawKanata:

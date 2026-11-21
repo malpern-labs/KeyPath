@@ -5,6 +5,15 @@ import Testing
 
 @Suite("LayerMappingBuilder")
 struct LayerMappingBuilderTests {
+    @Test("Hyper uses a four-point keycap glyph and a spelled-out hover action")
+    func hyperLegendDisplay() {
+        let legend = KeycapActionLegend(trigger: .hold, action: .hyper)
+
+        #expect(legend.glyph == "✦")
+        #expect(legend.symbol == nil)
+        #expect(legend.actionName == "Hyper")
+    }
+
     @Test("Tap dance legends are ordered and scoped to the displayed layer")
     func tapDanceLegendsFollowDisplayedLayer() throws {
         let dance = TapDanceBehavior(

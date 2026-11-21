@@ -36,7 +36,7 @@ Hold F → you're on the arrows layer. Release F → you're back on base. That's
 
 ## Read multiple actions on one key
 
-The overlay shows actions from the layer in its header. In Mapper, hover over a key with Tap/Hold or Tap Dance to read what each trigger does. For example, a key can show **A** for tap and a purple **⌘** in the upper-right corner for hold.
+The overlay shows actions from the layer in its header. In Mapper, hover over a key with Tap/Hold or Tap Dance to read what each trigger does. For example, a key can show **A** for tap and a purple **⌘** in the upper-right corner for hold. The ✦ glyph means Hyper, which the hover card spells out.
 
 Tap Dance puts additional tap outputs along the bottom edge, starting on the left. Two additional outputs go in the corners. Three also use the middle. The keycap shows up to four actions when there’s room. Smaller keys show fewer actions, and the hover explanation lists every tap step. To use the simpler keycap layout, turn on **Hide detailed key legends** under Settings → General → Keyboard Appearance.
 
