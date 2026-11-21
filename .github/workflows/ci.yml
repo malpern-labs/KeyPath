@@ -72,26 +72,30 @@ jobs:
   test-full:
     needs: classify-docs-only
     if: ${{ (success() || failure()) && needs.classify-docs-only.outputs.docs_only != 'true' }}
-    # macOS 27 AppSSO trapped SwiftPM binary-artifact requests from a headless
+    # Either mini runner takes this job, so two PRs test at once. macOS 27
+    # AppSSO once trapped SwiftPM binary-artifact requests from a headless
     # LaunchDaemon (docs: 2026-07-16-headless-swiftpm-appsso-trap.md). Since
-    # 2026-10-19 the swiftpm-safe runner is a daemon too, because clawd has no GUI
-    # session; the persistent scratch below means Sparkle is fetched only on a
-    # cold scratch, not on every job.
-    runs-on: ${{ fromJSON((vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && '"xcode-27"' || '["self-hosted", "macOS", "keypath", "swiftpm-safe"]') }}
+    # 2026-10-19 both runners are daemons, because clawd has no GUI session, and
+    # keypath-mini-2's cold builds have not hit the trap. Each runner keeps its
+    # own persistent scratch below, so Sparkle is fetched only on a cold scratch.
+    runs-on: ${{ fromJSON((vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && '"xcode-27"' || '["self-hosted", "macOS", "keypath"]') }}
     # Warm runs normally finish in 2-3 minutes. A measured cold run spent about
     # 3 minutes on setup/Kanata and was still compiling Swift tests after another
     # 12 minutes, before test execution. Keep a finite bound with real headroom.
-    # Every hosted run is cold, on a smaller machine. The mini's budget also
-    # covers up to 10 minutes waiting for the test lock below.
+    # Every hosted run is cold, on a smaller machine. The mini keeps its 35
+    # minutes: a runner's first test job builds a cold scratch, now with 6
+    # build jobs rather than 10.
     timeout-minutes: ${{ (vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && 60 || 35 }}
-    # Two swift test runs must never overlap on the mini: they share unsandboxed
-    # local state (e.g. RuleCollectionsManager's config file), which caused
-    # spurious CLIPackCRUDTests failures. The runner label does that: only one
-    # runner carries swiftpm-safe and it runs one job at a time, so test runs
-    # from different PRs wait their turn. Do not add a job-level concurrency
-    # group for this. A group holds one running and one pending job and cancels
-    # the older pending one, so with three PRs in CI their jobs cancelled each
-    # other (2026-11-14). The runner queue never cancels a waiting job.
+    # Two test runs may overlap on the mini. They used to share unsandboxed
+    # local state (e.g. RuleCollectionsManager's config file, which broke
+    # CLIPackCRUDTests), so one runner ran them one at a time. Test isolation
+    # (P9, 2026-11-21) gave every test its own stores, defaults and a per-run
+    # AppPaths sandbox. Two full lanes run side by side on the mini, as clawd,
+    # failed exactly the same tests as one lane run alone (2026-11-21).
+    # Do not add a job-level concurrency group: a group holds one running and
+    # one pending job and cancels the older pending one, so with three PRs in
+    # CI their jobs cancelled each other (2026-11-14). The runner queue never
+    # cancels a waiting job.
 
     steps:
     - name: Clean stale git credentials
@@ -220,12 +224,11 @@ jobs:
         KEYPATH_TEST_RESET_MODULE_CACHE: "0"
         # The full safe suite passed on the mini with two XCTest worker
         # processes (2026-11-21). Keep that proven bound in CI: it exposes
-        # cross-process fixture sharing and shortens the test phase without
-        # allowing two whole SwiftPM jobs to overlap on the shared runner.
+        # cross-process fixture sharing and shortens the test phase.
         SWIFT_TEST_ARGS: --parallel --num-workers 2
-        # The mini (M4 Pro, 14 cores) runs one test job at a time; leave a few
-        # cores for quality-full on the other runner. Hosted VMs are smaller.
-        KEYPATH_SWIFT_BUILD_JOBS: ${{ (vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && '4' || '10' }}
+        # The mini (M4 Pro, 14 cores) can run two test jobs at once, one per
+        # runner, so each takes about half its cores. Hosted VMs are smaller.
+        KEYPATH_SWIFT_BUILD_JOBS: ${{ (vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && '4' || '6' }}
         # SCRATCH_PATH comes from "Prepare persistent SwiftPM scratch" via GITHUB_ENV.
       run: |
         echo "Running full named test lane..."
@@ -234,22 +237,12 @@ jobs:
         export TIMEOUT_SECONDS=300
         chmod +x ./Scripts/test-lane.sh
         chmod +x ./Scripts/run-tests-safe.sh
-        # Belt and braces for the runner label: if a second runner were ever
-        # given swiftpm-safe, two test runs still must not overlap. This covers
-        # the test command only, not the setup steps before it. lockf holds a
-        # kernel lock that is released when the process exits, even if the job
-        # is cancelled, so it cannot go stale.
-        # The wait counts against this job's budget (35 minutes on the mini), so
-        # give up well before it; lockf exits 75 when it does.
         rc=0
-        /usr/bin/lockf -t 600 /tmp/keypath-ci-swift-tests.lock ./Scripts/test-lane.sh full || rc=$?
+        ./Scripts/test-lane.sh full || rc=$?
         if [ "$rc" -eq 0 ]; then
           echo "TEST_STATUS=passed" >> $GITHUB_ENV
         else
           echo "TEST_STATUS=failed" >> $GITHUB_ENV
-          if [ "$rc" -eq 75 ]; then
-            echo "::error::Another test run held the mini's test lock for 10 minutes; tests did not run. Re-run this job."
-          fi
           exit 1
         fi
 

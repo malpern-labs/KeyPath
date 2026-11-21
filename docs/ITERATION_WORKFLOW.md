@@ -38,10 +38,10 @@ preparation took 9m 32s. A fresh guest and a complete signed build belong on
 the path only when the change needs them.
 
 For trusted branches in this repository, the macOS jobs behind the required
-`build-and-test` and `code-quality` checks run on the Mini. The
-`swiftpm-safe` runner owns the single full Swift test lane. Quality can run
-on the other runner, while GitHub-hosted macOS covers fork PRs and the
-configured outage fallback. CI runs directly on the Mini. The VM lab
+`build-and-test` and `code-quality` checks run on the Mini. Both Mini
+runners take full Swift test jobs, so two PRs can test at once; quality
+runs on whichever runner is free. GitHub-hosted macOS covers fork PRs and
+the configured outage fallback. CI runs directly on the Mini. The VM lab
 provides separate desktop evidence. The docs-only classifier serves the
 required check names without scheduling the full macOS jobs for docs changes.
 
