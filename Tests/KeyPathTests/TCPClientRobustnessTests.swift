@@ -8,10 +8,11 @@ import Network
 /// error recovery, partial reads, broadcast filtering, request ID
 /// matching, connection lifecycle, and concurrent operations.
 ///
-/// These tests exercise unit-testable logic that does NOT require
-/// a live Kanata server (unlike TCPClientIntegrationTests).
+/// Pure parsing checks and loopback tests against per-test ephemeral listeners.
 final class TCPClientRobustnessTests: XCTestCase {
-    private let port: Int = 37099
+    private var unusedPort: Int {
+        Int.random(in: 49152 ... 65535)
+    }
 
     private final class AcceptedConnections: @unchecked Sendable {
         private let lock = NSLock()
@@ -35,7 +36,7 @@ final class TCPClientRobustnessTests: XCTestCase {
     // MARK: - Read Buffer Edge Cases
 
     func testExtractFirstLine_NewlineOnly() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let data = Data("\n".utf8)
 
         let result = client.extractFirstLine(from: data)
@@ -44,7 +45,7 @@ final class TCPClientRobustnessTests: XCTestCase {
     }
 
     func testExtractFirstLine_MultipleEmptyLines() throws {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let data = Data("\n\n\n".utf8)
 
         let r1 = client.extractFirstLine(from: data)
@@ -57,7 +58,7 @@ final class TCPClientRobustnessTests: XCTestCase {
     }
 
     func testExtractFirstLine_LargePayload() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let largeValue = String(repeating: "x", count: 50000)
         let json = "{\"data\":\"\(largeValue)\"}\n"
         let data = Data(json.utf8)
@@ -69,7 +70,7 @@ final class TCPClientRobustnessTests: XCTestCase {
     }
 
     func testExtractFirstLine_WindowsLineEndings() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let data = Data("{\"status\":\"Ok\"}\r\n{\"next\":true}\n".utf8)
 
         let result = client.extractFirstLine(from: data)
@@ -77,7 +78,7 @@ final class TCPClientRobustnessTests: XCTestCase {
     }
 
     func testExtractFirstLine_BinaryFollowedByNewline() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let data = Data([0xFF, 0xFE, 0x00, 0x0A])
         let result = client.extractFirstLine(from: data)
         XCTAssertNotNil(result, "Should find newline byte even in non-UTF8 data")
@@ -86,45 +87,45 @@ final class TCPClientRobustnessTests: XCTestCase {
     // MARK: - isCommandResponse Robustness
 
     func testIsCommandResponse_NestedStatusField() throws {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let json = #"{"status":"Ok","request_id":42,"extra":true}"#
         let data = try XCTUnwrap(json.data(using: .utf8))
         XCTAssertTrue(client.isCommandResponse(data), "Status with extra fields should be recognized")
     }
 
     func testIsCommandResponse_EmptyString() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         XCTAssertFalse(client.isCommandResponse(Data()))
     }
 
     func testIsCommandResponse_NullByte() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         XCTAssertFalse(client.isCommandResponse(Data([0x00])))
     }
 
     func testIsCommandResponse_TruncatedJson() throws {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let truncated = #"{"status":"O"#
         let data = try XCTUnwrap(truncated.data(using: .utf8))
         XCTAssertFalse(client.isCommandResponse(data), "Truncated JSON should not match")
     }
 
     func testIsCommandResponse_StatusWithNumericValue() throws {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let json = #"{"status":200}"#
         let data = try XCTUnwrap(json.data(using: .utf8))
         XCTAssertTrue(client.isCommandResponse(data), "status with any value type should match")
     }
 
     func testIsCommandResponse_MultipleResponseKeys() throws {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let json = #"{"HelloOk":{},"StatusInfo":{}}"#
         let data = try XCTUnwrap(json.data(using: .utf8))
         XCTAssertTrue(client.isCommandResponse(data), "Multiple response keys should still match")
     }
 
     func testIsCommandResponse_ResponseKeyWithBroadcastKey() throws {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let json = #"{"HelloOk":{},"LayerChange":{}}"#
         let data = try XCTUnwrap(json.data(using: .utf8))
         XCTAssertTrue(
@@ -136,56 +137,56 @@ final class TCPClientRobustnessTests: XCTestCase {
     // MARK: - Request ID Extraction Robustness
 
     func testExtractRequestId_TopLevel() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let data = #"{"status":"Ok","request_id":999}"#.data(using: .utf8)!
         let id = client._testExtractRequestId(from: data)
         XCTAssertEqual(id, 999)
     }
 
     func testExtractRequestId_Nested() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let data = #"{"HelloOk":{"version":"1.10","request_id":42}}"#.data(using: .utf8)!
         let id = client._testExtractRequestId(from: data)
         XCTAssertEqual(id, 42)
     }
 
     func testExtractRequestId_StringValue() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let data = #"{"status":"Ok","request_id":"123"}"#.data(using: .utf8)!
         let id = client._testExtractRequestId(from: data)
         XCTAssertEqual(id, 123, "String request_id should be parsed as UInt64")
     }
 
     func testExtractRequestId_Missing() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let data = #"{"status":"Ok"}"#.data(using: .utf8)!
         let id = client._testExtractRequestId(from: data)
         XCTAssertNil(id)
     }
 
     func testExtractRequestId_Zero() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let data = #"{"status":"Ok","request_id":0}"#.data(using: .utf8)!
         let id = client._testExtractRequestId(from: data)
         XCTAssertEqual(id, 0)
     }
 
     func testExtractRequestId_LargeValue() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let data = #"{"status":"Ok","request_id":18446744073709551615}"#.data(using: .utf8)!
         let id = client._testExtractRequestId(from: data)
         XCTAssertEqual(id, UInt64.max)
     }
 
     func testExtractRequestId_InvalidJson() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let data = "not json".data(using: .utf8)!
         let id = client._testExtractRequestId(from: data)
         XCTAssertNil(id)
     }
 
     func testExtractRequestId_NullValue() {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let data = #"{"status":"Ok","request_id":null}"#.data(using: .utf8)!
         let id = client._testExtractRequestId(from: data)
         XCTAssertNil(id, "null request_id should return nil")
@@ -194,7 +195,7 @@ final class TCPClientRobustnessTests: XCTestCase {
     // MARK: - Request ID Generation
 
     func testRequestIdMonotonicity_NoServer() async {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         var ids: [UInt64] = []
         for _ in 0 ..< 100 {
             await ids.append(client.generateRequestId())
@@ -205,7 +206,7 @@ final class TCPClientRobustnessTests: XCTestCase {
     }
 
     func testRequestIdStartsAtOne() async {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let first = await client.generateRequestId()
         XCTAssertEqual(first, 1, "First request ID should be 1")
     }
@@ -383,28 +384,28 @@ final class TCPClientRobustnessTests: XCTestCase {
     // MARK: - Error Classification
 
     func testShouldRetry_Timeout() async {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let err = KeyPathError.communication(.timeout)
         let result = await client.shouldRetry(err)
         XCTAssertTrue(result)
     }
 
     func testShouldRetry_ConnectionFailed() async {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let err = KeyPathError.communication(.connectionFailed(reason: "refused"))
         let result = await client.shouldRetry(err)
         XCTAssertTrue(result)
     }
 
     func testShouldRetry_InvalidResponse() async {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let err = KeyPathError.communication(.invalidResponse)
         let result = await client.shouldRetry(err)
         XCTAssertFalse(result)
     }
 
     func testShouldRetry_NonKeyPathError() async {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let err = NSError(domain: "test", code: 1)
         let result = await client.shouldRetry(err)
         XCTAssertFalse(result)
@@ -413,35 +414,35 @@ final class TCPClientRobustnessTests: XCTestCase {
     // MARK: - extractError Parsing
 
     func testExtractError_StatusErrorJson() async {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let response = #"{"status":"Error","msg":"bad config file"}"#
         let error = await client.extractError(from: response)
         XCTAssertEqual(error, "bad config file")
     }
 
     func testExtractError_GenericErrorField() async {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let response = #"{"error":"something went wrong"}"#
         let error = await client.extractError(from: response)
         XCTAssertEqual(error, "something went wrong")
     }
 
     func testExtractError_NoErrorField() async {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let response = #"{"status":"Ok"}"#
         let error = await client.extractError(from: response)
         XCTAssertEqual(error, "Unknown error")
     }
 
     func testExtractError_NonJson() async {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let response = "not json at all"
         let error = await client.extractError(from: response)
         XCTAssertEqual(error, "Unknown error")
     }
 
     func testExtractError_MultiLineResponse() async {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let response = "{\"status\":\"Error\",\"msg\":\"line1\"}\n{\"extra\":\"data\"}"
         let error = await client.extractError(from: response)
         XCTAssertEqual(error, "line1")
@@ -450,7 +451,7 @@ final class TCPClientRobustnessTests: XCTestCase {
     // MARK: - extractMessage Tests
 
     func testExtractMessage_HelloOkFromMultiLine() async throws {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let response = """
         {"status":"Ok"}
         {"HelloOk":{"version":"1.10.0","protocol":1,"capabilities":["reload"]}}
@@ -466,7 +467,7 @@ final class TCPClientRobustnessTests: XCTestCase {
     }
 
     func testExtractMessage_NotFound() async throws {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let response = #"{"status":"Ok"}"#
         let data = Data(response.utf8)
         let result = try await client.extractMessage(
@@ -478,7 +479,7 @@ final class TCPClientRobustnessTests: XCTestCase {
     }
 
     func testExtractMessage_MalformedPayload() async throws {
-        let client = KanataTCPClient(port: port)
+        let client = KanataTCPClient(timeout: 0.1)
         let response = #"{"HelloOk":{"bad_field":"no version"}}"#
         let data = Data(response.utf8)
         let result = try await client.extractMessage(
@@ -495,13 +496,13 @@ final class TCPClientRobustnessTests: XCTestCase {
     // MARK: - Connection Lifecycle Without Server
 
     func testCheckServerStatus_NoServer() async {
-        let client = KanataTCPClient(port: port, timeout: 0.1)
+        let client = KanataTCPClient(port: unusedPort, timeout: 0.1)
         let status = await client.checkServerStatus()
         XCTAssertFalse(status, "Should return false when server is not running")
     }
 
     func testReloadConfig_NoServer() async {
-        let client = KanataTCPClient(port: port, timeout: 0.1)
+        let client = KanataTCPClient(port: unusedPort, timeout: 0.1)
         let result = await client.reloadConfig(timeoutMs: 100)
         switch result {
         case .networkError:

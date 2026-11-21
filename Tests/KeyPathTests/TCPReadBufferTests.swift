@@ -7,7 +7,7 @@ import Network
 /// when Kanata sends multiple JSON lines in a single TCP packet.
 final class TCPReadBufferTests: XCTestCase {
     func testDelayedClosePreservesReplacementConnectionAndBuffer() async {
-        let client = KanataTCPClient(port: 37001)
+        let client = KanataTCPClient(timeout: 1)
         let previous = NWConnection(to: .unix(path: "/unused/keypath-old.sock"), using: .tcp)
         let replacement = NWConnection(to: .unix(path: "/unused/keypath-replacement.sock"), using: .tcp)
         let pending = Data("reply for the replacement".utf8)
@@ -32,7 +32,7 @@ final class TCPReadBufferTests: XCTestCase {
     // MARK: - extractFirstLine Tests
 
     func testExtractFirstLine_SingleLine() throws {
-        let client = KanataTCPClient(port: 37001)
+        let client = KanataTCPClient(timeout: 1)
         let data = Data("{\"status\":\"Ok\"}\n".utf8)
 
         let result = client.extractFirstLine(from: data)
@@ -43,7 +43,7 @@ final class TCPReadBufferTests: XCTestCase {
     }
 
     func testExtractFirstLine_TwoLines() throws {
-        let client = KanataTCPClient(port: 37001)
+        let client = KanataTCPClient(timeout: 1)
         // Simulates Kanata sending two lines in one packet
         let data = Data("{\"status\":\"Ok\"}\n{\"ValidationResult\":{\"errors\":[],\"warnings\":[]}}\n".utf8)
 
@@ -67,7 +67,7 @@ final class TCPReadBufferTests: XCTestCase {
     }
 
     func testExtractFirstLine_NoNewline() {
-        let client = KanataTCPClient(port: 37001)
+        let client = KanataTCPClient(timeout: 1)
         let data = Data("{\"partial\":\"data\"".utf8) // No newline
 
         let result = client.extractFirstLine(from: data)
@@ -76,7 +76,7 @@ final class TCPReadBufferTests: XCTestCase {
     }
 
     func testExtractFirstLine_EmptyData() {
-        let client = KanataTCPClient(port: 37001)
+        let client = KanataTCPClient(timeout: 1)
         let data = Data()
 
         let result = client.extractFirstLine(from: data)
@@ -85,7 +85,7 @@ final class TCPReadBufferTests: XCTestCase {
     }
 
     func testExtractFirstLine_ThreeLines() throws {
-        let client = KanataTCPClient(port: 37001)
+        let client = KanataTCPClient(timeout: 1)
         // Simulates broadcast + Ok + Result all arriving together
         let data = Data("{\"LayerChange\":{}}\n{\"status\":\"Ok\"}\n{\"ReloadResult\":{\"ready\":true}}\n".utf8)
 
@@ -104,7 +104,7 @@ final class TCPReadBufferTests: XCTestCase {
     }
 
     func testExtractFirstLine_PartialSecondLine() throws {
-        let client = KanataTCPClient(port: 37001)
+        let client = KanataTCPClient(timeout: 1)
         // First line complete, second line partial (no trailing newline)
         let data = Data("{\"status\":\"Ok\"}\n{\"partial\":".utf8)
 
