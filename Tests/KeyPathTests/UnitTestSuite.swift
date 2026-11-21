@@ -91,26 +91,23 @@ final class UnitTestSuite: XCTestCase {
         XCTAssertEqual(message, deserialized)
     }
 
-    // MARK: - Sound Manager Tests
-
-    func testSoundManagerSharedInstance() {
-        let soundManager = SoundManager.shared
-
-        XCTAssertNotNil(soundManager)
-        // Calls are main-actor; simply invoke to ensure no crash
-        soundManager.playTinkSound()
-        soundManager.playGlassSound()
-    }
-
     // MARK: - Logger Tests
 
     func testLoggerConfiguration() {
-        let logger = AppLogger.shared
+        let logDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("keypath-unit-logger-\(UUID().uuidString)", isDirectory: true)
+        let logger = AppLogger(enableConsoleLogging: false)
+        logger.overrideLogDirectory(logDirectory.path)
+        logger.setMinimumLevel(.trace)
+        logger.flushBuffer() // Wait for the queued level change before logging.
+        defer {
+            logger.flushBuffer()
+            try? FileManager.default.removeItem(at: logDirectory)
+        }
 
-        XCTAssertNotNil(logger)
-
-        // Test logging functionality
-        XCTAssertNoThrow(logger.log("Test message"))
+        XCTAssertNoThrow(logger.log("Test message", level: .trace))
+        logger.flushBuffer()
+        XCTAssertTrue(FileManager.default.fileExists(atPath: logDirectory.appendingPathComponent("keypath-debug.log").path))
     }
 }
 

@@ -4,12 +4,32 @@ import Foundation
 /// held. Only Fn's own flagsChanged event establishes passthrough Fn state.
 public struct SessionPhysicalModifierState: Sendable {
     private var fnHeld = false
+    private var nativeKeyboardSides: UInt64 = 0
 
     public init() {}
 
     public mutating func passthroughFlags(keyCode: UInt16, isFlagsChanged: Bool, flags: UInt64) -> UInt64 {
         if keyCode == 63, isFlagsChanged { fnHeld = flags & (1 << 23) != 0 }
         return (flags & (1 << 16)) | (fnHeld ? (1 << 23) : 0)
+    }
+
+    /// Keep a native press on the native route through its release, even if
+    /// reloading the config maps that modifier while it is held.
+    package mutating func updateKeyboardModifiers(
+        flags: UInt64, engineInputs: Set<UInt32>, isMapped: (UInt32) -> Bool
+    ) -> (flags: UInt64, nativeEventSides: UInt64) {
+        let before = nativeKeyboardSides
+        var passthrough: UInt64 = 0
+        for usage: UInt32 in 224 ... 231 {
+            let side = SessionKeyMap.deviceModifierFlag(for: usage)
+            if flags & side == 0 {
+                nativeKeyboardSides &= ~side
+            } else if nativeKeyboardSides & side != 0 || (!engineInputs.contains(usage) && !isMapped(usage)) {
+                nativeKeyboardSides |= side
+                passthrough |= SessionKeyMap.modifierFlags(for: usage)
+            }
+        }
+        return (passthrough, before | nativeKeyboardSides)
     }
 }
 

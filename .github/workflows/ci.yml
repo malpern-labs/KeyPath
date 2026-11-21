@@ -218,6 +218,11 @@ jobs:
         KEYPATH_ALLOW_TEST_RUNNER_CRASH_SUCCESS: ${{ (vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && '0' || '1' }}
         KEYPATH_TEST_ENFORCE_CLEAN_SUMMARY: "1"
         KEYPATH_TEST_RESET_MODULE_CACHE: "0"
+        # The full safe suite passed on the mini with two XCTest worker
+        # processes (2026-11-21). Keep that proven bound in CI: it exposes
+        # cross-process fixture sharing and shortens the test phase without
+        # allowing two whole SwiftPM jobs to overlap on the shared runner.
+        SWIFT_TEST_ARGS: --parallel --num-workers 2
         # The mini (M4 Pro, 14 cores) runs one test job at a time; leave a few
         # cores for quality-full on the other runner. Hosted VMs are smaller.
         KEYPATH_SWIFT_BUILD_JOBS: ${{ (vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && '4' || '10' }}
@@ -422,6 +427,9 @@ jobs:
     - name: Accessibility Check
       run: |
         python3 Scripts/check-accessibility.py
+
+    - name: Installer Matrix Parser Check
+      run: bash Scripts/test-parse-installer-matrix.sh
 
     - name: Critical Pattern Analysis
       run: |

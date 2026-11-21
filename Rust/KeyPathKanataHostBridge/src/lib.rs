@@ -352,7 +352,11 @@ pub extern "C" fn keypath_kanata_bridge_create_passthru_runtime(
     };
 
     let (tx_kout, rx_kout) = mpsc::channel();
-    match kanata_state_machine::Kanata::new_with_output_channel(&args, Some(tx_kout)) {
+    match kanata_state_machine::Kanata::new_with_output_channel_and_input_policy(
+        &args,
+        Some(tx_kout),
+        Some(session_config::preserve_native_modifiers),
+    ) {
         Ok(runtime) => {
             write_error(error_buffer, error_buffer_len, "");
             Box::into_raw(Box::new(PassthruRuntime {

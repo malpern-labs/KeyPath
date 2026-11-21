@@ -1,5 +1,6 @@
 import CoreGraphics
 @testable import KeyPathAppKit
+import KeyPathCore
 import XCTest
 
 /// Re-posted keys keep the flags macOS attaches to the key itself. Without Fn
@@ -35,6 +36,18 @@ final class SessionKeyIntrinsicFlagsTests: XCTestCase {
             keyDefault: [.maskCommand, .maskSecondaryFn], output: 0, passthrough: 0, capsLock: 0
         )
         XCTAssertEqual(flags, .maskSecondaryFn)
+    }
+
+    func testNativeHeldControlShiftChordKeepsTheOriginalHardwareFlags() {
+        var state = SessionPhysicalModifierState()
+        // Native left Control down, left Shift down, Control up, Shift up.
+        for (raw, usage): (UInt64, UInt32) in [(0x40101, 224), (0x60103, 225), (0x20102, 224), (0x100, 225)] {
+            let native = state.updateKeyboardModifiers(flags: raw, engineInputs: []) { _ in false }
+            XCTAssertNotEqual(native.nativeEventSides & SessionKeyMap.deviceModifierFlag(for: usage), 0)
+            XCTAssertEqual(SessionRuntimeWorker.inputPassthroughFlags(
+                original: CGEventFlags(rawValue: raw), modifiers: native.flags, preserveEventMetadata: true
+            ).rawValue, raw)
+        }
     }
 
     func testPassthroughCapsLockBitDefersToLiveState() {
