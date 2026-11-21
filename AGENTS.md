@@ -196,10 +196,14 @@ Notes:
 - Before pushing, run the quick checks CI runs, so they fail locally in seconds:
   `./Scripts/lint-no-sleep.sh`, `python3 Scripts/check-accessibility.py`, and
   `./Scripts/l10n/sync-strings.sh --check` after a Debug build.
-- Merge with `gh pr merge <n> --auto --merge`; it lands once `build-and-test`
-  and `code-quality` pass. `master` does not require branches to be up to date
-  (GitHub's merge queue is not available to a personally owned repository), so
-  do not update a branch just to merge it; resolve real conflicts only. A PR
+- Merge with `gh pr merge <n> --auto --merge`. Once `build-and-test` and
+  `code-quality` pass on the PR, it joins `master`'s merge queue (enabled
+  2026-11-21, after the repository moved to the malpern-labs organization).
+  The queue runs CI again on the PR combined with the latest `master` and any
+  PRs ahead of it, up to 3 at a time, and merges only if that passes. This
+  catches PRs that pass alone but break together: on 2026-11-21 #1592 and
+  #1575 each passed CI and together broke master's test build. Do not update a
+  branch just to merge it; resolve real conflicts only. A PR
   whose CI ran before a change to `.github/workflows/ci.yml` needs `master`
   merged in to pick that change up.
 - Git guardrail hooks in `.claude/settings.json` block commits on `master`,
