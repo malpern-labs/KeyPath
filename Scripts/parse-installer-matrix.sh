@@ -12,7 +12,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
 LOG_FILE="${1:-test_output.safe.txt}"
-OUT_ROOT="test-results/installer-reliability"
+OUT_ROOT="${INSTALLER_MATRIX_OUT_ROOT:-test-results/installer-reliability}"
 TIMESTAMP_UTC="$(date -u +"%Y%m%dT%H%M%SZ")"
 OUT_DIR="$OUT_ROOT/$TIMESTAMP_UTC"
 
@@ -53,6 +53,9 @@ declare -a LANE_PASS_COUNTS=()
 declare -a LANE_FAIL_COUNTS=()
 declare -a LANE_SUMMARIES=()
 total_parsed=0
+parallel_results=0
+test_status="${TEST_STATUS:-unknown}"
+unverified_lanes=0
 
 echo "Parsing installer reliability matrix from: $LOG_FILE"
 echo "Output: $OUT_DIR"
@@ -66,13 +69,26 @@ for i in "${!LANE_IDS[@]}"; do
   # Count passes and failures for test classes matching this lane's pattern.
   # XCTest format: Test Case '-[Module.ClassName testMethod]' passed/failed
   # Swift Testing format: Test "ClassName/testMethod" passed/failed after ...
+  # Parallel SwiftPM format: [123/4725] Testing Module.ClassName/testMethod
   # Uses [. ] before class name to anchor match and prevent substring contamination
   # (e.g. "InstallerEngineTests" won't match "InstallerEngineEndToEndTests").
   # Debug: show sample matches for this lane
   echo "  [$lane_id] grep sample:"
-  grep -E "($pattern).*(passed|failed)" "$LOG_FILE" 2>/dev/null | head -2 || echo "    (no raw matches)"
+  grep -E "($pattern).*(passed|failed)|Testing [^[:space:]]+\\.($pattern)/" "$LOG_FILE" 2>/dev/null | head -2 || echo "    (no raw matches)"
   pass_count=$(count_matches "(Test Case '.*[. ]($pattern) .*' passed|Test \"($pattern)[/\"].*passed)" "$LOG_FILE")
   fail_count=$(count_matches "(Test Case '.*[. ]($pattern) .*' failed|Test \"($pattern)[/\"].*failed)" "$LOG_FILE")
+  parallel_count=$(count_matches "^\\[[0-9]+/[0-9]+\\] Testing [^[:space:]]+\\.($pattern)/[^[:space:]]+$" "$LOG_FILE")
+
+  # SwiftPM's --parallel mode emits one stable "Testing Module.Class/method"
+  # progress line per XCTest, but no per-test pass line. The run-tests-safe
+  # summary is the authoritative suite result; use it to classify those
+  # enumerated tests, while retaining the test names in the lane log.
+  if [ "$parallel_count" -gt 0 ]; then
+    parallel_results=$((parallel_results + parallel_count))
+    if [ "$test_status" = "passed" ]; then
+      pass_count=$((pass_count + parallel_count))
+    fi
+  fi
   echo "  [$lane_id] pass=$pass_count fail=$fail_count"
 
   if [ "$fail_count" -gt 0 ]; then
@@ -81,6 +97,13 @@ for i in "${!LANE_IDS[@]}"; do
   elif [ "$pass_count" -gt 0 ]; then
     status="pass"
     summary="$pass_count passed"
+  elif [ "$parallel_count" -gt 0 ] && [ "$test_status" = "failed" ]; then
+    # Parallel SwiftPM logs list scheduled XCTest cases but don't attribute
+    # the failing test in all failure modes. Don't misreport every scheduled
+    # case as failed; make the lane explicitly unverified and fail the matrix.
+    status="unverified"
+    summary="Test run failed; parallel output did not attribute per-test results"
+    unverified_lanes=$((unverified_lanes + 1))
   else
     status="skip"
     summary="No matching tests found in log"
@@ -91,6 +114,9 @@ for i in "${!LANE_IDS[@]}"; do
   LANE_FAIL_COUNTS+=("$fail_count")
   LANE_SUMMARIES+=("$summary")
   total_parsed=$((total_parsed + pass_count + fail_count))
+  if [ "$status" = "unverified" ]; then
+    total_parsed=$((total_parsed + parallel_count))
+  fi
 
   echo "  [$lane_id] $lane_name: $status ($summary)"
 
@@ -110,7 +136,7 @@ if [ "$installer_mentions" -gt 0 ] && [ "$total_parsed" -eq 0 ]; then
   echo "The xctest output format may have changed — review grep patterns in this script."
   exit 1
 fi
-echo "  Sanity check: parsed $total_parsed results from $installer_mentions installer-related log lines"
+echo "  Sanity check: parsed $total_parsed results ($parallel_results from parallel XCTest progress) from $installer_mentions installer-related log lines"
 
 # Count failures
 failed_lanes=0
@@ -120,7 +146,7 @@ for status in "${LANE_STATUSES[@]}"; do
   fi
 done
 
-if [ "$failed_lanes" -eq 0 ]; then
+if [ "$failed_lanes" -eq 0 ] && [ "$unverified_lanes" -eq 0 ] && [ "$test_status" != "failed" ]; then
   overall_status="pass"
 else
   overall_status="fail"
@@ -133,6 +159,7 @@ fi
   echo "  \"outputDirectory\": \"$(json_escape "$OUT_DIR")\","
   echo "  \"overallStatus\": \"$(json_escape "$overall_status")\","
   echo "  \"failedLaneCount\": $failed_lanes,"
+  echo "  \"unverifiedLaneCount\": $unverified_lanes,"
   echo "  \"parsedFromLog\": \"$(json_escape "$LOG_FILE")\","
   echo "  \"lanes\": ["
 
@@ -164,6 +191,7 @@ fi
   echo "- Source: \`$LOG_FILE\` (parsed, not re-run)"
   echo "- Overall: **$overall_status**"
   echo "- Failed lanes: **$failed_lanes**"
+  echo "- Unverified lanes: **$unverified_lanes**"
   echo ""
   echo "| Lane | Scope | Status | Results |"
   echo "| --- | --- | --- | --- |"
@@ -179,8 +207,8 @@ ln -sfn "$TIMESTAMP_UTC" "$OUT_ROOT/latest"
 echo ""
 echo "Matrix artifacts written to $OUT_DIR"
 
-if [ "$failed_lanes" -ne 0 ]; then
-  echo "Installer reliability matrix failed ($failed_lanes lane(s) failed)."
+if [ "$failed_lanes" -ne 0 ] || [ "$unverified_lanes" -ne 0 ] || [ "$test_status" = "failed" ]; then
+  echo "Installer reliability matrix failed ($failed_lanes lane(s) failed, $unverified_lanes unverified)."
   exit 1
 fi
 
