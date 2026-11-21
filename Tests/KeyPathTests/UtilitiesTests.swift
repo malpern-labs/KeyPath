@@ -1,11 +1,28 @@
 import AppKit
 import Foundation
 @testable import KeyPathAppKit
-import KeyPathCore
+@testable import KeyPathCore
 @preconcurrency import XCTest
 
 final class UtilitiesTests: XCTestCase {
     // MARK: - Logger Tests
+
+    func testLogLevelEnvironmentOverrideIsExplicitlyControlled() {
+        let environment = ["KEYPATH_LOG_LEVEL": "0"]
+        let releaseLevel = AppLogger.configuredMinimumLevel(
+            environment: environment,
+            minimumLevel: .info,
+            allowsEnvironmentOverride: false
+        )
+        let debugLevel = AppLogger.configuredMinimumLevel(
+            environment: environment,
+            minimumLevel: nil,
+            allowsEnvironmentOverride: true
+        )
+
+        XCTAssertEqual(releaseLevel, .info)
+        XCTAssertEqual(debugLevel, .trace)
+    }
 
     func testLoggerSingleton() {
         let logger1 = AppLogger.shared

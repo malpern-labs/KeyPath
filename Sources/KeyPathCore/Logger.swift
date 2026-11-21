@@ -52,15 +52,16 @@ public final class AppLogger: Sendable {
         minimumLevel: AppLogLevel? = nil,
         enableConsoleLogging: Bool? = nil
     ) {
-        // Prefer the environment override, then the parameter, then the build default.
-        let configuredLevel: AppLogLevel = if let envLevel = ProcessInfo.processInfo.environment["KEYPATH_LOG_LEVEL"],
-                                              let levelInt = Int(envLevel),
-                                              let level = AppLogLevel(rawValue: levelInt)
-        {
-            level
-        } else {
-            minimumLevel ?? AppLogLevel.defaultMinimumLevel
-        }
+        #if DEBUG
+            let allowsEnvironmentOverride = true
+        #else
+            let allowsEnvironmentOverride = false
+        #endif
+        let configuredLevel = Self.configuredMinimumLevel(
+            environment: ProcessInfo.processInfo.environment,
+            minimumLevel: minimumLevel,
+            allowsEnvironmentOverride: allowsEnvironmentOverride
+        )
 
         // Console logging (default: true in debug, false in release)
         #if DEBUG
@@ -107,6 +108,20 @@ public final class AppLogger: Sendable {
         }
 
         logDirectory = Mutex(directory)
+    }
+
+    static func configuredMinimumLevel(
+        environment: [String: String], minimumLevel: AppLogLevel?, allowsEnvironmentOverride: Bool
+    ) -> AppLogLevel {
+        if allowsEnvironmentOverride {
+            if let rawValue = environment["KEYPATH_LOG_LEVEL"],
+               let integer = Int(rawValue),
+               let level = AppLogLevel(rawValue: integer)
+            {
+                return level
+            }
+        }
+        return minimumLevel ?? AppLogLevel.defaultMinimumLevel
     }
 
     /// Update minimum log level at runtime
