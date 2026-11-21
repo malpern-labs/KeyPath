@@ -5,6 +5,39 @@ import Testing
 
 @Suite("LayerMappingBuilder")
 struct LayerMappingBuilderTests {
+    @MainActor
+    @Test("Multi-action key hover works with Mapper closed and stops when the overlay fades")
+    func actionHoverAvailability() {
+        let legends = [
+            KeycapActionLegend(trigger: .tap, action: .keystroke(key: "q")),
+            KeycapActionLegend(trigger: .hold, action: .hyper)
+        ]
+        var info = LayerKeyInfo.mapped(displayLabel: "Q", outputKey: "q", outputKeyCode: 12)
+        info.actionLegends = legends
+        var keycap = OverlayKeycapView(
+            key: PhysicalKey(keyCode: 12, label: "Q", x: 0, y: 0),
+            baseLabel: "Q",
+            isPressed: false,
+            scale: 1,
+            layerKeyInfo: info,
+            isInspectorVisible: false
+        )
+
+        #expect(keycap.hoverActionLegends == legends)
+        keycap.fadeAmount = 0.1
+        #expect(keycap.hoverActionLegends.isEmpty)
+        #expect(keycap.actionLegendsForDetails == legends)
+        keycap.isInspectorVisible = true
+        #expect(keycap.hoverActionLegends.isEmpty)
+        keycap.fadeAmount = 0
+        #expect(keycap.hoverActionLegends == legends)
+        let singleAction = Array(legends.prefix(1))
+        keycap.layerKeyInfo?.actionLegends = singleAction
+        #expect(keycap.hoverActionLegends == singleAction)
+        keycap.isInspectorVisible = false
+        #expect(keycap.hoverActionLegends.isEmpty)
+    }
+
     @Test("Hyper uses a four-point keycap glyph and a spelled-out hover action")
     func hyperLegendDisplay() {
         let legend = KeycapActionLegend(trigger: .hold, action: .hyper)

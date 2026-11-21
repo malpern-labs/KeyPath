@@ -21,9 +21,15 @@ extension OverlayKeycapView {
         }
     }
 
+    var actionLegendsForDetails: [KeycapActionLegend] {
+        guard !isLauncherMode, key.layoutRole != .touchId,
+              let legends = layerKeyInfo?.actionLegends, isInspectorVisible || legends.count > 1
+        else { return [] }
+        return legends
+    }
+
     var hoverActionLegends: [KeycapActionLegend] {
-        guard isInspectorVisible, !isLauncherMode, key.layoutRole != .touchId else { return [] }
-        return layerKeyInfo?.actionLegends ?? []
+        fadeAmount == 0 ? actionLegendsForDetails : []
     }
 
     /// Keep compact keys readable by removing secondary glyphs before shrinking their text.
