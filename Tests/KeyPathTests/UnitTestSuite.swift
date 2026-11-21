@@ -91,17 +91,6 @@ final class UnitTestSuite: XCTestCase {
         XCTAssertEqual(message, deserialized)
     }
 
-    // MARK: - Preference Service Tests
-
-    @MainActor
-    func testPreferenceDefaults() throws {
-        let fixture = try IsolatedPreferenceDefaults()
-        let service = PreferencesService(leaderDefaults: fixture.defaults, defaults: fixture.defaults)
-
-        // Test that service initializes with defaults (TCP only)
-        XCTAssertEqual(service.communicationProtocol, .tcp)
-    }
-
     // MARK: - Sound Manager Tests
 
     func testSoundManagerSharedInstance() {

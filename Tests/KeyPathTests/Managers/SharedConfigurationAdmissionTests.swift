@@ -22,13 +22,13 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
                             resume = continuation
                             entered.fulfill()
                         }
-                        return ReloadResult(success: false, response: nil, errorMessage: "reject", protocol: nil, disposition: .rejected)
+                        return ReloadResult(success: false, response: nil, errorMessage: "reject", disposition: .rejected)
                     }
                     await withCheckedContinuation { continuation in
                         resumeRecovery = continuation
                         recovering.fulfill()
                     }
-                    return ReloadResult(success: true, response: "recovered", errorMessage: nil, protocol: nil)
+                    return ReloadResult(success: true, response: "recovered", errorMessage: nil)
                 }
             }
             await self.fulfillment(of: [entered], timeout: 5)
@@ -64,7 +64,7 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
                 let rule = manager.makeCustomRule(input: "a", output: "c")
                 let nested = await manager.saveCustomRule(rule)
                 XCTAssertFalse(nested)
-                return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+                return ReloadResult(success: true, response: nil, errorMessage: nil)
             }
             XCTAssertTrue(result.success)
             XCTAssertTrue(manager.customRules.isEmpty)
@@ -119,10 +119,10 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
                             resume = continuation
                             entered.fulfill()
                         }
-                        return ReloadResult(success: false, response: nil, errorMessage: "reject", protocol: nil, disposition: .rejected)
+                        return ReloadResult(success: false, response: nil, errorMessage: "reject", disposition: .rejected)
                     }
                     XCTAssertFalse(secondReloaded, "The other coordinator must wait through recovery")
-                    return ReloadResult(success: true, response: "recovered", errorMessage: nil, protocol: nil)
+                    return ReloadResult(success: true, response: "recovered", errorMessage: nil)
                 }
             }
             await self.fulfillment(of: [entered], timeout: 5)
@@ -131,7 +131,7 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
                 started.fulfill()
                 return await secondCoordinator.saveGeneratedConfig(content: finalContent) {
                     secondReloaded = true
-                    return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+                    return ReloadResult(success: true, response: nil, errorMessage: nil)
                 }
             }
             await self.fulfillment(of: [started], timeout: 5)
@@ -180,7 +180,7 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
                 } catch {
                     XCTFail("Unexpected failure: \(error)")
                 }
-                return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+                return ReloadResult(success: true, response: nil, errorMessage: nil)
             }
             XCTAssertTrue(result.success)
             let record = await tracker.record(for: pack.id)
@@ -194,7 +194,7 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
             manager.onError = { errors.append($0) }
             let result = await coordinator.saveGeneratedConfig(content: "(defcfg)\n(defsrc a)\n(deflayer base b)") {
                 await manager.bootstrap()
-                return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+                return ReloadResult(success: true, response: nil, errorMessage: nil)
             }
             XCTAssertTrue(result.success)
             XCTAssertTrue(manager.ruleCollections.isEmpty)
@@ -243,12 +243,12 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
             var extraReloads = 0
             manager.onRulesChanged = {
                 extraReloads += 1
-                return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+                return ReloadResult(success: true, response: nil, errorMessage: nil)
             }
             let result = await coordinator.saveGeneratedConfig(content: content) {
                 let regenerated = await manager.regenerateConfigFromCollections()
                 XCTAssertFalse(regenerated)
-                return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+                return ReloadResult(success: true, response: nil, errorMessage: nil)
             }
             XCTAssertTrue(result.success)
             XCTAssertEqual(extraReloads, 0)
@@ -262,7 +262,7 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
             let result = await coordinator.saveGeneratedConfig(content: "(defcfg)\n(defsrc a)\n(deflayer base b)") {
                 let restored = await manager.rollbackToSnapshot(.init(collections: [], customRules: [rule]), userMessage: "Restored")
                 XCTAssertFalse(restored)
-                return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+                return ReloadResult(success: true, response: nil, errorMessage: nil)
             }
             XCTAssertTrue(result.success)
             XCTAssertTrue(manager.customRules.isEmpty)
@@ -283,7 +283,7 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
                         entered.fulfill()
                     }
                 }
-                return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+                return ReloadResult(success: true, response: nil, errorMessage: nil)
             }
             let first = Task { @MainActor in await manager.persistRules() }
             await self.fulfillment(of: [entered], timeout: 5)
@@ -334,7 +334,7 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
                         XCTFail("Unexpected \(name) failure: \(error)")
                     }
                 }
-                return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+                return ReloadResult(success: true, response: nil, errorMessage: nil)
             }
             XCTAssertTrue(result.success)
             XCTAssertEqual(try String(contentsOfFile: service.configurationPath, encoding: .utf8), content)
@@ -361,7 +361,7 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
             let second = Task { @MainActor in
                 started.fulfill()
                 return await coordinator.saveGeneratedConfig(content: content) {
-                    ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+                    ReloadResult(success: true, response: nil, errorMessage: nil)
                 }
             }
             await self.fulfillment(of: [started], timeout: 5)
@@ -380,7 +380,7 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
             try await manager.customRulesStore.saveRules([rule])
             try FileManager.default.removeItem(atPath: service.configurationPath)
             let result = await coordinator.saveGeneratedConfig(content: "(defcfg)\n(defsrc a)\n(deflayer base b)") {
-                ReloadResult(success: false, response: nil, errorMessage: "reject", protocol: nil, disposition: .rejected)
+                ReloadResult(success: false, response: nil, errorMessage: "reject", disposition: .rejected)
             }
             XCTAssertFalse(result.success)
             let restored = try String(contentsOfFile: service.configurationPath, encoding: .utf8)
@@ -403,7 +403,7 @@ final class SharedConfigurationAdmissionTests: KeyPathTestCase {
         let service = ConfigurationService(configDirectory: directory.path, ruleCollectionStore: collections, customRulesStore: rules)
         try "(defcfg)\n(defsrc a)\n(deflayer base a)".write(toFile: service.configurationPath, atomically: true, encoding: .utf8)
         let manager = RuleCollectionsManager(ruleCollectionStore: collections, customRulesStore: rules, configurationService: service, keymapPreferences: preferences)
-        manager.onRulesChanged = { ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil) }
+        manager.onRulesChanged = { ReloadResult(success: true, response: nil, errorMessage: nil) }
         let coordinator = SaveCoordinator(configurationService: service)
         try await body(service, manager, coordinator)
     }

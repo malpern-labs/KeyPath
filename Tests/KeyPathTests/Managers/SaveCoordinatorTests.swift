@@ -86,12 +86,11 @@ final class SaveCoordinatorTests: KeyPathTestCase {
         var reloadCount = 0
         let result = await coordinator.saveMapping(input: "a", output: "c", ruleCollectionsManager: manager) {
             reloadCount += 1
-            if reloadCount > 1 { return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil) }
+            if reloadCount > 1 { return ReloadResult(success: true, response: nil, errorMessage: nil) }
             return ReloadResult(
                 success: disposition == .applied,
                 response: nil,
                 errorMessage: disposition == .applied ? nil : "injected \(disposition)",
-                protocol: nil,
                 disposition: disposition
             )
         }
@@ -127,7 +126,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
 
         let result = await coordinator.saveGeneratedConfig(content: "") {
             reloadCount += 1
-            return ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+            return ReloadResult(success: true, response: "ok", errorMessage: nil)
         }
 
         XCTAssertFalse(result.success)
@@ -182,7 +181,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
             runtimeDidApply: { runtimeApplyCount += 1 }
         ) {
             reloadCount += 1
-            return ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+            return ReloadResult(success: true, response: "ok", errorMessage: nil)
         }
         XCTAssertFalse(result.success, file: file, line: line)
         XCTAssertTrue(result.error?.localizedDescription.contains("driverless session") == true, file: file, line: line)
@@ -216,7 +215,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
         ) {
             reloadCount += 1
             XCTAssertEqual(try? String(contentsOf: url, encoding: .utf8), candidate)
-            return ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+            return ReloadResult(success: true, response: "ok", errorMessage: nil)
         }
         XCTAssertTrue(result.success, result.error?.localizedDescription ?? "")
         XCTAssertEqual(result.reloadResult?.disposition, .applied)
@@ -238,7 +237,6 @@ final class SaveCoordinatorTests: KeyPathTestCase {
             success: disposition == .applied,
             response: disposition == .applied ? "ok" : nil,
             errorMessage: disposition == .applied ? nil : "injected \(disposition)",
-            protocol: nil,
             disposition: disposition
         )
         var reloadCount = 0
@@ -246,7 +244,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
         let result = await coordinator.saveGeneratedConfig(content: updated) {
             reloadCount += 1
             XCTAssertEqual(try? String(contentsOf: url, encoding: .utf8), reloadCount == 1 ? updated : original, file: file, line: line)
-            return reloadCount == 1 ? expected : ReloadResult(success: true, response: "recovered", errorMessage: nil, protocol: nil)
+            return reloadCount == 1 ? expected : ReloadResult(success: true, response: "recovered", errorMessage: nil)
         }
 
         let saved = disposition == .applied || disposition == .pending
@@ -305,9 +303,9 @@ final class SaveCoordinatorTests: KeyPathTestCase {
                         releaseFirst = continuation
                         firstReloadStarted.fulfill()
                     }
-                    return ReloadResult(success: false, response: nil, errorMessage: "rejected", protocol: nil, disposition: .rejected)
+                    return ReloadResult(success: false, response: nil, errorMessage: "rejected", disposition: .rejected)
                 }
-                return ReloadResult(success: true, response: "recovered", errorMessage: nil, protocol: nil)
+                return ReloadResult(success: true, response: "recovered", errorMessage: nil)
             }
         }
         await fulfillment(of: [firstReloadStarted], timeout: 5)
@@ -321,7 +319,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
             secondStarted.fulfill()
             let reload = {
                 secondReloadCount += 1
-                return ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+                return ReloadResult(success: true, response: "ok", errorMessage: nil)
             }
             if mappingSecond {
                 return await coordinator.saveMapping(input: "a", output: "d", ruleCollectionsManager: manager, reloadHandler: reload)
@@ -343,7 +341,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
             XCTAssertEqual(secondReloadCount, 0)
             XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), original)
             let nextResult = await coordinator.saveGeneratedConfig(content: secondContent) {
-                ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+                ReloadResult(success: true, response: "ok", errorMessage: nil)
             }
             XCTAssertTrue(nextResult.success, "Cancellation must release the operation slot")
         } else {
@@ -371,13 +369,13 @@ final class SaveCoordinatorTests: KeyPathTestCase {
         try original.write(to: url, atomically: true, encoding: .utf8)
         _ = await configService.current() // Deliberately prime the older parsed cache.
         let first = await coordinator.saveGeneratedConfig(content: accepted) {
-            ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+            ReloadResult(success: true, response: "ok", errorMessage: nil)
         }
         XCTAssertTrue(first.success)
         let second = await coordinator.saveGeneratedConfig(content: rejected) {
             // A separate backup request must not replace this save's snapshot.
             self.coordinator.backupCurrentConfig("unrelated backup")
-            return ReloadResult(success: false, response: nil, errorMessage: "rejected", protocol: nil, disposition: .rejected)
+            return ReloadResult(success: false, response: nil, errorMessage: "rejected", disposition: .rejected)
         }
         XCTAssertFalse(second.success)
         XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), accepted)
@@ -392,7 +390,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
         let outer = await coordinator.saveGeneratedConfig(content: updated) {
             let nested = await coordinator.saveGeneratedConfig(content: original) {
                 XCTFail("Recursive save must not reach reload")
-                return ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+                return ReloadResult(success: true, response: "ok", errorMessage: nil)
             }
             XCTAssertFalse(nested.success)
             XCTAssertNil(nested.reloadResult)
@@ -403,7 +401,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
             } catch {
                 XCTAssertTrue(error.localizedDescription.contains("recursively"))
             }
-            return ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+            return ReloadResult(success: true, response: "ok", errorMessage: nil)
         }
         XCTAssertTrue(outer.success)
         XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), updated)
@@ -419,10 +417,10 @@ final class SaveCoordinatorTests: KeyPathTestCase {
         var reloads = 0
         let result = await coordinator.saveGeneratedConfig(content: updated) {
             reloads += 1
-            if reloads > 1 { return ReloadResult(success: true, response: "recovered", errorMessage: nil, protocol: nil) }
+            if reloads > 1 { return ReloadResult(success: true, response: "recovered", errorMessage: nil) }
             initializedContent = await self.configService.current().content
             XCTAssertEqual(try? String(contentsOf: url, encoding: .utf8), updated)
-            return ReloadResult(success: false, response: nil, errorMessage: "rejected", protocol: nil, disposition: .rejected)
+            return ReloadResult(success: false, response: nil, errorMessage: "rejected", disposition: .rejected)
         }
         XCTAssertFalse(result.success)
         XCTAssertEqual(result.reloadResult?.disposition, .rejected)
@@ -456,7 +454,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
                         XCTAssertEqual(restored, before)
                     } catch { XCTFail("Recovery files unavailable: \(error)") }
                 }
-                return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+                return ReloadResult(success: true, response: nil, errorMessage: nil)
             }
         }
         let result = await operation!.value
@@ -485,7 +483,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
                 try "external edit".write(toFile: self.configService.configurationPath, atomically: true, encoding: .utf8)
                 externalRevision = try self.ruleFiles()
             } catch { XCTFail("Could not inject external edit: \(error)") }
-            return ReloadResult(success: false, response: nil, errorMessage: "rejected", protocol: nil, disposition: .rejected)
+            return ReloadResult(success: false, response: nil, errorMessage: "rejected", disposition: .rejected)
         }
         XCTAssertFalse(result.success)
         XCTAssertEqual(reloads, 1, "Do not reload a conflicted revision as recovery")
@@ -519,7 +517,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
         var reloads = 0
         let result = await coordinator.saveMapping(input: "d", output: "e", ruleCollectionsManager: manager) {
             reloads += 1
-            return ReloadResult(success: true, response: nil, errorMessage: nil, protocol: nil)
+            return ReloadResult(success: true, response: nil, errorMessage: nil)
         }
         XCTAssertTrue(result.success)
         XCTAssertEqual(choices, 1)
@@ -577,7 +575,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
                     XCTFail("Could not inject write failure: \(error)")
                 }
             }
-            return ReloadResult(success: false, response: nil, errorMessage: "injected rejection", protocol: nil, disposition: .rejected)
+            return ReloadResult(success: false, response: nil, errorMessage: "injected rejection", disposition: .rejected)
         }
         let result: KeyPathAppKit.SaveResult = if mapping {
             await coordinator.saveMapping(input: "a", output: "c", ruleCollectionsManager: manager, reloadHandler: reload)
@@ -598,7 +596,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
                 try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
                 try original.write(to: url, atomically: true, encoding: .utf8)
                 let next = await coordinator.saveGeneratedConfig(content: updated) {
-                    ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+                    ReloadResult(success: true, response: "ok", errorMessage: nil)
                 }
                 XCTAssertTrue(next.success)
             } else {
@@ -622,7 +620,7 @@ final class SaveCoordinatorTests: KeyPathTestCase {
             try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
             try original.write(to: url, atomically: true, encoding: .utf8)
             let next = await coordinator.saveGeneratedConfig(content: updated) {
-                ReloadResult(success: true, response: "ok", errorMessage: nil, protocol: nil)
+                ReloadResult(success: true, response: "ok", errorMessage: nil)
             }
             XCTAssertTrue(next.success, "Failed recovery must release the save operation")
             XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), updated)
