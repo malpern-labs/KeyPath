@@ -20,18 +20,19 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 ### Progress toward the review goals
 
-Sixteen review-related PRs merged on November 21 (#1589–#1605, excluding the unrelated #1575 and the unmerged #1602). They advance the original review goals as follows:
+Sixteen review-related PRs had merged on November 21 (#1589–#1605, excluding unrelated #1575 and unmerged #1602). PR count records activity; completion is measured by the original review outcomes and the evidence required to accept them.
 
-| Review goal | Progress represented by the overnight merges |
-|---|---|
-| **Reduce over-engineering (O7)** | #1589 and #1591–#1593 move configuration admission, rule operations, and generation out of the UI framework while retaining the pack gallery, confirmations, dependencies, and rollback. Three CLI files still need AppKit for pack mutations; that boundary remains open pending a shared decision/transaction contract. |
-| **Improve localization (P8)** | #1597 and #1598 fix and independently review Japanese strings; #1601 verifies the macOS 27 permission-pane name against Apple’s Japanese system strings. Live onboarding and overlay layout checks remain. |
-| **Improve concurrency and CI reliability (P6/P9)** | #1590 and #1603 remove obsolete runtime/test behavior and isolate shared test state; #1605 removes tests against the retired TCP listener. #1593 adds compiler-checked runtime readiness ownership. The full suite was qualified sequentially and with two XCTest workers before these merges; CI still needs the corresponding parallel test configuration and same-process isolation work remains open. |
-| **Reduce CI waste and agent friction** | #1594 removes a cache-warm workflow that warmed no PR job’s cache; #1595 and #1596 move worktrees off ephemeral storage and require bounded build slots and isolated tests. |
-| **Improve security and release behavior** | #1600 makes Caps Lock conflict attribution depend on verified ownership evidence and states the limits of macOS attribution; #1604 ignores environment log-level overrides in Release builds. |
-| **Keep process guidance accurate** | #1599 documents the organization’s merge queue so PRs are tested against current `master` before merge. |
+| Review goal | Outcome achieved | Remaining acceptance work |
+|---|---|---|
+| **Reduce over-engineering (O7)** | Configuration admission, rules, generation and supporting CLI operations moved out of the UI framework while preserving packs and their features. #1609 adds checked CLI pack-install admission so conflicts are refused without mutating user configuration. | Merge #1609 after required CI and review. Keep the remaining pack mutations together until a shared decision/transaction boundary proves measurable build savings without changing behavior. |
+| **Remove bloat (B1–B6)** | Dead UI, scripts, Swift code, tests, assets, package exports and stale root files were removed; retained goldens were losslessly compressed. | No known deletion item remains in B1–B6. |
+| **Keep public documentation accurate (B7)** | Public setup/help pages were corrected, published and verified against the 1.0.1 download; the live screenshot was checked against a verified capture. | Rehearse 1.0.1 active-helper cleanup on a disposable macOS 26 guest. For the session-runtime release, publish macOS 27/Apple Silicon requirements and link the manual cleanup path beside download, setup and uninstall. |
+| **Use current macOS APIs safely (P1–P7)** | Update, permission, subprocess, lifecycle, signing, SwiftUI and concurrency fixes have merged; normal session-runtime consent was verified on a fresh macOS 27 guest. | P6 needs live overlay timing and capture-teardown evidence. A Mini daily guest exists, but UI preflight refused because its SSH account differs from the guest console owner; no GUI action followed the refusal. |
+| **Ship correct Japanese localization (P8)** | Japanese strings were independently reviewed and corrected; Xcode compiled the active catalog and signed builds verified several Japanese screens. | Verify remaining Japanese onboarding and overlay layouts on a live guest. |
+| **Make tests isolated and CI dependable (P9/P6)** | Full safe tests passed sequentially and with two XCTest workers. #1608 is merged, running the isolated XCTest lane with two workers and testing parallel log parsing. | Complete the same-process/shared-fixture audit and observe CI reliability. XCTest repetition remains unqualified; live UI tests depend on the guest UI readiness gate. |
+| **Resolve security findings** | Public S1 (engine listener) is fixed. | Resolve and verify each remaining private finding before a session-runtime release; details remain intentionally outside this public document. |
 
-This is measurable progress toward the review: the merged changes reduce UI-framework coupling, correct Japanese content, narrow test side effects, remove stale CI work, and harden release behavior. It does **not** mean the review is complete. The remaining items are listed below with their required evidence; a merged PR or green CI does not substitute for live desktop, release, or lab verification.
+This ledger tracks outcomes toward the review goals: less unnecessary framework coupling and dead code, accurate install guidance, macOS-correct behavior, usable Japanese screens, isolated/reliable tests, and closed security findings. A merged PR or green CI alone is not acceptance evidence for live desktop, release or lab items.
 
 ### Top recommendations
 
