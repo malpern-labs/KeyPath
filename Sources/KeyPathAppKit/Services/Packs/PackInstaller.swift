@@ -5,7 +5,6 @@
 // PackInstaller is the only place pack state changes; the Gallery/Pack Detail
 // UI calls these methods and does not mutate CustomRules or config directly.
 
-import AppKit
 import Foundation
 import KeyPathCore
 import KeyPathRulesCore
@@ -228,7 +227,7 @@ public final class PackInstaller {
             }
 
             // Resolve effective quick-setting values (user-provided ∪ defaults).
-            let resolvedSettings = resolveQuickSettings(pack: pack, overrides: quickSettingValues)
+            let resolvedSettings = pack.resolvedQuickSettings(overrides: quickSettingValues)
 
             // Visual-only packs (e.g. KindaVim Mode Display) don't touch the
             // kanata config at all — install just persists the tracker record
@@ -296,7 +295,7 @@ public final class PackInstaller {
             // Prepare the entire custom-rule pack before writing. The metadata and
             // all rules remain one recoverable revision through runtime application.
             let ruleStateSnapshot = manager.snapshotRuleState()
-            let rules = renderBindings(for: pack, quickSettings: resolvedSettings)
+            let rules = pack.renderBindings(quickSettings: resolvedSettings)
             for (index, rule) in rules.enumerated() {
                 guard await manager.updateCustomRuleInMemory(rule, mutationPermit: permit) else {
                     manager.ruleCollections = ruleStateSnapshot.collections
@@ -525,7 +524,7 @@ public final class PackInstaller {
             }
 
             // Clamp to valid ranges
-            let resolved = resolveQuickSettings(pack: pack, overrides: mergedSettings)
+            let resolved = pack.resolvedQuickSettings(overrides: mergedSettings)
 
             let snapshot = manager.snapshotRuleState()
             var hasRuleChanges = false
@@ -543,7 +542,7 @@ public final class PackInstaller {
                 }
             } else if !pack.bindings.isEmpty {
                 manager.customRules.removeAll { $0.packSource == packID }
-                for rule in renderBindings(for: pack, quickSettings: resolved) {
+                for rule in pack.renderBindings(quickSettings: resolved) {
                     guard await manager.updateCustomRuleInMemory(rule, mutationPermit: permit) else {
                         restorePreparedRuleState(snapshot, manager: manager)
                         throw InstallError.saveFailed("updated pack rules could not be prepared")
@@ -603,56 +602,6 @@ public final class PackInstaller {
         manager.ruleCollections = snapshot.collections
         manager.customRules = snapshot.customRules
         manager.refreshLayerIndicatorState()
-    }
-
-    // MARK: - Rendering
-
-    /// Convert a pack's binding templates into concrete CustomRules tagged
-    /// with the pack's id.
-    func renderBindings(
-        for pack: Pack,
-        quickSettings: [String: Int]
-    ) -> [CustomRule] {
-        // Hold timeout from quick settings, falling back to home-row-mod
-        // friendly default. Only used by templates that have a hold output.
-        let holdMs = quickSettings["holdTimeout"] ?? 200
-
-        return pack.bindings.map { template in
-            let title = template.title
-                ?? "\(pack.name) · \(template.input.uppercased())"
-
-            // If the template has a hold output, attach a dual-role behavior
-            // (tap-hold with `activateHoldOnOtherKey`, matching the
-            // Kanata tap-hold-press variant used by the Home-Row Mods
-            // convenience factory). Otherwise this is a simple remap.
-            let behavior: MappingBehavior? = template.holdOutput.map { holdOutput in
-                .dualRole(
-                    DualRoleBehavior(
-                        tapAction: KanataBehaviorRenderer.parseActionString(template.output),
-                        holdAction: KanataBehaviorRenderer.parseActionString(holdOutput),
-                        tapTimeout: holdMs,
-                        holdTimeout: holdMs,
-                        activateHoldOnOtherKey: true,
-                        quickTap: false
-                    )
-                )
-            }
-
-            return CustomRule(
-                id: UUID(),
-                title: title,
-                input: template.input,
-                action: .keystroke(key: template.output),
-                shiftedOutput: nil,
-                isEnabled: true,
-                notes: template.notes,
-                createdAt: Date(),
-                behavior: behavior,
-                targetLayer: .base,
-                deviceOverrides: nil,
-                packSource: pack.id
-            )
-        }
     }
 
     // MARK: - Pre-install gates
@@ -722,7 +671,7 @@ public final class PackInstaller {
         }
         var ownRuleIDs = Set<UUID>()
         if !pack.visualOnly, pack.associatedCollectionID == nil, !pack.isSystemPack {
-            let rendered = renderBindings(for: pack, quickSettings: resolveQuickSettings(pack: pack, overrides: [:]))
+            let rendered = pack.renderBindings(quickSettings: pack.resolvedQuickSettings(overrides: [:]))
             ownRuleIDs = Set(rendered.map(\.id))
             rules += rendered
         }
@@ -784,31 +733,6 @@ public final class PackInstaller {
                 "❌ [PackInstaller] Could not persist tracker rollback for '\(packID)': \(error)"
             )
             return false
-        }
-    }
-
-    private func resolveQuickSettings(
-        pack: Pack,
-        overrides: [String: Int]
-    ) -> [String: Int] {
-        var resolved: [String: Int] = [:]
-        for setting in pack.quickSettings {
-            if let override = overrides[setting.id] {
-                // Clamp to the pack-defined slider bounds so a malformed
-                // override (negative, out-of-range, serialized garbage) can't
-                // produce a kanata config with nonsense timing values.
-                resolved[setting.id] = clamp(override, to: setting.kind)
-            } else if let defaultVal = setting.defaultSliderValue {
-                resolved[setting.id] = defaultVal
-            }
-        }
-        return resolved
-    }
-
-    private func clamp(_ value: Int, to kind: PackQuickSetting.Kind) -> Int {
-        switch kind {
-        case let .slider(_, minValue, maxValue, _, _):
-            min(max(value, minValue), maxValue)
         }
     }
 
@@ -915,29 +839,9 @@ public final class PackInstaller {
             proposed: defaultConfig
         )
 
-        return await withCheckedContinuation { continuation in
-            let alert = NSAlert()
-            alert.messageText = String(localized: "\(packName) will configure \(managed.displayName)")
-            alert.alertStyle = .informational
-            alert.addButton(withTitle: String(localized: "Use Recommended"))
-            alert.addButton(withTitle: String(localized: "Keep My Settings"))
-
-            if !diffs.isEmpty {
-                alert.informativeText = String(localized: "Your current settings will be saved and can be restored when you uninstall \(packName).")
-                alert.accessoryView = Self.buildComparisonView(
-                    diffs: diffs,
-                    currentLabel: String(localized: "Current"),
-                    proposedLabel: String(localized: "Recommended")
-                )
-            } else {
-                alert
-                    .informativeText =
-                    String(localized: "Your current \(managed.displayName) settings will be changed. Your current settings will be saved and can be restored when you uninstall \(packName).")
-            }
-
-            let response = alert.runModal()
-            continuation.resume(returning: response == .alertFirstButtonReturn)
-        }
+        return PackSettingsPrompts.useRecommended(
+            packName: packName, collectionName: managed.displayName, diffs: diffs
+        )
     }
 
     @discardableResult
@@ -1003,27 +907,7 @@ public final class PackInstaller {
         } else if let restoreManagedDefaults {
             restoreManagedDefaults()
         } else {
-            await withCheckedContinuation { continuation in
-                let alert = NSAlert()
-                alert.messageText = String(localized: "Restore Previous Settings?")
-                alert.alertStyle = .informational
-                alert.addButton(withTitle: String(localized: "Restore Previous"))
-                alert.addButton(withTitle: String(localized: "Keep Current"))
-
-                if !allDiffs.isEmpty {
-                    alert.informativeText = String(localized: "You modified settings after installing \(pack.name). Restore your previous configuration?")
-                    alert.accessoryView = Self.buildComparisonView(
-                        diffs: allDiffs,
-                        currentLabel: String(localized: "Current"),
-                        proposedLabel: String(localized: "Previous")
-                    )
-                } else {
-                    alert.informativeText = String(localized: "You modified settings after installing \(pack.name). Restore your previous configuration, or keep the current settings?")
-                }
-
-                let response = alert.runModal()
-                continuation.resume(returning: response == .alertFirstButtonReturn)
-            }
+            PackSettingsPrompts.restorePrevious(packName: pack.name, diffs: allDiffs)
         }
 
         if shouldRestore {
@@ -1072,62 +956,6 @@ public final class PackInstaller {
         }
 
         return changed
-    }
-
-    private static func buildComparisonView(
-        diffs: [RuleCollectionConfiguration.SettingDiff],
-        currentLabel: String,
-        proposedLabel: String
-    ) -> NSView {
-        let grid = NSGridView(numberOfColumns: 3, rows: 0)
-        grid.translatesAutoresizingMaskIntoConstraints = false
-        grid.columnSpacing = 12
-        grid.rowSpacing = 4
-
-        func headerCell(_ text: String) -> NSTextField {
-            let field = NSTextField(labelWithString: text)
-            field.font = .systemFont(ofSize: 11, weight: .semibold)
-            field.textColor = .secondaryLabelColor
-            return field
-        }
-
-        func cell(_ text: String, bold: Bool = false) -> NSTextField {
-            let field = NSTextField(labelWithString: text)
-            field.font = bold
-                ? .systemFont(ofSize: 12, weight: .medium)
-                : .systemFont(ofSize: 12)
-            field.textColor = .labelColor
-            field.lineBreakMode = .byTruncatingTail
-            return field
-        }
-
-        grid.addRow(with: [
-            headerCell(""),
-            headerCell(currentLabel),
-            headerCell(proposedLabel),
-        ])
-
-        for diff in diffs {
-            grid.addRow(with: [
-                cell(diff.label, bold: true),
-                cell(diff.current),
-                cell(diff.proposed),
-            ])
-        }
-
-        grid.column(at: 0).width = 80
-        grid.column(at: 1).width = 110
-        grid.column(at: 2).width = 110
-
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: CGFloat(diffs.count + 1) * 24 + 8))
-        container.addSubview(grid)
-        NSLayoutConstraint.activate([
-            grid.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            grid.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            grid.topAnchor.constraint(equalTo: container.topAnchor, constant: 4),
-            grid.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -4),
-        ])
-        return container
     }
 
     private func ensureCollectionExists(id: UUID, catalog: [RuleCollection], manager: RuleCollectionsManager) {
