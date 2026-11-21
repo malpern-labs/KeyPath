@@ -215,7 +215,7 @@ public extension KeyAction {
         case "esc": DisplayInfo(label: String(localized: "Esc", comment: "Key or shortcut label"), icon: "escape")
         case "enter", "ret": DisplayInfo(label: String(localized: "Return", comment: "Key or shortcut label"), icon: "return")
         case "bspc": DisplayInfo(label: String(localized: "Backspace", comment: "Key or shortcut label"), icon: "delete.backward")
-        case "del": DisplayInfo(label: String(localized: "Delete", comment: "Key or shortcut label"), icon: "delete.forward")
+        case "del": DisplayInfo(label: String(localized: "key.name.delete", defaultValue: "Delete", comment: "Name of the Delete key"), icon: "delete.forward")
         case "tab": DisplayInfo(label: String(localized: "Tab", comment: "Key or shortcut label"), icon: "arrow.right.to.line")
         case "spc": DisplayInfo(label: String(localized: "Space", comment: "Key or shortcut label"), icon: nil)
         case "up": DisplayInfo(label: String(localized: "Up", comment: "Key or shortcut label"), icon: "arrow.up")

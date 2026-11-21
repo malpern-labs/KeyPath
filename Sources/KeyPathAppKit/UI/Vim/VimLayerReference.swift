@@ -161,7 +161,8 @@ enum VimLayerReference {
         (String(localized: "Bottom of document"), String(localized: "Bottom", comment: "Vim keycap: bottom of document")),
         (String(localized: "Delete character"), String(localized: "Delete", comment: "Vim keycap: delete character")),
         (String(localized: "Delete previous word"), String(localized: "Del ←", comment: "Vim keycap: delete previous word")),
-        (String(localized: "New line below"), String(localized: "Open", comment: "Vim keycap: new line below")),
+        // Own key: "Open" alone is also the Status tab's Open button (開く), not this Vim command (挿入).
+        (String(localized: "New line below"), String(localized: "vim.keycap.open-line", defaultValue: "Open", comment: "Vim keycap: new line below")),
         (String(localized: "New line above"), String(localized: "Open ↑", comment: "Vim keycap: new line above")),
         (String(localized: "Next match"), String(localized: "Next", comment: "Vim keycap: next search match")),
         (String(localized: "Previous match"), String(localized: "Prev", comment: "Vim keycap: previous search match")),

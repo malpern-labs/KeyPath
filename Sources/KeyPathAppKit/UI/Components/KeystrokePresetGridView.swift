@@ -8,7 +8,7 @@ struct KeystrokePresetGridView: View {
         ("esc", String(localized: "Esc", comment: "Key name: Escape, abbreviated"), "escape"),
         ("enter", String(localized: "Return", comment: "Key name"), "return"),
         ("bspc", String(localized: "Backspace", comment: "Key name"), "delete.backward"),
-        ("del", String(localized: "Delete", comment: "Key name"), "delete.forward"),
+        ("del", String(localized: "key.name.delete", defaultValue: "Delete", comment: "Name of the Delete key"), "delete.forward"),
         ("tab", String(localized: "Tab", comment: "Key name"), "arrow.right.to.line"),
         ("spc", String(localized: "Space", comment: "Key name"), "space"),
         ("up", "↑", "arrow.up"),

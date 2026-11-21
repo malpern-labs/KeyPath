@@ -87,7 +87,7 @@ struct NumpadTransformGrid: View {
                         .font(.caption2)
                         .foregroundColor(.secondary)
 
-                    Text("Operators")
+                    Text(String(localized: "numpad.operators", defaultValue: "Operators", comment: "Numpad section heading: math operators"))
                         .font(.caption.weight(.medium))
 
                     HStack(spacing: 4) {
