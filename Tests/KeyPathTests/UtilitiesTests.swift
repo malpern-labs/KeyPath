@@ -5,25 +5,25 @@ import Foundation
 @preconcurrency import XCTest
 
 final class UtilitiesTests: XCTestCase {
-    private var loggers: [AppLogger] = []
-    private var logDirectories: [URL] = []
+    private var testLogger: AppLogger!
+    private var logDirectory: URL!
 
-    override func tearDown() {
-        loggers.forEach { $0.flushBuffer() }
-        logDirectories.forEach { try? FileManager.default.removeItem(at: $0) }
-        loggers.removeAll()
-        logDirectories.removeAll()
-        super.tearDown()
+    override func setUp() {
+        super.setUp()
+        logDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("keypath-utilities-\(UUID().uuidString)", isDirectory: true)
+        testLogger = AppLogger(enableConsoleLogging: false)
+        testLogger.overrideLogDirectory(logDirectory.path)
+        testLogger.setMinimumLevel(.trace)
+        testLogger.flushBuffer()
     }
 
-    private func makeLogger() -> AppLogger {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("keypath-logger-\(UUID().uuidString)", isDirectory: true)
-        let logger = AppLogger(enableConsoleLogging: false)
-        logger.overrideLogDirectory(directory.path)
-        loggers.append(logger)
-        logDirectories.append(directory)
-        return logger
+    override func tearDown() {
+        testLogger.flushBuffer()
+        try? FileManager.default.removeItem(at: logDirectory)
+        testLogger = nil
+        logDirectory = nil
+        super.tearDown()
     }
 
     // MARK: - Logger Tests
@@ -53,7 +53,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerBasicLogging() {
-        let logger = makeLogger()
+        let logger = testLogger!
 
         // Test basic logging doesn't crash
         logger.log("Test message")
@@ -64,7 +64,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerLongMessages() {
-        let logger = makeLogger()
+        let logger = testLogger!
 
         // Test very long message
         let longMessage = String(repeating: "A", count: 10000)
@@ -78,7 +78,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerEmptyMessages() {
-        let logger = makeLogger()
+        let logger = testLogger!
 
         // Test edge cases
         logger.log("")
@@ -104,23 +104,20 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerClearAllLogs() {
-        let logger = makeLogger()
-
-        // Log some messages
+        let logger = testLogger!
         logger.log("Message before clear")
-        logger.log("Another message")
-
-        // Clear logs
         logger.clearAllLogs()
-
-        // Log after clear
         logger.log("Message after clear")
+        logger.flushBuffer()
 
-        XCTAssertTrue(true, "Clear logs should complete without error")
+        let logURL = logDirectory!.appendingPathComponent("keypath-debug.log")
+        let log = try? String(contentsOf: logURL, encoding: .utf8)
+        XCTAssertTrue(log?.contains("Message after clear") == true)
+        XCTAssertFalse(log?.contains("Message before clear") == true)
     }
 
     func testLoggerLogSize() {
-        let logger = makeLogger()
+        let logger = testLogger!
 
         // Test log size methods
         let currentSize = logger.getCurrentLogSize()
@@ -130,16 +127,14 @@ final class UtilitiesTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(totalSize, currentSize, "Total size should be >= current size")
     }
 
-    func testLoggerDirectoryCreation() {
-        // Test that logger initializes without crashing even if directory creation fails
-        // This is handled in the logger's init method
-        let logger = makeLogger()
+    func testLoggerOverrideDirectoryExists() {
+        let logger = testLogger!
 
-        XCTAssertNotNil(logger, "Logger should initialize even with directory issues")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: logger.currentLogDirectory()))
     }
 
     func testLoggerFileInformation() {
-        let logger = makeLogger()
+        let logger = testLogger!
 
         // Test logging with file information
         logger.log("Test message with file info", file: #file, function: #function, line: #line)
@@ -157,7 +152,7 @@ final class UtilitiesTests: XCTestCase {
         if ProcessInfo.processInfo.environment["CI_ENVIRONMENT"] == "true" {
             throw XCTSkip("Skipped on CI — timing flake, no real assertion (#922)")
         }
-        let logger = makeLogger()
+        let logger = testLogger!
         let expectation = expectation(description: "Concurrent logging")
         expectation.expectedFulfillmentCount = 10
 
@@ -174,7 +169,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerRotationBehavior() {
-        let logger = makeLogger()
+        let logger = testLogger!
 
         // We can't easily test actual rotation without creating large files,
         // but we can test that the rotation methods exist and don't crash
@@ -194,7 +189,7 @@ final class UtilitiesTests: XCTestCase {
     // MARK: - Error Handling Tests
 
     func testLoggerErrorHandling() throws {
-        let logger = makeLogger()
+        let logger = testLogger!
 
         // Test logging during error conditions
         do {
@@ -209,7 +204,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerMemoryPressure() {
-        let logger = makeLogger()
+        let logger = testLogger!
 
         // Test logger behavior under memory pressure
         // Log many large messages rapidly
@@ -225,7 +220,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerPathHandling() {
-        let logger = makeLogger()
+        let logger = testLogger!
 
         // Test that logger handles path issues gracefully
         // The logger should fallback to temp directory if project path fails
@@ -243,7 +238,7 @@ final class UtilitiesTests: XCTestCase {
     // MARK: - Performance Tests
 
     func testLoggerPerformance() {
-        let logger = makeLogger()
+        let logger = testLogger!
 
         measure {
             for i in 0 ..< 1000 {
@@ -253,7 +248,7 @@ final class UtilitiesTests: XCTestCase {
     }
 
     func testLoggerFlushPerformance() {
-        let logger = makeLogger()
+        let logger = testLogger!
 
         // Fill up buffer
         for i in 0 ..< 50 {
@@ -263,5 +258,19 @@ final class UtilitiesTests: XCTestCase {
         measure {
             logger.flushBuffer()
         }
+    }
+
+    // MARK: - Cleanup Tests
+
+    func testLoggerCleanupMethodsUseOnlyTheOwnedLogDirectory() {
+        let logger = testLogger!
+        logger.log("Owned log entry")
+        logger.flushBuffer()
+        let logURL = logDirectory!.appendingPathComponent("keypath-debug.log")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: logURL.path))
+        logger.clearAllLogs()
+        logger.flushBuffer()
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: logURL.path))
     }
 }

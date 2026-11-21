@@ -136,6 +136,11 @@ keypath pack uninstall vim-navigation  # Uninstall
 keypath pack configure vim-navigation --set key=value  # Configure
 ```
 
+Pack installs proceed automatically only when they do not require a choice
+about existing rules or packs. If an install needs review, the CLI leaves the
+configuration unchanged and directs you to review the proposed changes in
+KeyPath's Packs gallery.
+
 ### Configuration
 
 ```bash

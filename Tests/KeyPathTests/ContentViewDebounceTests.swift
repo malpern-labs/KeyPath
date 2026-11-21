@@ -35,8 +35,6 @@ class ContentViewDebounceTests: KeyPathTestCase {
             config.contains("lctl"),
             "Configuration should contain converted output mapping (ctrl -> lctl)"
         )
-
-        AppLogger.shared.log("✅ [Test] Configuration debouncing behavior verified")
     }
 
     func testErrorHandlingPreservesUIState() {
@@ -51,7 +49,6 @@ class ContentViewDebounceTests: KeyPathTestCase {
         // 4. Verify that error messages are displayed
 
         XCTAssertNotNil(manager)
-        AppLogger.shared.log("✅ [Test] Error handling structure verified")
     }
 
     // MARK: - Configuration Save Integration Tests
@@ -78,8 +75,6 @@ class ContentViewDebounceTests: KeyPathTestCase {
 
         XCTAssertTrue(config.contains("caps"))
         XCTAssertTrue(config.contains("esc"))
-
-        AppLogger.shared.log("✅ [Test] Configuration save flow structure verified")
     }
 
     func testMultipleConcurrentSaves() async {
@@ -89,15 +84,12 @@ class ContentViewDebounceTests: KeyPathTestCase {
         // Create multiple concurrent save tasks
         let saveTasks = (1 ... 3).map { taskId in
             Task {
-                AppLogger.shared.log("🧪 [Test] Starting concurrent save task \(taskId)")
-
                 // In a real test, this would call the debounced save function
                 // For now, we test the configuration generation under concurrent access
                 let mapping = KeyMapping(input: "key\(taskId)", action: .keystroke(key: "output\(taskId)"))
                 let config = KanataConfiguration.generateFromMappings([mapping])
 
                 XCTAssertTrue(config.contains("key\(taskId)"))
-                AppLogger.shared.log("🧪 [Test] Completed concurrent save task \(taskId)")
             }
         }
 
@@ -105,8 +97,6 @@ class ContentViewDebounceTests: KeyPathTestCase {
         for task in saveTasks {
             await task.value
         }
-
-        AppLogger.shared.log("✅ [Test] Concurrent saves handled successfully")
     }
 }
 
@@ -114,27 +104,46 @@ class ContentViewDebounceTests: KeyPathTestCase {
 
 @MainActor
 class Phase1LoggingTests: XCTestCase {
-    func testLoggingCapturesActualOperations() {
-        // Test that logging captures important operational information
-        _ = RuntimeCoordinator()
+    private func makeIsolatedLogger() -> (AppLogger, URL) {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("keypath-phase1-logging-\(UUID().uuidString)", isDirectory: true)
+        let logger = AppLogger(minimumLevel: .trace, enableConsoleLogging: false)
+        logger.overrideLogDirectory(directory.path)
+        logger.setMinimumLevel(.trace)
+        logger.flushBuffer()
+        return (logger, directory)
+    }
 
-        // Test that we can generate a config and logging reflects the operation
+    func testLoggingCapturesActualOperations() throws {
+        let (logger, directory) = makeIsolatedLogger()
+        defer {
+            logger.flushBuffer()
+            try? FileManager.default.removeItem(at: directory)
+        }
+
         let mapping = KeyMapping(input: "f1", action: .keystroke(key: "f13"))
         let config = KanataConfiguration.generateFromMappings([mapping])
 
-        // Verify the actual config generation worked (tests business logic)
         XCTAssertTrue(config.contains("(defsrc"), "Config should contain defsrc section")
         XCTAssertTrue(config.contains("f1"), "Config should contain source key definition")
         XCTAssertTrue(
             config.contains("f13"), "Config should contain target key mapping (f13 is a valid key name)"
         )
 
-        // The logging system should be capturing these operations in real usage
-        AppLogger.shared.log("✅ [Test] Logging captures actual business operations")
+        let marker = "Generated config for logging test"
+        logger.log(marker)
+        logger.flushBuffer()
+        let log = try String(contentsOf: directory.appendingPathComponent("keypath-debug.log"), encoding: .utf8)
+        XCTAssertTrue(log.contains(marker), "The operation should be captured in this test's log")
     }
 
-    func testPhase1LoggingPatterns() {
-        // Test that our Phase 1 logging patterns are consistent
+    func testPhase1LoggingPatterns() throws {
+        let (logger, directory) = makeIsolatedLogger()
+        defer {
+            logger.flushBuffer()
+            try? FileManager.default.removeItem(at: directory)
+        }
+
         let testMessages = [
             "🚀 [Start] Starting Kanata with synchronization lock...",
             "💾 [Save] ========== SAVE OPERATION START ==========",
@@ -143,10 +152,7 @@ class Phase1LoggingTests: XCTestCase {
         ]
 
         for message in testMessages {
-            // Verify messages can be logged without issues
-            AppLogger.shared.log(message)
-
-            // Verify pattern consistency
+            logger.log(message)
             XCTAssertTrue(message.contains("["), "Log message should contain category marker")
             XCTAssertTrue(
                 message.hasPrefix("🚀") || message.hasPrefix("💾") || message.hasPrefix("🔧")
@@ -155,6 +161,10 @@ class Phase1LoggingTests: XCTestCase {
             )
         }
 
-        AppLogger.shared.log("✅ [Test] Phase 1 logging patterns verified")
+        logger.flushBuffer()
+        let log = try String(contentsOf: directory.appendingPathComponent("keypath-debug.log"), encoding: .utf8)
+        for message in testMessages {
+            XCTAssertTrue(log.contains(message), "Expected log output for: \(message)")
+        }
     }
 }
