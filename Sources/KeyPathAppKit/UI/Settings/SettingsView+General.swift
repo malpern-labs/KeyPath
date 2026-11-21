@@ -61,6 +61,16 @@ struct GeneralSettingsTabView: View {
                                 }
                             }
                             Divider()
+                            SettingsToggleRow(
+                                title: String(localized: "Hide detailed key legends"),
+                                subtitle: String(localized: "Show fewer labels on keys with multiple actions."),
+                                isOn: Binding(
+                                    get: { services.preferences.overlayHidesActionLegends },
+                                    set: { services.preferences.overlayHidesActionLegends = $0 }
+                                ),
+                                identifier: "settings-overlay-hide-detailed-key-legends"
+                            )
+                            Divider()
                             OverlayOpacityRow()
                             SettingsToggleRow(
                                 title: String(localized: "Fade when idle"),

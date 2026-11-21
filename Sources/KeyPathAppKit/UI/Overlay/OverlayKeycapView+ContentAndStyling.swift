@@ -70,7 +70,7 @@ extension OverlayKeycapView {
             // Zone subtitle overlay (e.g., ⌃ under Q for hold modifier)
             // Skip when subtitle is rendered inline as a VStack in centeredContent
             if let subtitle = zoneSubtitle, !isLayerMode, !isLauncherMode,
-               !zoneSubtitleRenderedInline,
+               !zoneSubtitleRenderedInline, !showsActionLegends,
                !isResolvedHomeRowModHold
             {
                 VStack(spacing: 0) {
@@ -247,6 +247,12 @@ extension OverlayKeycapView {
             .accessibilityIdentifier(keycapAccessibilityId)
             .accessibilityLabel(keycapAccessibilityLabel)
             .accessibilityValue(keycapAccessibilityValue)
+            .accessibilityHint(hoverActionLegends.map(\.hoverLine).joined(separator: "\n"))
+            .windowTooltip(
+                .actions(key: key.keyCode == 57 ? String(localized: "Caps Lock") : keyMenuName,
+                         layer: currentLayerName, actions: hoverActionLegends),
+                id: keycapAccessibilityId
+            )
             .accessibilityAddTraits(isAutomationClickable ? .isButton : [])
             .accessibilityAction {
                 guard isAutomationClickable, let onKeyClick else { return }
@@ -409,6 +415,8 @@ extension OverlayKeycapView {
         // NOT all unmapped keys (layer switches like L0, T1 should show their labels)
         if key.layoutRole == .touchId {
             touchIdContent
+        } else if showsActionLegends {
+            actionLegendContent
         }
         // Launcher mode: mapped keys show icons, unmapped keys use launcher styling
         // Utility keys (tab, esc, shift, modifiers, arrows, etc.) keep base-layer rendering

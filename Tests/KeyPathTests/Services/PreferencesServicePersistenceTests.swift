@@ -263,6 +263,17 @@ final class PreferencesServicePersistenceTests: XCTestCase {
         }
     }
 
+    func testHideDetailedKeyLegendsIsOffByDefaultAndPersists() {
+        let prefs = makePreferences()
+        XCTAssertFalse(prefs.overlayHidesActionLegends)
+
+        prefs.overlayHidesActionLegends = true
+        XCTAssertTrue(makePreferences().overlayHidesActionLegends)
+
+        prefs.overlayHidesActionLegends = false
+        XCTAssertFalse(makePreferences().overlayHidesActionLegends)
+    }
+
     func testShowOnlyWhileLayerHeldIsOffByDefaultAndPersists() {
         withPreservedDefaults {
             let writer = makePreferences()

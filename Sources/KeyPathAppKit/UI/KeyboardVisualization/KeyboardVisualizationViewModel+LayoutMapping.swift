@@ -273,8 +273,15 @@ extension KeyboardVisualizationViewModel {
                     currentLayerName: targetLayerName
                 )
 
-                mapping = await applyAppSpecificOverrides(to: mapping)
+                mapping = LayerMappingBuilder.enrichWithActionLegends(
+                    mapping: mapping,
+                    customRules: customRules,
+                    ruleCollections: scopedRuleCollections,
+                    currentLayerName: targetLayerName
+                )
 
+                // App-specific overrides replace the entire binding, including its trigger legends.
+                mapping = await applyAppSpecificOverrides(to: mapping)
                 mapping = LayerMappingBuilder.enrichWithCustomShiftLabels(
                     mapping: mapping,
                     customRules: customRules

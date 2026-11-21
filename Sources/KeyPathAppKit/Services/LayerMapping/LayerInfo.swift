@@ -17,7 +17,7 @@ enum LayerInfo {
         switch lower {
         case "base":
             return "keyboard"
-        case "nav", "navigation", "vim":
+        case "nav", "navigation", "vim", "home-arrows":
             return "arrow.up.and.down.and.arrow.left.and.right"
         case "window", "window-mgmt":
             return "macwindow"
@@ -49,6 +49,8 @@ enum LayerInfo {
             return String(localized: "Base")
         case "nav":
             return String(localized: "Nav")
+        case "home-arrows":
+            return String(localized: "Home Row Arrows")
         case "navigation":
             return String(localized: "Navigation")
         case "vim":

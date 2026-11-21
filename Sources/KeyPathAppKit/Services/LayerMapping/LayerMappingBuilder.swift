@@ -148,6 +148,67 @@ enum LayerMappingBuilder {
         return augmented
     }
 
+    static func enrichWithActionLegends(
+        mapping: [UInt16: LayerKeyInfo],
+        customRules: [CustomRule],
+        ruleCollections: [RuleCollection],
+        currentLayerName: String
+    ) -> [UInt16: LayerKeyInfo] {
+        let layer = currentLayerName.lowercased()
+        let enabledCollections = (customRules.asRuleCollections() + ruleCollections).filter {
+            $0.isEnabled && $0.id != RuleCollectionIdentifier.neovimTerminal
+        }
+
+        var legendsByInput: [String: [KeycapActionLegend]] = [:]
+        if layer == "base" {
+            // The generator places Base activators before regular assignments.
+            // Chained activators are single-action one-shots, and Hyper activators
+            // are handled by the parent tap/hold binding.
+            for activator in enabledCollections.compactMap(\.momentaryActivator)
+                where activator.sourceLayer == .base && activator.input.lowercased() != "hyper"
+            {
+                let input = KanataKeyConverter.convertToKanataKey(activator.input)
+                if legendsByInput[input] == nil {
+                    legendsByInput[input] = [
+                        KeycapActionLegend(trigger: .tap, action: .keystroke(key: input)),
+                        KeycapActionLegend(trigger: .hold, action: .activateLayer(name: activator.targetLayer.kanataName))
+                    ]
+                }
+            }
+        }
+
+        // deflayer merging keeps the first configured Base behavior and the last
+        // explicit output on other layers. Admission normally prevents overlap.
+        for collection in enabledCollections where collection.targetLayer.kanataName.lowercased() == layer {
+            for assignment in KanataConfiguration.effectiveMappings(for: collection) {
+                let input = KanataKeyConverter.convertToKanataKey(assignment.input)
+                if layer == "base", legendsByInput[input] != nil { continue }
+                // Device-specific overrides are resolved by the runtime. Keep
+                // existing keycap presentation when the outcome varies by device.
+                if assignment.deviceOverrides?.isEmpty ?? true, let behavior = assignment.behavior {
+                    legendsByInput[input] = KeycapActionLegend.actions(for: behavior)
+                } else {
+                    legendsByInput[input] = []
+                }
+            }
+        }
+
+        guard !legendsByInput.isEmpty else { return mapping }
+
+        var result = mapping
+        for (keyCode, var info) in mapping {
+            let input = KanataKeyConverter.convertToKanataKey(KanataKeyCodeMap.overlayName(for: keyCode))
+            guard let legends = legendsByInput[input], legends.count > 1 else { continue }
+
+            // A single-tap simulation can time out before the first dance step.
+            // The typed assignment still proves ownership on this layer.
+            info.actionLegends = legends
+            result[keyCode] = info
+        }
+
+        return result
+    }
+
     static func enrichWithCustomShiftLabels(
         mapping: [UInt16: LayerKeyInfo],
         customRules: [CustomRule]
@@ -163,19 +224,9 @@ enum LayerMappingBuilder {
         for (keyCode, info) in mapping {
             let kanataName = KanataKeyCodeMap.overlayName(for: keyCode)
             if let customShift = shiftOverrides[kanataName.lowercased()] {
-                result[keyCode] = LayerKeyInfo(
-                    displayLabel: info.displayLabel,
-                    outputKey: info.outputKey,
-                    outputKeyCode: info.outputKeyCode,
-                    isTransparent: info.isTransparent,
-                    isLayerSwitch: info.isLayerSwitch,
-                    appLaunchIdentifier: info.appLaunchIdentifier,
-                    systemActionIdentifier: info.systemActionIdentifier,
-                    urlIdentifier: info.urlIdentifier,
-                    collectionId: info.collectionId,
-                    vimLabel: info.vimLabel,
-                    customShiftLabel: customShift
-                )
+                var updated = info
+                updated.customShiftLabel = customShift
+                result[keyCode] = updated
             }
         }
         return result

@@ -210,12 +210,15 @@ struct OverlayKeyboardView: View {
     private var floatingLabelVisibility: FloatingLabelVisibility {
         let ltk = labelToKeyCode
 
+        let showsActionLegends = !services.preferences.overlayHidesActionLegends
         var remapped = Set<String>()
         if !isKeymapTransitioning {
             for (label, keyCode) in ltk {
                 let inputKeyName = Self.keyCodeToKanataName(keyCode).lowercased()
                 if let info = layerKeyMap[keyCode],
-                   Self.shouldHideFloatingLabel(for: info, baseLabel: label, inputKeyName: inputKeyName)
+                   Self.shouldHideFloatingLabel(
+                       for: info, baseLabel: label, inputKeyName: inputKeyName, showsActionLegends: showsActionLegends
+                   )
                 {
                     remapped.insert(label)
                 }
@@ -248,8 +251,12 @@ struct OverlayKeyboardView: View {
     nonisolated static func shouldHideFloatingLabel(
         for info: LayerKeyInfo,
         baseLabel: String,
-        inputKeyName: String
+        inputKeyName: String,
+        showsActionLegends: Bool = true
     ) -> Bool {
+        if showsActionLegends, !info.actionLegends.isEmpty {
+            return true
+        }
         if info.isTransparent {
             return false
         }
@@ -495,6 +502,10 @@ struct OverlayKeyboardView: View {
             baseLabel: baseLabel,
             isPressed: isPressed,
             scale: scale,
+            actionLegendCapacity: OverlayKeycapView.actionLegendCapacity(
+                width: keyWidth(for: key, scale: scale),
+                height: keyHeight(for: key, scale: scale)
+            ),
             isDarkMode: isDarkMode,
             isCapsLockOn: isCapsLockOn,
             fadeAmount: fadeAmount,
