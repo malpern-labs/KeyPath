@@ -20,7 +20,21 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 ### Progress toward the review goals
 
-Twenty review-related PRs have merged (#1589–#1605, #1607, #1608, and #1611; excludes unrelated #1575). PR #1610 remains open and is counted as submitted work, not a completed merge. This count includes #1602, which GitHub confirms is merged. The merged work advances the original review goals as follows:
+Twenty review-related PRs have merged (#1589–#1605, #1607, #1608, and #1611; excludes unrelated #1575). PR #1610 remains open and is counted as submitted work, not a completed merge. This count includes #1602, which GitHub confirms is merged. The section table below has 29 tracked rows: 24 complete and five partial. Those are row counts, not a claim that 83% of the engineering effort or risk is gone.
+
+### Progress toward the outcomes
+
+| Outcome we wanted | Evidence of progress | What is still needed |
+|---|---|---|
+| **Ship a smaller, less tangled app** | The dead-view/assets and cleanup passes removed about 34,000 lines of obsolete scripts, docs, tests and code; the unused BehaviorStatePicker assets removed about 15 MB from the app. The CLI now shares core rule/config work while preserving the Metal onboarding and pack gallery the owner chose to keep. | O7's remaining pack mutations still depend on AppKit. Keep that boundary unless a concrete shared transaction contract makes extraction safe; this is a deliberate stopping point, not a mandate to remove features. |
+| **Make routine changes safer and easier to validate** | The full safe suite passed 5,546 checks in 199 seconds with zero failures and zero Swift, module-cache or app warnings. It also passed with two XCTest workers; the repeated Swift Testing run exercised 842 cases three times. Tests now avoid several real defaults, Keychain, logger and shared-file side effects. | Same-process repetition for XCTest is still unqualified. CI therefore runs one full XCTest job at a time on the shared host, with two workers inside that job. |
+| **Reduce CI and agent wasted work** | The no-op cache-warm job was removed; worktrees were moved off ephemeral storage; build slots now cap concurrent heavy builds; stale automation harnesses were deleted. | Continue validating wait time, runner contention and disk/memory headroom from actual runs; no sustained before/after CI failure-rate series is available yet. |
+| **Keep the runtime secure and release behavior understandable** | ADR-046's unauthenticated TCP listener is gone; engine control uses a private Unix socket with PID and signature checks. Release logging ignores environment overrides, and Caps Lock diagnostics now state the limits of process attribution. | Other security findings remain in private tracking. The public review doc intentionally does not enumerate them. |
+| **Make Japanese and public guidance trustworthy** | The Japanese catalog received a 3,679-string independent review; all 87 changed strings passed re-review. Current organization-hosted setup/privacy/uninstall/migration pages were verified after publishing. | Live Japanese layout and overlay checks remain. The old-host 1.0.1 cleanup route still needs the mirror guard to pass, a deployed URL check, and a final migration rehearsal. |
+
+This is the outcome accounting for the review, separate from the PR count: improvements are recorded only where the doc has concrete evidence. A passing test suite measures test behavior, not customer reliability; merged code does not by itself prove a live macOS flow or published page.
+
+The merged work advances the original review goals as follows:
 
 | Review goal | Progress represented by the overnight merges |
 |---|---|
