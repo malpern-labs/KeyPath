@@ -1743,13 +1743,8 @@ final class GenericPackConfigTests: XCTestCase {
 
     @MainActor
     func testFirstSuccessRealCapsAndLauncherProfilesAreSessionCompatible() async throws {
-        let defaults = RecoverableRuleWrite.PreferenceDefaults.canonical
+        let defaults = preferences.defaults
         let preferenceKey = PreferencesService.leaderKeyPreferenceKey
-        let previousPreference = defaults.object(forKey: preferenceKey)
-        defer {
-            if let previousPreference { defaults.set(previousPreference, forKey: preferenceKey) }
-            else { defaults.removeObject(forKey: preferenceKey) }
-        }
         try defaults.set(JSONEncoder().encode(LeaderKeyPreference.default), forKey: preferenceKey)
         try SessionBridgeTestFixture.requireAvailable()
         let (manager, directory) = try makeTestManager()

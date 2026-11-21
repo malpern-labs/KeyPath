@@ -151,15 +151,30 @@ package enum RecoverableRuleWrite {
     }
 
     package struct PreferenceDefaults: @unchecked Sendable {
+        /// A process-local test domain is a safety fallback for code paths that
+        /// have not yet been given an explicit per-test defaults fixture.
+        /// Tests that write preferences should still inject their own suite.
+        private nonisolated(unsafe) static let testDefaults: UserDefaults = {
+            let suiteName = "com.keypath.tests.preferences.\(ProcessInfo.processInfo.processIdentifier).\(UUID().uuidString)"
+            guard let defaults = UserDefaults(suiteName: suiteName) else {
+                fatalError("Unable to create isolated KeyPath test preferences")
+            }
+            return defaults
+        }()
+
+        package static var applicationDefaults: UserDefaults {
+            TestEnvironment.isRunningTests ? testDefaults : .standard
+        }
+
         package static var canonical: UserDefaults {
             TestEnvironment.isRunningTests
-                ? .standard
+                ? testDefaults
                 : canonical(using: UserDefaults(suiteName: KeyPathConstants.Bundle.bundleID))
         }
 
         /// Keep early launch usable if the application suite is unavailable.
         package static func canonical(using suiteDefaults: UserDefaults?) -> UserDefaults {
-            suiteDefaults ?? .standard
+            suiteDefaults ?? applicationDefaults
         }
 
         package let value: UserDefaults

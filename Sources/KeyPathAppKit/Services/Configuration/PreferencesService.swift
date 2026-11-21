@@ -467,7 +467,7 @@ final class PreferencesService: Sendable {
 
     init(
         leaderDefaults: UserDefaults = RecoverableRuleWrite.PreferenceDefaults.canonical,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = RecoverableRuleWrite.PreferenceDefaults.applicationDefaults
     ) {
         self.defaults = defaults
         self.leaderDefaults = leaderDefaults
