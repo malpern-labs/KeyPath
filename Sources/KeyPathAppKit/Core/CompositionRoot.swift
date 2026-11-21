@@ -53,6 +53,7 @@ enum CompositionRoot {
             configDirectory: KeyPathConstants.Config.directory
         )
         let manager = RuntimeCoordinator(injectedConfigurationService: configurationService)
+        manager.serviceLifecycleCoordinator.registerRuntimeProviders()
         let viewModel = KanataViewModel(manager: manager)
         let serviceContainer = ServiceContainer()
         AppLogger.shared.debug(

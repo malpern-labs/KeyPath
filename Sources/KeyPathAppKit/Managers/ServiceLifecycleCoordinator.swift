@@ -236,6 +236,11 @@ final class ServiceLifecycleCoordinator {
                 }
             })
         }
+    }
+
+    /// The app's composition root binds the runtime that owns the worker.
+    /// Additional coordinator instances must leave process-wide providers alone.
+    func registerRuntimeProviders() {
         ServiceHealthChecker.shared.configureSessionReadinessProvider { [weak self] in
             guard let report = await self?.currentSessionReport() else {
                 return KanataRuntimeReadiness(isRunning: false, isResponding: false, inputCaptureReady: false)
