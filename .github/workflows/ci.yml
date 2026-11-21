@@ -428,6 +428,9 @@ jobs:
       run: |
         python3 Scripts/check-accessibility.py
 
+    - name: Installer Matrix Parser Check
+      run: bash Scripts/test-parse-installer-matrix.sh
+
     - name: Critical Pattern Analysis
       run: |
         if grep -r 'TODO.*CRITICAL\|FIXME.*URGENT' Sources/ --include='*.swift'; then
