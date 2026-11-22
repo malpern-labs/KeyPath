@@ -455,20 +455,23 @@ extension KanataConfiguration {
         oneShotLayers: Set<RuleCollectionLayer>
     ) -> String {
         guard case var .dualRole(behavior)? = mapping.behavior,
-              let name = behavior.holdAction.heldLayerName,
-              oneShotLayers.contains(RuleCollectionLayer(kanataName: name))
+              let name = behavior.holdAction.heldLayerName, name != "base"
         else {
             return KanataBehaviorRenderer.render(mapping, hyperLinkedLayerInfos: hyperLinkedLayerInfos)
         }
 
-        let layerName = RuleCollectionLayer(kanataName: name).kanataName
-        let marker = "kp-held-\(aliasName)"
-        let actions = [
-            "(layer-while-held \(layerName))",
-            "(on-press-fakekey \(marker) press)",
-            "(on-release-fakekey \(marker) release)",
-            "(on-press-fakekey kp-layer-\(layerName)-enter tap)"
-        ] + (sourceLayer == .base ? ["(on-release-fakekey kp-layer-\(layerName)-exit tap)"] : [])
+        let layer = RuleCollectionLayer(kanataName: name)
+        let layerName = layer.kanataName
+        var actions = ["(layer-while-held \(layerName))"]
+        if oneShotLayers.contains(layer) {
+            let marker = "kp-held-\(aliasName)"
+            actions += ["(on-press-fakekey \(marker) press)", "(on-release-fakekey \(marker) release)"]
+        }
+        actions.append("(on-press-fakekey kp-layer-\(layerName)-enter tap)")
+        // From a nested layer, polling reports the active layer after release.
+        if sourceLayer == .base {
+            actions.append("(on-release-fakekey kp-layer-\(layerName)-exit tap)")
+        }
         behavior.holdAction = .rawKanata("(multi \(actions.joined(separator: " ")))")
         return KanataBehaviorRenderer.renderDualRole(behavior, hyperLinkedLayerInfos: hyperLinkedLayerInfos)
     }
