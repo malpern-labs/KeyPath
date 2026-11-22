@@ -313,6 +313,11 @@ DMG_URL="https://github.com/malpern-labs/KeyPath/releases/download/v${VERSION}/K
 if [ -f "$GHPAGES_WORKTREE/index.md" ]; then
     # Replace any existing DMG download link with the new version
     sed -i '' "s|https://github.com/malpern\(-labs\)\{0,1\}/KeyPath/releases/download/[^\"]*\.dmg|${DMG_URL}|g" "$GHPAGES_WORKTREE/index.md"
+    # The download buttons also name the version.
+    sed -i '' "s|>Download KeyPath [0-9][0-9A-Za-z.-]* <|>Download KeyPath ${VERSION} <|g" "$GHPAGES_WORKTREE/index.md"
+    if ! grep -q ">Download KeyPath ${VERSION} <" "$GHPAGES_WORKTREE/index.md"; then
+        echo "   ⚠️  Download button text not found in index.md — update its version by hand"
+    fi
     cd "$GHPAGES_WORKTREE"
     git add index.md
     if git diff --cached --quiet; then
