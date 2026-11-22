@@ -458,23 +458,24 @@ extension RuleCollectionsManager {
     }
 
     /// Create a new custom layer with Leader key activator
-    func createLayer(_ name: String) async {
-        await withRuleMutation(failure: ()) { [self] permit in
-            guard !name.isEmpty else { return }
-            guard await recoverAndSnapshotRuleState(mutationPermit: permit) != nil else { return }
+    @discardableResult
+    func createLayer(_ name: String) async -> String? {
+        await withRuleMutation(failure: nil) { [self] permit in
+            guard !name.isEmpty else { return nil }
+            guard await recoverAndSnapshotRuleState(mutationPermit: permit) != nil else { return nil }
 
             // Sanitize the layer name
             let sanitizedName = name.lowercased()
                 .replacingOccurrences(of: " ", with: "_")
                 .filter { $0.isLetter || $0.isNumber || $0 == "_" }
 
-            guard !sanitizedName.isEmpty else { return }
+            guard !sanitizedName.isEmpty, case .custom = RuleCollectionLayer(kanataName: sanitizedName)
+            else { return nil }
 
             // Check for duplicates by looking at existing collections' target layers
             let existingLayers = Set(ruleCollections.map { $0.targetLayer.kanataName.lowercased() })
             if existingLayers.contains(sanitizedName) {
-                AppLogger.shared.warn("⚠️ [RuleCollections] Layer already exists: \(sanitizedName)")
-                return
+                return sanitizedName
             }
 
             // Create a RuleCollection for this layer with Leader key activator
@@ -501,8 +502,9 @@ extension RuleCollectionsManager {
                 configuration: .list
             )
 
-            guard await addCollection(collection, mutationPermit: permit) else { return }
+            guard await addCollection(collection, mutationPermit: permit) else { return nil }
             AppLogger.shared.log("📚 [RuleCollections] Created new layer: \(sanitizedName) (Leader → \(activatorKey.uppercased()))")
+            return sanitizedName
         }
     }
 

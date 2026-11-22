@@ -10065,6 +10065,9 @@
         }
       }
     },
+    "Could not create the layer." : {
+
+    },
     "Could not fetch keymap — GitHub may be rate-limited or the keymap is unavailable for this keyboard" : {
       "localizations" : {
         "ja" : {
@@ -10186,6 +10189,9 @@
           }
         }
       }
+    },
+    "Could not save Hold. Your current assignment was kept." : {
+
     },
     "Could not save config to %@" : {
       "localizations" : {
@@ -10548,6 +10554,9 @@
           }
         }
       }
+    },
+    "Current Hold: %@" : {
+
     },
     "Current Input Source" : {
       "localizations" : {
@@ -22389,6 +22398,9 @@
         }
       }
     },
+    "New Hold: Activate %@ layer" : {
+
+    },
     "New Launcher" : {
       "localizations" : {
         "ja" : {
@@ -27450,6 +27462,12 @@
         }
       }
     },
+    "Replace" : {
+
+    },
+    "Replace the assignment on %@?" : {
+
+    },
     "Replace with New" : {
       "localizations" : {
         "en" : {
@@ -30731,7 +30749,6 @@
         }
       }
     },
-    "Show fewer labels on keys with multiple actions." : {},
     "Show Keyboard" : {
       "localizations" : {
         "ja" : {
@@ -30832,6 +30849,7 @@
         }
       }
     },
+    "Show fewer labels on keys with multiple actions." : {},
     "Show in Finder" : {
       "localizations" : {
         "ja" : {
@@ -34228,6 +34246,9 @@
         }
       }
     },
+    "This assignment needs to be changed before adding a layer to Hold." : {
+
+    },
     "This backup cannot be reproduced with the current keyboard, app rules or generation settings. Your current setup was kept." : {
       "localizations" : {
         "ja" : {
@@ -34573,6 +34594,9 @@
           }
         }
       }
+    },
+    "This will turn off %@, including its other mappings." : {
+
     },
     "This will use your Anthropic API quota (a small per-request cost). Authenticate to proceed?" : {
       "localizations" : {

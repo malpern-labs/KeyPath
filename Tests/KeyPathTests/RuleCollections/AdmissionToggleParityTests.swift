@@ -72,6 +72,38 @@ final class AdmissionToggleParityTests: XCTestCase {
         XCTAssertNotNil(manager.conflictInfo(for: sameLayer))
     }
 
+    func testHoldLayerProposalNamesExistingActivatorAndKeepsTap() throws {
+        let oldLayer = RuleCollectionLayer.custom("home-arrows")
+        let preset = collection("Home Row Arrows", [("j", "left")], layer: oldLayer,
+                                activator: MomentaryActivator(input: "f", targetLayer: oldLayer))
+        let manager = try makeManager(collections: [preset])
+        let assignment = try XCTUnwrap(manager.prepareHoldLayerRemap(
+            input: "f", source: .base, target: .custom("nav_trial"), fallbackTap: .keystroke(key: "f")
+        ))
+        XCTAssertEqual(assignment.previousHold, .activateLayer(name: "home-arrows"))
+        XCTAssertEqual(assignment.conflict?.source, .collection(preset))
+        XCTAssertEqual(assignment.rule.action, .keystroke(key: "f"))
+        XCTAssertEqual(manager.ruleCollections, [preset])
+        XCTAssertTrue(manager.customRules.isEmpty)
+    }
+
+    func testHoldLayerProposalPreservesCustomTapAndTiming() throws {
+        let tap = KeyAction.keystroke(key: "g")
+        let hold = KeyAction.hyper
+        let original = CustomRule(input: "f", action: tap, behavior: .dualRole(
+            DualRoleBehavior(tapAction: tap, holdAction: hold, holdTimeout: 175, quickTap: true)
+        ))
+        let manager = try makeManager(collections: [], rules: [original])
+        let assignment = try XCTUnwrap(manager.prepareHoldLayerRemap(
+            input: "f", source: .base, target: .custom("nav_trial"), fallbackTap: .keystroke(key: "f")
+        ))
+        XCTAssertEqual(assignment.previousHold, hold)
+        XCTAssertEqual(assignment.rule.id, original.id)
+        XCTAssertEqual(assignment.rule.behavior, .dualRole(
+            DualRoleBehavior(tapAction: tap, holdAction: .rawKanata("(layer-while-held nav_trial)"), holdTimeout: 175, quickTap: true)
+        ))
+    }
+
     func testNeovimTerminalStillNeverConflictsAtToggleTime() throws {
         let neovim = try XCTUnwrap(RuleCollectionCatalog().defaultCollections().first { $0.id == RuleCollectionIdentifier.neovimTerminal })
         let key = try XCTUnwrap(KanataConfiguration.effectiveMappings(for: neovim).first?.input)

@@ -263,7 +263,7 @@ extension KanataConfiguration {
     /// Render deffakekeys block for layer change notifications.
     /// Creates fake keys that send push-msg when layers are entered/exited,
     /// working around Kanata's limitation where layer-while-held doesn't broadcast LayerChange TCP messages.
-    static func renderFakeKeysBlock(_ layers: [RuleCollectionLayer]) -> String {
+    static func renderFakeKeysBlock(_ layers: [RuleCollectionLayer], holdMarkers: [String]) -> String {
         guard !layers.isEmpty else { return "" }
         var lines = [
             "#|",
@@ -281,6 +281,7 @@ extension KanataConfiguration {
             lines.append("  kp-layer-\(layerName)-enter (push-msg \"layer:\(layerName)\")")
             lines.append("  kp-layer-\(layerName)-exit (push-msg \"layer:base\")")
         }
+        lines.append(contentsOf: holdMarkers.map { "  \($0) XX" })
         lines.append(")")
         return lines.joined(separator: "\n") + "\n"
     }

@@ -102,6 +102,47 @@ final class RemapEndToEndTests: XCTestCase {
         XCTAssertEqual(keyQ?.outputKey, "w", "Key q must output w — \(diag)")
     }
 
+    func testHeldLayerContinuesAcrossArrowsAndKeepsItsOneShotShortcut() async throws {
+        let layer = RuleCollectionLayer.custom("nav_trial")
+        let arrows = zip(["h", "j", "k", "l"], ["left", "down", "up", "right"]).map { input, output in
+            KeyMapping(input: input, action: .keystroke(key: output))
+        }
+        let navTrial = RuleCollection(
+            id: UUID(), name: "Nav Trial", summary: "", category: .custom,
+            mappings: arrows, isEnabled: true, targetLayer: layer,
+            momentaryActivator: MomentaryActivator(input: "n", targetLayer: layer, sourceLayer: .navigation),
+            configuration: .list
+        )
+        let tap = KeyAction.keystroke(key: "f")
+        let hold = CustomRule(
+            input: "f", action: tap,
+            behavior: .dualRole(DualRoleBehavior(tapAction: tap, holdAction: .rawKanata("(layer-while-held nav_trial)")))
+        )
+        let leader = LeaderKeyPreference(key: "space", targetLayer: .navigation, enabled: true)
+        let config = KanataConfiguration.generateFromCollections(
+            [navTrial, hold.asRuleCollection()], inputs: KanataGenerationInputs(leaderKeyPreference: leader)
+        )
+        XCTAssertTrue(config.contains("kp-held-beh_base_f XX"))
+        XCTAssertTrue(config.contains("(input virtual kp-held-beh_base_f)"))
+        let simulatorPath = try requireSimulatorPath()
+        let configPath = try createTempConfig(config, name: "held-layer-\(UUID().uuidString).kbd")
+        defer { try? FileManager.default.removeItem(atPath: configPath) }
+        let events = [
+            "d:f t:30 u:f t:250",
+            "d:f t:250 d:h t:30 u:h t:40 d:j t:30 u:j t:40 d:k t:30 u:k t:40 d:l t:30 u:l t:40 u:f t:250",
+            "d:h t:30 u:h t:50",
+            "d:space t:250 u:space t:50 d:n t:30 u:n t:50 d:h t:30 u:h t:50 d:j t:30 u:j t:100"
+        ].joined(separator: " ")
+        let simulator = SimulatorService.forTesting(simulatorPath: simulatorPath)
+        let result = try await simulator.simulateRaw(simContent: events, configPath: configPath)
+        let pressed = result.events.compactMap { event -> String? in
+            guard case let .output(_, action, key) = event, action == .press else { return nil }
+            return key
+        }
+        XCTAssertEqual(pressed, ["f", "left", "down", "up", "right", "h", "left", "j"])
+        XCTAssertEqual(result.finalLayer, "base")
+    }
+
     // MARK: - Helpers
 
     /// Run one direct simulation before the real assertions so a broken simulator

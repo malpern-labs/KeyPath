@@ -48,7 +48,7 @@ extension KanataConfiguration {
         connectedDevices: [ConnectedDevice] = [],
         navigationKeyCodes: [UInt16],
         globalRequirePriorIdleMs: Int = 0
-    ) -> ([CollectionBlock], [AliasDefinition], [RuleCollectionLayer], [ChordMapping]) {
+    ) -> ([CollectionBlock], [AliasDefinition], [RuleCollectionLayer], [ChordMapping], [String]) {
         var blocks: [CollectionBlock] = []
         var aliasDefinitions: [AliasDefinition] = []
         var additionalLayers: [RuleCollectionLayer] = []
@@ -125,6 +125,8 @@ extension KanataConfiguration {
         let hyperLinkedLayerInfos = activationPlan.hyperLinkedLayerInfos
         let oneShotLayers = activationPlan.oneShotLayers
 
+        let holdMarkers = heldLayerMarkers(in: collections, oneShotLayers: oneShotLayers)
+
         func wrapWithOneShotExit(
             _ output: String,
             layer: RuleCollectionLayer,
@@ -141,7 +143,8 @@ extension KanataConfiguration {
             // (`(multi lctl up)`). Plain key outputs and already-S-expression
             // outputs pass through unchanged.
             let expandedOutput = expandOutputForMultiWrapping(output)
-            return "(multi (release-layer \(layer.kanataName)) \(expandedOutput) (push-msg \"layer:base\"))"
+            let exit = "(multi (release-layer \(layer.kanataName)) \(expandedOutput) (push-msg \"layer:base\"))"
+            return whileHeld(output, otherwise: exit, markers: holdMarkers[layer] ?? [])
         }
 
         /// When a modifier-prefixed output like `C-up` or `M-S-z` needs to be
@@ -284,9 +287,12 @@ extension KanataConfiguration {
                 if let behavior = mapping.behavior {
                     // Advanced behavior (tap-hold, tap-dance) - use renderer
                     // Pass hyperLinkedLayerInfos so "hyper" hold action includes linked layer activations
-                    let rendered = KanataBehaviorRenderer.render(mapping, hyperLinkedLayerInfos: hyperLinkedLayerInfos)
                     // Create alias for complex behaviors to keep deflayer clean
                     let aliasName = behaviorAliasName(for: mapping, layer: collection.targetLayer)
+                    let rendered = renderMappingWithHeldLayer(
+                        mapping, aliasName: aliasName, hyperLinkedLayerInfos: hyperLinkedLayerInfos,
+                        oneShotLayers: oneShotLayers
+                    )
                     let behaviorComment: String? = switch behavior {
                     case let .dualRole(dr):
                         "tap: \(dr.tapActionString)  hold: \(dr.holdActionString)"
@@ -386,7 +392,11 @@ extension KanataConfiguration {
             var layerOutputs: [RuleCollectionLayer: String] = [:]
             for layer in oneShotLayers {
                 // Use release-layer to explicitly release the layer-while-held, XX blocks output, notify UI
-                layerOutputs[layer] = "(multi (release-layer \(layer.kanataName)) XX (push-msg \"layer:base\"))"
+                let exit = "(multi (release-layer \(layer.kanataName)) XX (push-msg \"layer:base\"))"
+                let heldOutput = blocks.reversed().lazy.flatMap(\.entries).first {
+                    $0.sourceKey == "esc" && $0.layerOutputs[layer] != nil
+                }?.layerOutputs[layer] ?? "esc"
+                layerOutputs[layer] = whileHeld(heldOutput, otherwise: exit, markers: holdMarkers[layer] ?? [])
             }
             let entry = LayerEntry(
                 sourceKey: KanataKeyConverter.convertToKanataKey("esc"),
@@ -418,7 +428,54 @@ extension KanataConfiguration {
             }
         }
 
-        return (activatorBlocks + blocks, aliasDefinitions, additionalLayers, chordMappings)
+        return (activatorBlocks + blocks, aliasDefinitions, additionalLayers, chordMappings, holdMarkers.values.flatMap { $0 }.sorted())
+    }
+
+    private static func heldLayerMarkers(
+        in collections: [RuleCollection], oneShotLayers: Set<RuleCollectionLayer>
+    ) -> [RuleCollectionLayer: Set<String>] {
+        var markers: [RuleCollectionLayer: Set<String>] = [:]
+        for collection in collections where collection.isEnabled {
+            for mapping in effectiveMappings(for: collection) where !mapping.input.contains(" ") {
+                guard case let .dualRole(behavior)? = mapping.behavior,
+                      let name = behavior.holdAction.heldLayerName else { continue }
+                let layer = RuleCollectionLayer(kanataName: name)
+                guard oneShotLayers.contains(layer) else { continue }
+                let alias = behaviorAliasName(for: mapping, layer: collection.targetLayer)
+                markers[layer, default: []].insert("kp-held-\(alias)")
+            }
+        }
+        return markers
+    }
+
+    private static func renderMappingWithHeldLayer(
+        _ mapping: KeyMapping, aliasName: String, hyperLinkedLayerInfos: [HyperLinkedLayerInfo],
+        oneShotLayers: Set<RuleCollectionLayer>
+    ) -> String {
+        guard case var .dualRole(behavior)? = mapping.behavior,
+              let name = behavior.holdAction.heldLayerName, name != "base"
+        else {
+            return KanataBehaviorRenderer.render(mapping, hyperLinkedLayerInfos: hyperLinkedLayerInfos)
+        }
+
+        let layer = RuleCollectionLayer(kanataName: name)
+        let layerName = layer.kanataName
+        var actions = ["(layer-while-held \(layerName))"]
+        if oneShotLayers.contains(layer) {
+            let marker = "kp-held-\(aliasName)"
+            actions += ["(on-press-fakekey \(marker) press)", "(on-release-fakekey \(marker) release)"]
+        }
+        actions += ["(on-press-fakekey kp-layer-\(layerName)-enter tap)", "(on-release-fakekey kp-layer-\(layerName)-exit tap)"]
+        behavior.holdAction = .rawKanata("(multi \(actions.joined(separator: " ")))")
+        return KanataBehaviorRenderer.renderDualRole(behavior, hyperLinkedLayerInfos: hyperLinkedLayerInfos)
+    }
+
+    /// A physical hold and a one-shot shortcut can enter the same layer. Only
+    /// the one-shot should exit on an output key, so held bindings mark their lifetime.
+    private static func whileHeld(_ output: String, otherwise: String, markers: Set<String>) -> String {
+        guard !markers.isEmpty else { return otherwise }
+        let conditions = markers.sorted().map { "(input virtual \($0))" }.joined(separator: " ")
+        return "(switch (\(conditions)) \(output) break () \(otherwise) break)"
     }
 
     static func makeLayerActivationPlan(

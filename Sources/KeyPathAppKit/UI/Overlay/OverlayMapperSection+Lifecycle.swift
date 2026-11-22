@@ -205,8 +205,11 @@ extension OverlayMapperSection {
             }
         }
 
+        let withHoldLayerConfirmation = withResetDialog.sheet(item: $pendingHoldLayerRemap) { assignment in
+            holdLayerReplacementSheet(assignment)
+        }
         let selectedKeyInfo: LayerKeyInfo? = viewModel.inputKeyCode.flatMap { layerKeyMap[$0] }
-        let withLayerMapRefresh = withResetDialog.onChange(of: selectedKeyInfo) { _, newInfo in
+        let withLayerMapRefresh = withHoldLayerConfirmation.onChange(of: selectedKeyInfo) { _, newInfo in
             refreshFromLayerMap(newInfo)
         }
 
