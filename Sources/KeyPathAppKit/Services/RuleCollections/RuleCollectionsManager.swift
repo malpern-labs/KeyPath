@@ -8,8 +8,8 @@ import Observation
 
 /// Information about a conflict between rule sources
 @MainActor
-struct RuleConflictInfo {
-    enum Source {
+struct RuleConflictInfo: Equatable {
+    enum Source: Equatable {
         case collection(RuleCollection)
         case customRule(CustomRule)
         /// A party the admission engine names but no stored rule owns (the leader

@@ -334,7 +334,7 @@ final class DeviceSwitchConfigTests: XCTestCase {
             mappings: [mapping]
         )
 
-        let (_, aliases, _, _) = KanataConfiguration.buildCollectionBlocks(
+        let (_, aliases, _, _, _) = KanataConfiguration.buildCollectionBlocks(
             from: [collection],
             leaderKeyPreference: nil,
             connectedDevices: [device0, device1],
@@ -358,7 +358,7 @@ final class DeviceSwitchConfigTests: XCTestCase {
             mappings: [mapping]
         )
 
-        let (_, aliases, _, _) = KanataConfiguration.buildCollectionBlocks(
+        let (_, aliases, _, _, _) = KanataConfiguration.buildCollectionBlocks(
             from: [collection],
             leaderKeyPreference: nil,
             navigationKeyCodes: []

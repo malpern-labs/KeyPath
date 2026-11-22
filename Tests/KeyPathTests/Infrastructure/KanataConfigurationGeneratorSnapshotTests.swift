@@ -490,8 +490,9 @@ final class KanataConfigurationGeneratorSnapshotTests: XCTestCase {
         ))
         let whileHeldConfig = KanataConfiguration.generateFromCollections([whileHeldCollection])
         assertContains(
-            whileHeldConfig,
-            "beh_base_f (tap-hold-press $tap-timeout 150 f (layer-while-held nav))"
+            whileHeldConfig.split(whereSeparator: \.isWhitespace).joined(separator: " "),
+            "beh_base_f (tap-hold-press $tap-timeout 150 f (multi (layer-while-held nav) " +
+                "(on-press-fakekey kp-layer-nav-enter tap) (on-release-fakekey kp-layer-nav-exit tap) ))"
         )
 
         let toggleCollection = try makeHomeRowModsCollection(HomeRowModsConfig(

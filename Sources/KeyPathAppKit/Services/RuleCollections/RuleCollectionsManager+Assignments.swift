@@ -131,3 +131,100 @@ extension RuleCollectionsManager {
         }
     }
 }
+
+extension RuleCollectionsManager {
+    struct HoldLayerRemap: Identifiable {
+        let rule: CustomRule
+        let previousRule: CustomRule?
+        let conflict: RuleConflictInfo?
+        let previousHold: KeyAction?
+        let target: RuleCollectionLayer
+
+        var id: UUID {
+            rule.id
+        }
+    }
+
+    func prepareHoldLayerRemap(
+        input: String, source: RuleCollectionLayer, target: RuleCollectionLayer, fallbackTap: KeyAction
+    ) -> HoldLayerRemap? {
+        let hold = KeyAction.rawKanata("(layer-while-held \(target.kanataName))")
+        guard target != .base, target != source, hold.heldLayerName == target.kanataName else { return nil }
+
+        let previous = getCustomRule(forInput: input, layer: source)
+        // Keep disabled assignments available to re-enable from Settings.
+        guard previous?.isEnabled != false else { return nil }
+        let original = previous?.asKeyMapping()
+        var rule = previous ?? CustomRule(input: input, action: fallbackTap, targetLayer: source)
+        guard rule.packSource == nil, rule.deviceOverrides?.isEmpty != false else { return nil }
+        rule.isEnabled = true
+        // A tap-hold claims its input even when its tap output is an identity.
+        rule.behavior = .dualRole(DualRoleBehavior(tapAction: fallbackTap, holdAction: hold))
+        let conflict = conflictInfo(for: rule)
+        let conflictingMapping: KeyMapping?
+        var conflictingActivator: MomentaryActivator?
+        switch conflict?.source {
+        case let .collection(collection):
+            conflictingActivator = collection.momentaryActivator.flatMap {
+                $0.sourceLayer == source && KanataKeyConverter.convertToKanataKey($0.input) == input ? $0 : nil
+            }
+            conflictingMapping = KanataConfiguration.effectiveMappings(for: collection).first {
+                collection.targetLayer == source && KanataKeyConverter.convertToKanataKey($0.input) == input
+            }
+        case let .customRule(custom):
+            conflictingMapping = custom.asKeyMapping()
+        case .named:
+            return nil
+        case nil:
+            conflictingMapping = nil
+        }
+
+        let mapping = original ?? conflictingMapping
+        guard mapping?.shiftedOutput == nil, mapping?.deviceOverrides?.isEmpty != false else { return nil }
+        let tap = conflictingActivator == nil ? (mapping?.action ?? fallbackTap) : .keystroke(key: input)
+        var behavior = DualRoleBehavior(tapAction: tap, holdAction: hold)
+        var previousHold = conflictingActivator.map { KeyAction.activateLayer(name: $0.targetLayer.kanataName) }
+        if let existing = mapping?.behavior, conflictingActivator == nil {
+            switch existing {
+            case let .dualRole(dualRole):
+                behavior = dualRole
+                previousHold = dualRole.holdAction
+                behavior.holdAction = hold
+            case .tapOrTapDance(.tap):
+                break
+            default:
+                return nil
+            }
+        }
+
+        rule.action = behavior.tapAction
+        rule.behavior = .dualRole(behavior)
+        rule.shiftedOutput = nil
+        return HoldLayerRemap(rule: rule, previousRule: previous, conflict: conflict, previousHold: previousHold, target: target)
+    }
+
+    func saveHoldLayerRemap(_ assignment: HoldLayerRemap) async -> RemapSaveOutcome {
+        await withRuleMutation(failure: RemapSaveOutcome.failed) { [self] permit in
+            let rule = assignment.rule
+            guard let before = await recoverAndSnapshotRuleState(mutationPermit: permit),
+                  getCustomRule(forInput: rule.input, layer: rule.targetLayer) == assignment.previousRule,
+                  conflictInfo(for: rule) == assignment.conflict,
+                  reviewAdmission(forProposed: rule).refusal == nil
+            else { return .failed }
+
+            if let replacement = assignment.conflict {
+                await disableConflicting(replacement.source, regenerate: false)
+            }
+            guard await updateCustomRuleInMemory(rule, mutationPermit: permit) else {
+                customRules = before.customRules
+                ruleCollections = before.collections
+                return .failed
+            }
+            refreshLayerIndicatorState()
+            let result = await commitRuleMutationResult(
+                snapshot: before, resolvesMappingConflicts: false, mutationPermit: permit
+            )
+            return await remapSaveOutcome(before: before, result: result)
+        }
+    }
+}

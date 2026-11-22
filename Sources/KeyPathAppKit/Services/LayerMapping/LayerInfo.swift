@@ -78,8 +78,9 @@ enum LayerInfo {
         case "media":
             return String(localized: "Media")
         default:
-            // Capitalize first letter for unknown layers
-            return layerName.prefix(1).uppercased() + layerName.dropFirst()
+            let words = layerName.split(separator: "_")
+            guard words.count > 1 else { return layerName.prefix(1).uppercased() + layerName.dropFirst() }
+            return words.map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined(separator: " ")
         }
     }
 

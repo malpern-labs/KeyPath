@@ -45,13 +45,16 @@ extension OverlayMapperSection {
             }
             .buttonStyle(LayerPickerItemButtonStyle())
             .focusable(false)
+            .accessibilityIdentifier("overlay-output-create-layer")
         }
     }
 
     /// Button for a layer in the list
     private func layerRow(_ layer: String) -> some View {
-        let isSelected = viewModel.selectedLayerOutput == layer
-        let isSystemLayer = viewModel.isSystemLayer(layer)
+        let isHold = selectedBehaviorSlot == .hold
+        let isSelected = isHold
+            ? currentHoldLegend?.targetLayer == layer
+            : viewModel.selectedLayerOutput == layer
         let layerIdentifier = layer
             .lowercased()
             .replacingOccurrences(of: " ", with: "-")
@@ -60,11 +63,11 @@ extension OverlayMapperSection {
             selectLayerOutput(layer)
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: isSystemLayer ? "square.stack.3d.up.fill" : "square.stack.3d.up")
+                Image(systemName: LayerInfo.iconName(for: layer))
                     .font(.body)
-                    .foregroundStyle(isSystemLayer ? .blue : .primary)
+                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
                     .frame(width: 20)
-                Text(layer.capitalized)
+                Text(LayerInfo.displayName(for: layer))
                     .font(.body)
                 Spacer()
                 if isSelected {
@@ -80,11 +83,16 @@ extension OverlayMapperSection {
         }
         .buttonStyle(LayerPickerItemButtonStyle())
         .focusable(false)
+        .disabled(isHold && (layerIdentifier == "base" || layerIdentifier == viewModel.currentLayer.lowercased()))
         .accessibilityIdentifier("overlay-layer-\(layerIdentifier)")
     }
 
     /// Select a layer as the output action
     func selectLayerOutput(_ layer: String) {
+        if selectedBehaviorSlot == .hold {
+            selectHeldLayer(layer)
+            return
+        }
         viewModel.selectedLayerOutput = layer
         viewModel.selectedApp = nil
         viewModel.selectedSystemAction = nil
@@ -97,6 +105,101 @@ extension OverlayMapperSection {
         if let manager = kanataViewModel?.underlyingManager, viewModel.inputKeyCode != nil {
             Task {
                 await saveLayerSwitchMapping(layer: layer, kanataManager: manager)
+            }
+        }
+    }
+
+    var currentHoldLegend: KeycapActionLegend? {
+        let action = viewModel.holdAction
+        if !action.isEmpty {
+            return KeycapActionLegend(trigger: .hold, action: KanataBehaviorRenderer.parseActionString(action))
+        }
+        return viewModel.inputKeyCode.flatMap { layerKeyMap[$0] }?.actionLegends.first { $0.trigger == .hold }
+    }
+
+    private func selectHeldLayer(_ name: String) {
+        isSystemActionPickerOpen = false
+        guard let manager = kanataViewModel?.underlyingManager, let keyCode = viewModel.inputKeyCode,
+              !viewModel.isSaving else { return }
+        let input = OverlayKeyboardView.keyCodeToKanataName(keyCode)
+        let source = RuleCollectionLayer(kanataName: viewModel.currentLayer)
+        let target = RuleCollectionLayer(kanataName: name.lowercased())
+        let fallbackTap = layerKeyMap[keyCode]?.actionLegends.first { $0.trigger == .tap }?.action
+            ?? KanataBehaviorRenderer.parseActionString(
+                layerKeyMap[keyCode]?.outputKey ?? input
+            )
+        guard viewModel.selectedAppCondition == nil, viewModel.selectedDeviceCondition == nil,
+              let assignment = manager.rulesManager.prepareHoldLayerRemap(
+                  input: input, source: source, target: target, fallbackTap: fallbackTap
+              )
+        else {
+            viewModel.statusMessage = String(localized: "This assignment needs to be changed before adding a layer to Hold.")
+            viewModel.statusIsError = true
+            return
+        }
+
+        if assignment.previousHold != nil || assignment.conflict != nil {
+            pendingHoldLayerRemap = assignment
+        } else {
+            applyHoldLayerRemap(assignment)
+        }
+    }
+
+    func holdLayerReplacementSheet(_ assignment: RuleCollectionsManager.HoldLayerRemap) -> some View {
+        let key = KeyDisplayFormatter.format(assignment.rule.input)
+        let target = LayerInfo.displayName(for: assignment.target.kanataName)
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Replace the assignment on \(key)?")
+                .font(.headline)
+            if let hold = assignment.previousHold {
+                let previous = KeycapActionLegend(trigger: .hold, action: hold).actionName
+                Text("Current Hold: \(previous)")
+            }
+            Text("New Hold: Activate \(target) layer")
+            if let conflict = assignment.conflict {
+                Text("This will turn off \(conflict.displayName), including its other mappings.")
+                    .foregroundStyle(.secondary)
+            }
+            HStack {
+                Spacer()
+                Button("Cancel") { pendingHoldLayerRemap = nil }
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier("overlay-hold-layer-cancel")
+                Button("Replace") {
+                    pendingHoldLayerRemap = nil
+                    applyHoldLayerRemap(assignment)
+                }
+                .accessibilityIdentifier("overlay-hold-layer-replace")
+            }
+        }
+        .padding(20)
+        .frame(width: 360, alignment: .leading)
+    }
+
+    private func applyHoldLayerRemap(_ assignment: RuleCollectionsManager.HoldLayerRemap) {
+        guard let manager = kanataViewModel?.underlyingManager, let keyCode = viewModel.inputKeyCode,
+              !viewModel.isSaving,
+              OverlayKeyboardView.keyCodeToKanataName(keyCode) == assignment.rule.input,
+              RuleCollectionLayer(kanataName: viewModel.currentLayer) == assignment.rule.targetLayer
+        else { return }
+
+        viewModel.isSaving = true
+        Task {
+            defer { viewModel.isSaving = false }
+            let result = await manager.rulesManager.saveHoldLayerRemap(assignment)
+            manager.refreshRuleMappings()
+            if let undo = result.undo {
+                onRemapApplied?(keyCode, assignment.rule.targetLayer.kanataName, undo, viewModel)
+            }
+            guard viewModel.inputKeyCode == keyCode,
+                  RuleCollectionLayer(kanataName: viewModel.currentLayer) == assignment.rule.targetLayer else { return }
+            if result.saved {
+                viewModel.loadBehaviorFromExistingRule(kanataManager: manager)
+                viewModel.showTransientStatus(String(localized: "✓ Saved"))
+                SoundManager.shared.playGlassSound()
+            } else {
+                viewModel.statusMessage = String(localized: "Could not save Hold. Your current assignment was kept.")
+                viewModel.statusIsError = true
             }
         }
     }
@@ -143,14 +246,22 @@ extension OverlayMapperSection {
                 .accessibilityIdentifier("overlay-layer-dialog-cancel")
 
                 Button("Create") {
-                    if !newLayerName.isEmpty {
-                        viewModel.createLayer(newLayerName)
-                        showingNewLayerDialog = false
-                        // Select the new layer
-                        Task {
-                            await viewModel.refreshAvailableLayers()
-                            selectLayerOutput(newLayerName.lowercased())
+                    let name = newLayerName
+                    let keyCode = viewModel.inputKeyCode
+                    let source = viewModel.currentLayer
+                    let slot = selectedBehaviorSlot
+                    guard let rules = kanataViewModel?.underlyingManager.rulesManager, !name.isEmpty else { return }
+                    showingNewLayerDialog = false
+                    Task {
+                        guard let layer = await rules.createLayer(name) else {
+                            viewModel.statusMessage = String(localized: "Could not create the layer.")
+                            viewModel.statusIsError = true
+                            return
                         }
+                        await viewModel.refreshAvailableLayers()
+                        guard viewModel.inputKeyCode == keyCode, viewModel.currentLayer == source,
+                              selectedBehaviorSlot == slot else { return }
+                        selectLayerOutput(layer)
                     }
                 }
                 .keyboardShortcut(.return)

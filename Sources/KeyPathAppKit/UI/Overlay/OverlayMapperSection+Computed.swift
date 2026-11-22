@@ -1,4 +1,5 @@
 import KeyPathCore
+import KeyPathRulesCore
 import SwiftUI
 
 extension OverlayMapperSection {
@@ -15,6 +16,9 @@ extension OverlayMapperSection {
             }
             return activeTapOutputLabel
         case .hold:
+            if let layer = currentHoldLegend?.targetLayer {
+                return LayerInfo.displayName(for: layer)
+            }
             let action = viewModel.holdAction
             return action.isEmpty ? "" : KeyDisplayFormatter.format(action)
         case .shift:

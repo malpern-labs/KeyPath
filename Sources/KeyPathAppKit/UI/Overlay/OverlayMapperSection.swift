@@ -27,6 +27,7 @@ struct OverlayMapperSection: View {
     @State var showTapCountPicker = false
     @State var showingAppPickerSheet = false
     @State var showingResetDialog = false
+    @State var pendingHoldLayerRemap: RuleCollectionsManager.HoldLayerRemap?
     // Output-type picker navigation (page + selectedLayerOutput) lives on
     // MapperViewModel — the picker is rendered in a hoisted window-anchored
     // layer where view @State does not propagate. See MapperViewModel
@@ -191,6 +192,9 @@ struct OverlayMapperSection: View {
                                             isConfigured: currentSlotIsConfigured,
                                             isRecording: isRecordingForCurrentSlot,
                                             slotName: slotName,
+                                            layerIcon: selectedBehaviorSlot == .hold
+                                                ? currentHoldLegend?.targetLayer.map { LayerInfo.iconName(for: $0) }
+                                                : nil,
                                             fadeAmount: fadeAmount,
                                             onTap: { toggleRecordingForCurrentSlot() },
                                             onClear: { clearCurrentSlot() }

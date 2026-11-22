@@ -13,6 +13,16 @@ public struct HyperLinkedLayerInfo: Equatable, Sendable {
     }
 }
 
+public extension KeyAction {
+    /// A plain momentary layer action, before adding engine notification wrappers.
+    var heldLayerName: String? {
+        guard case let .rawKanata(action) = self,
+              let match = action.wholeMatch(of: #/\(layer-while-held\s+([\w-]+)\)/#)
+        else { return nil }
+        return String(match.1)
+    }
+}
+
 // MARK: - Kanata Behavior Renderer
 
 /// Renders `MappingBehavior` values to Kanata configuration syntax.
@@ -79,7 +89,7 @@ public enum KanataBehaviorRenderer {
 
     /// Render a dual-role (tap-hold) behavior.
     /// Chooses the appropriate Kanata variant based on flags.
-    private static func renderDualRole(_ dr: DualRoleBehavior, hyperLinkedLayerInfos: [HyperLinkedLayerInfo]) -> String {
+    static func renderDualRole(_ dr: DualRoleBehavior, hyperLinkedLayerInfos: [HyperLinkedLayerInfo]) -> String {
         // Split linked layers by trigger mode so tap/hold behave as configured.
         let tapLinkedLayers = hyperLinkedLayerInfos.filter { $0.triggerMode == .tap }
 

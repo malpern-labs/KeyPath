@@ -56,11 +56,12 @@ extension LiveKeyboardOverlayView {
                 },
                 onCreateLayer: { layerName in
                     Task {
-                        await kanataViewModel?.underlyingManager.rulesManager.createLayer(layerName)
+                        guard let created = await kanataViewModel?.underlyingManager.rulesManager.createLayer(layerName)
+                        else { return }
                         if viewModel.editingLayerName != nil {
-                            viewModel.selectEditingLayer(layerName)
+                            viewModel.selectEditingLayer(created)
                         } else if !isEditingLayer {
-                            _ = await kanataViewModel?.changeLayer(layerName)
+                            _ = await kanataViewModel?.changeLayer(created)
                         }
                     }
                 },

@@ -69,6 +69,12 @@ This means you can define a layer with just the keys you care about. Letters you
 
 KeyPath includes several layer packs you can install from the Pack Gallery. Each one gives you a purpose-built layer activated by a trigger key.
 
+### Hold a key to use your own layer
+
+In the overlay's **Key Mapper**, use the layer picker to create a layer and assign its keys. For example, assign H, J, K, and L to Left, Down, Up, and Right Arrow. Then select **Base**, click **F**, choose **Hold** under the input key, and choose **Go to Layer** from the output menu. Pick your layer.
+
+Tap F to type `f`. Hold F to use the arrow keys, then release F to return to Base. If F already has a Hold action, KeyPath shows the old and new actions before you replace it. The confirmation also tells you if replacement turns off an existing rule collection.
+
 ### Hold-activated layers (direct from base)
 
 These activate by holding a single key on the base layer:

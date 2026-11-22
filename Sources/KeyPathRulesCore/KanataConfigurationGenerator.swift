@@ -106,7 +106,7 @@ public struct KanataConfiguration: Sendable {
             }
         }.max() ?? 0
 
-        let (rawBlocks, aliasDefinitions, extraLayers, chordMappings) = buildCollectionBlocks(
+        let (rawBlocks, aliasDefinitions, extraLayers, chordMappings, holdMarkers) = buildCollectionBlocks(
             from: enabledCollections,
             leaderKeyPreference: inputs.leaderKeyPreference,
             navActivationMode: inputs.navActivationMode,
@@ -208,7 +208,7 @@ public struct KanataConfiguration: Sendable {
                 return "_"
             }
         }.joined(separator: "\n")
-        let fakeKeysBlock = renderFakeKeysBlock(extraLayers)
+        let fakeKeysBlock = renderFakeKeysBlock(extraLayers, holdMarkers: holdMarkers)
         let aliasBlock = renderAliasBlock(mergedAliasDefinitions)
         let chordsBlock = renderChordsBlock(chordMappings)
         let preservedChordGroupsBlock = renderChordGroupsBlock(inputs.chordGroups)
