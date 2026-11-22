@@ -5046,6 +5046,16 @@
         }
       }
     },
+    "Allow Once" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1回だけ許可"
+          }
+        }
+      }
+    },
     "Allow Script Shortcuts?" : {
       "localizations" : {
         "ja" : {
@@ -5082,6 +5092,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "クイックランチャーでスクリプトの実行を許可"
+          }
+        }
+      }
+    },
+    "Allow this KeyPath action?" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このKeyPathアクションを許可しますか？"
           }
         }
       }
@@ -5202,6 +5222,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "別のアプリ"
+          }
+        }
+      }
+    },
+    "Another app asked KeyPath to perform an action, but KeyPath could not ask you first." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別のアプリがKeyPathにアクションを要求しましたが、事前に確認できませんでした。"
+          }
+        }
+      }
+    },
+    "Another app asked KeyPath to perform this action. Links can come from web pages and documents. Continue only if you recognize the request.\n\n%@" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別のアプリがKeyPathにこのアクションを要求しました。リンクはWebページや書類から開かれることがあります。要求元に心当たりがある場合のみ続行してください。\n\n%@"
           }
         }
       }

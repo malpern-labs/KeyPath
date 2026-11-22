@@ -137,7 +137,7 @@ enum AppNotificationWiring {
         }
 
         // Scripts that have not been approved yet ask before they run, and links
-        // from other apps ask before pressing virtual keys. Headless runs have
+        // from other apps ask before guarded actions. Headless runs have
         // nobody to answer, so they decline instead of opening a modal.
         let headless = delegate.isHeadlessMode
         ActionDispatcher.shared.onScriptConfirmationNeeded = { request in
@@ -150,7 +150,7 @@ enum AppNotificationWiring {
         }
         ActionDispatcher.shared.onExternalActionConfirmationNeeded = { request in
             if headless {
-                AppLogger.shared.log("🛡️ [App] Headless: declining virtual key \(request.virtualKey) from a link")
+                AppLogger.shared.log("🛡️ [App] Headless: declining external action from a link")
                 request.deny()
             } else {
                 ActionConfirmationPrompts.confirmExternalAction(request)

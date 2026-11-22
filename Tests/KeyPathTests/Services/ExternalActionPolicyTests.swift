@@ -3,7 +3,7 @@ import Foundation
 import XCTest
 
 /// Links opened by other apps (web pages, documents, Raycast) are limited:
-/// no scripts, web pages only for `open`, and virtual keys ask first.
+/// no scripts, web pages only for `open`, and side-effecting actions ask first.
 @MainActor
 final class ExternalActionPolicyTests: XCTestCase {
     private func decision(_ string: String, allowsVirtualKeys: Bool = false) throws -> ExternalActionPolicy.Decision {
@@ -37,13 +37,19 @@ final class ExternalActionPolicyTests: XCTestCase {
         XCTAssertEqual(try decision("keypath://fakekey/nav-mode/tap", allowsVirtualKeys: true), .allow)
     }
 
-    func testEverydayActionsStayAvailable() throws {
-        for uri in ["keypath://launch/Safari", "keypath://window/left", "keypath://layer/nav",
-                    "keypath://rule/home-row/fired", "keypath://settings/rules", "keypath://overlay/toggle",
-                    "keypath://notify?title=Hi", "keypath://folder/~/Downloads", "keypath://runtime/stop",
-                    "keypath://system/mission-control"]
+    func testSafeNavigationActionsStayAvailable() throws {
+        for uri in ["keypath://layer/nav", "keypath://rule/home-row/fired", "keypath://settings/rules",
+                    "keypath://overlay/toggle"]
         {
             XCTAssertEqual(try decision(uri), .allow, uri)
+        }
+    }
+
+    func testSideEffectingActionsAskEveryTime() throws {
+        for uri in ["keypath://launch/Safari", "keypath://window/left", "keypath://notify?title=Hi",
+                    "keypath://folder/~/Downloads", "keypath://runtime/stop", "keypath://system/mission-control"]
+        {
+            XCTAssertEqual(try decision(uri), .confirmAction, uri)
         }
     }
 
@@ -116,6 +122,38 @@ final class ExternalActionPolicyTests: XCTestCase {
         XCTAssertFalse(grants.allowsVirtualKeys)
     }
 
+    func testDispatcherAsksBeforeRuntimeActionFromLink() throws {
+        let (dispatcher, _, _, cleanup) = try makeFixture()
+        defer { cleanup() }
+        var ran: RuntimeCommand?
+        var asked: ExternalActionConfirmation?
+        dispatcher.onRuntimeAction = { ran = $0 }
+        dispatcher.onExternalActionConfirmationNeeded = { asked = $0 }
+
+        _ = try dispatcher.dispatch(uri("keypath://runtime/stop"), origin: .externalURL)
+        let request = try XCTUnwrap(asked)
+        XCTAssertNil(request.virtualKey)
+        XCTAssertEqual(request.actionDescription, "keypath://runtime/stop")
+        XCTAssertNil(ran, "The runtime action must wait for confirmation")
+        request.deny()
+        XCTAssertNil(ran, "Denying the prompt must leave the runtime alone")
+
+        _ = try dispatcher.dispatch(uri("keypath://runtime/stop"), origin: .externalURL)
+        try XCTUnwrap(asked).allow()
+        XCTAssertEqual(ran, .stop)
+    }
+
+    func testSideEffectingLinkFailsClosedWhenPromptHandlerIsMissing() throws {
+        let (dispatcher, _, _, cleanup) = try makeFixture()
+        defer { cleanup() }
+        var ran = false
+        dispatcher.onRuntimeAction = { _ in ran = true }
+        guard case .failed = try dispatcher.dispatch(uri("keypath://runtime/stop"), origin: .externalURL) else {
+            return XCTFail("A guarded action must fail closed if KeyPath cannot prompt")
+        }
+        XCTAssertFalse(ran)
+    }
+
     func testVirtualKeyFromConfigDoesNotAsk() throws {
         let (dispatcher, _, _, cleanup) = try makeFixture()
         defer { cleanup() }
@@ -137,7 +175,7 @@ final class ExternalActionPolicyTests: XCTestCase {
         let (dispatcher, _, grants, cleanup) = try makeFixture()
         defer { cleanup() }
         var prompts = 0
-        dispatcher.onExternalActionConfirmationNeeded = { prompts += 1; $0.alwaysAllow() }
+        dispatcher.onExternalActionConfirmationNeeded = { prompts += 1; $0.alwaysAllow?() }
         _ = try dispatcher.dispatch(uri("keypath://fakekey/nav/tap"), origin: .externalURL)
         XCTAssertTrue(grants.allowsVirtualKeys)
         _ = try dispatcher.dispatch(uri("keypath://fakekey/nav/tap"), origin: .externalURL)
@@ -158,7 +196,7 @@ final class ExternalActionPolicyTests: XCTestCase {
         var errors: [String] = []
         var prompts = 0
         dispatcher.onError = { errors.append($0) }
-        dispatcher.onExternalActionConfirmationNeeded = { prompts += 1; $0.alwaysAllow() }
+        dispatcher.onExternalActionConfirmationNeeded = { prompts += 1; $0.alwaysAllow?() }
         _ = try dispatcher.dispatch(uri("keypath://fakekey/nav/tap"), origin: .externalURL)
         _ = try dispatcher.dispatch(uri("keypath://fakekey/nav/tap"), origin: .externalURL)
         XCTAssertEqual(prompts, 2)
