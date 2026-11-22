@@ -24,8 +24,11 @@ struct HoverDropdownButton: View {
                     Image(systemName: sfSymbol)
                         .font(.system(size: 10))
                 }
+                // Labels sit under a keycap-width column. Shrink a little before
+                // truncating, so longer translations ("キーストローク") stay readable.
                 Text(text)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .semibold))
                     .opacity(isHovering ? 1 : 0.4)
