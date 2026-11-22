@@ -290,7 +290,8 @@ extension KanataConfiguration {
                     // Create alias for complex behaviors to keep deflayer clean
                     let aliasName = behaviorAliasName(for: mapping, layer: collection.targetLayer)
                     let rendered = renderMappingWithHeldLayer(
-                        mapping, aliasName: aliasName, hyperLinkedLayerInfos: hyperLinkedLayerInfos,
+                        mapping, aliasName: aliasName, sourceLayer: collection.targetLayer,
+                        hyperLinkedLayerInfos: hyperLinkedLayerInfos,
                         oneShotLayers: oneShotLayers
                     )
                     let behaviorComment: String? = switch behavior {
@@ -449,23 +450,25 @@ extension KanataConfiguration {
     }
 
     private static func renderMappingWithHeldLayer(
-        _ mapping: KeyMapping, aliasName: String, hyperLinkedLayerInfos: [HyperLinkedLayerInfo],
+        _ mapping: KeyMapping, aliasName: String, sourceLayer: RuleCollectionLayer,
+        hyperLinkedLayerInfos: [HyperLinkedLayerInfo],
         oneShotLayers: Set<RuleCollectionLayer>
     ) -> String {
         guard case var .dualRole(behavior)? = mapping.behavior,
-              let name = behavior.holdAction.heldLayerName, name != "base"
+              let name = behavior.holdAction.heldLayerName,
+              oneShotLayers.contains(RuleCollectionLayer(kanataName: name))
         else {
             return KanataBehaviorRenderer.render(mapping, hyperLinkedLayerInfos: hyperLinkedLayerInfos)
         }
 
-        let layer = RuleCollectionLayer(kanataName: name)
-        let layerName = layer.kanataName
-        var actions = ["(layer-while-held \(layerName))"]
-        if oneShotLayers.contains(layer) {
-            let marker = "kp-held-\(aliasName)"
-            actions += ["(on-press-fakekey \(marker) press)", "(on-release-fakekey \(marker) release)"]
-        }
-        actions += ["(on-press-fakekey kp-layer-\(layerName)-enter tap)", "(on-release-fakekey kp-layer-\(layerName)-exit tap)"]
+        let layerName = RuleCollectionLayer(kanataName: name).kanataName
+        let marker = "kp-held-\(aliasName)"
+        let actions = [
+            "(layer-while-held \(layerName))",
+            "(on-press-fakekey \(marker) press)",
+            "(on-release-fakekey \(marker) release)",
+            "(on-press-fakekey kp-layer-\(layerName)-enter tap)"
+        ] + (sourceLayer == .base ? ["(on-release-fakekey kp-layer-\(layerName)-exit tap)"] : [])
         behavior.holdAction = .rawKanata("(multi \(actions.joined(separator: " ")))")
         return KanataBehaviorRenderer.renderDualRole(behavior, hyperLinkedLayerInfos: hyperLinkedLayerInfos)
     }
