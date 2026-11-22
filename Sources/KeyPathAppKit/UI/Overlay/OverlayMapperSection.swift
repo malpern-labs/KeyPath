@@ -192,6 +192,9 @@ struct OverlayMapperSection: View {
                                             isConfigured: currentSlotIsConfigured,
                                             isRecording: isRecordingForCurrentSlot,
                                             slotName: slotName,
+                                            layerIcon: selectedBehaviorSlot == .hold
+                                                ? currentHoldLegend?.targetLayer.map { LayerInfo.iconName(for: $0) }
+                                                : nil,
                                             fadeAmount: fadeAmount,
                                             onTap: { toggleRecordingForCurrentSlot() },
                                             onClear: { clearCurrentSlot() }

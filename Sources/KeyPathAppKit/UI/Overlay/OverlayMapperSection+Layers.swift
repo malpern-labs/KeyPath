@@ -55,7 +55,6 @@ extension OverlayMapperSection {
         let isSelected = isHold
             ? currentHoldLegend?.targetLayer == layer
             : viewModel.selectedLayerOutput == layer
-        let isSystemLayer = viewModel.isSystemLayer(layer)
         let layerIdentifier = layer
             .lowercased()
             .replacingOccurrences(of: " ", with: "-")
@@ -64,11 +63,11 @@ extension OverlayMapperSection {
             selectLayerOutput(layer)
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: isSystemLayer ? "square.stack.3d.up.fill" : "square.stack.3d.up")
+                Image(systemName: LayerInfo.iconName(for: layer))
                     .font(.body)
-                    .foregroundStyle(isSystemLayer ? .blue : .primary)
+                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
                     .frame(width: 20)
-                Text(layer.capitalized)
+                Text(LayerInfo.displayName(for: layer))
                     .font(.body)
                 Spacer()
                 if isSelected {

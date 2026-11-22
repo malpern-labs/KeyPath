@@ -30,6 +30,7 @@ struct BehaviorSlotKeycap: View {
     let isConfigured: Bool
     let isRecording: Bool
     let slotName: String // e.g., "Hold", "Double Tap"
+    var layerIcon: String?
     var fadeAmount: CGFloat = 0
     let onTap: () -> Void
     let onClear: () -> Void
@@ -110,6 +111,18 @@ struct BehaviorSlotKeycap: View {
                     Text("...")
                         .font(.system(size: 42, weight: .medium))
                         .foregroundStyle(foregroundColor)
+                } else if let layerIcon {
+                    VStack(spacing: 6) {
+                        Image(systemName: layerIcon)
+                            .font(.system(size: 28, weight: .medium))
+                            .accessibilityHidden(true)
+                        Text(label)
+                            .font(.system(size: 14, weight: .medium))
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                    }
+                    .foregroundStyle(foregroundColor)
+                    .padding(12)
                 } else if let shiftSymbol = LabelMetadata.forLabel(label).shiftSymbol {
                     VStack(spacing: 6) {
                         Text(shiftSymbol)
