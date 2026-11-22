@@ -90,8 +90,9 @@ jobs:
     # local state (e.g. RuleCollectionsManager's config file, which broke
     # CLIPackCRUDTests), so one runner ran them one at a time. Test isolation
     # (P9, 2026-11-21) gave every test its own stores, defaults and a per-run
-    # AppPaths sandbox. Two full lanes run side by side on the mini, as clawd,
-    # failed exactly the same tests as one lane run alone (2026-11-21).
+    # AppPaths sandbox. An earlier SSH-launched overlap/control experiment
+    # failed the same WindowServer-dependent tests in both conditions; it did
+    # not qualify simultaneous full lanes running as the self-hosted daemons.
     # Do not add a job-level concurrency group: a group holds one running and
     # one pending job and cancels the older pending one, so with three PRs in
     # CI their jobs cancelled each other (2026-11-14). The runner queue never
