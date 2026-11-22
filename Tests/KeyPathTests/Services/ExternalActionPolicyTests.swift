@@ -39,10 +39,17 @@ final class ExternalActionPolicyTests: XCTestCase {
 
     func testEverydayActionsStayAvailable() throws {
         for uri in ["keypath://launch/Safari", "keypath://window/left", "keypath://layer/nav",
-                    "keypath://settings/rules", "keypath://overlay/toggle", "keypath://notify?title=Hi",
-                    "keypath://folder/~/Downloads", "keypath://runtime/stop", "keypath://system/mission-control"]
+                    "keypath://rule/home-row/fired", "keypath://settings/rules", "keypath://overlay/toggle",
+                    "keypath://notify?title=Hi", "keypath://folder/~/Downloads", "keypath://runtime/stop",
+                    "keypath://system/mission-control"]
         {
             XCTAssertEqual(try decision(uri), .allow, uri)
+        }
+    }
+
+    func testUnknownActionsAreRefusedFromExternalLinks() throws {
+        guard case .refuse = try decision("keypath://future-action/do-something") else {
+            return XCTFail("New or unknown actions must be explicitly allowed before external links can invoke them")
         }
     }
 
@@ -182,13 +189,13 @@ final class ExternalActionPolicyTests: XCTestCase {
         var prompted = false
         dispatcher.onScriptConfirmationNeeded = { _ in prompted = true }
         let result = try dispatcher.dispatch(uri("keypath://Script//bin/bash"), origin: .externalURL)
-        guard case .unknownAction = result else { return XCTFail("Only exact action names route") }
+        guard case .failed = result else { return XCTFail("An unrecognized external action must be refused") }
         XCTAssertFalse(prompted)
     }
 
     /// Every action the router handles has a reviewed decision for links from
-    /// other apps. The policy allows unknown actions by default, so a new action
-    /// fails here until someone decides whether a web page may trigger it.
+    /// other apps. A new route fails here until someone explicitly records its
+    /// link policy in this test and `ExternalActionPolicy`.
     func testEveryRoutedActionHasAReviewedLinkDecision() throws {
         let reviewed: Set = ["launch", "layer", "rule", "notify", "open", "fakekey", "vkey", "system",
                              "window", "settings", "folder", "script", "overlay", "runtime"]

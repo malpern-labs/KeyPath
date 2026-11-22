@@ -15285,7 +15285,6 @@
         }
       }
     },
-    "Hide detailed key legends" : {},
     "Hide Details" : {
       "localizations" : {
         "ja" : {
@@ -15326,6 +15325,7 @@
         }
       }
     },
+    "Hide detailed key legends" : {},
     "High release-before-decide rates suggest hold activation is arriving too late. Try making hold activation a bit faster." : {
       "localizations" : {
         "ja" : {
@@ -30731,7 +30731,6 @@
         }
       }
     },
-    "Show fewer labels on keys with multiple actions." : {},
     "Show Keyboard" : {
       "localizations" : {
         "ja" : {
@@ -30832,6 +30831,7 @@
         }
       }
     },
+    "Show fewer labels on keys with multiple actions." : {},
     "Show in Finder" : {
       "localizations" : {
         "ja" : {
@@ -34177,6 +34177,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "これらのショートカットはすぐに使えます"
+          }
+        }
+      }
+    },
+    "This KeyPath action isn't available from a link opened by another app." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このKeyPathアクションは、別のアプリから開いたリンクでは利用できません。"
           }
         }
       }

@@ -54,7 +54,7 @@ public final class InMemoryLinkGrantStore: LinkGrantStore {
 /// folder in Finder), `layer`, `window`, `system`, `notify`, `settings`,
 /// `overlay`, `rule` (feedback only) and `runtime` (start or stop remapping;
 /// a link can turn remapping off, which is a nuisance, not a way in).
-/// A new action defaults to allowed, so add it here deliberately.
+/// New actions are refused until their external-link policy is added here.
 enum ExternalActionPolicy {
     enum Decision: Equatable {
         case allow
@@ -76,8 +76,10 @@ enum ExternalActionPolicy {
             return .allow
         case "fakekey", "vkey":
             return allowsVirtualKeys ? .allow : .confirmVirtualKey(name: uri.target ?? "?")
-        default:
+        case "launch", "layer", "rule", "notify", "folder", "window", "system", "settings", "overlay", "runtime":
             return .allow
+        default:
+            return .refuse(String(localized: "This KeyPath action isn't available from a link opened by another app."))
         }
     }
 
