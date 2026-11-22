@@ -11,13 +11,17 @@ struct CompileKeyboardStageMetal: BuildToolPlugin {
             .appendingPathComponent("UI/KeyboardStage/Metal/KeyboardStage.metal")
         let library = context.pluginWorkDirectoryURL
             .appendingPathComponent("default.metallib")
-        let xcrun = URL(fileURLWithPath: "/usr/bin/xcrun")
+        // SwiftPM sets TOOLCHAINS for plugin commands. xcrun needs to resolve the separately
+        // installed Metal toolchain itself, so remove that override for this invocation.
+        let env = URL(fileURLWithPath: "/usr/bin/env")
 
         return [
             .buildCommand(
                 displayName: "Compile KeyboardStage default.metallib",
-                executable: xcrun,
+                executable: env,
                 arguments: [
+                    "-u", "TOOLCHAINS",
+                    "/usr/bin/xcrun",
                     "-sdk", "macosx", "metal",
                     shader.path,
                     "-o", library.path,
