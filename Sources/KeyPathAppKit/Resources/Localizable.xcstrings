@@ -5046,6 +5046,16 @@
         }
       }
     },
+    "Allow Once" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1回だけ許可"
+          }
+        }
+      }
+    },
     "Allow Script Shortcuts?" : {
       "localizations" : {
         "ja" : {
@@ -5082,6 +5092,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "クイックランチャーでスクリプトの実行を許可"
+          }
+        }
+      }
+    },
+    "Allow this KeyPath action?" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このKeyPathアクションを許可しますか？"
           }
         }
       }
@@ -5202,6 +5222,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "別のアプリ"
+          }
+        }
+      }
+    },
+    "Another app asked KeyPath to perform an action, but KeyPath could not ask you first." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別のアプリがKeyPathにアクションを要求しましたが、事前に確認できませんでした。"
+          }
+        }
+      }
+    },
+    "Another app asked KeyPath to perform this action. Links can come from web pages and documents. Continue only if you recognize the request.\n\n%@" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別のアプリがKeyPathにこのアクションを要求しました。リンクはWebページや書類から開かれることがあります。要求元に心当たりがある場合のみ続行してください。\n\n%@"
           }
         }
       }
@@ -15285,7 +15325,6 @@
         }
       }
     },
-    "Hide detailed key legends" : {},
     "Hide Details" : {
       "localizations" : {
         "ja" : {
@@ -15326,6 +15365,7 @@
         }
       }
     },
+    "Hide detailed key legends" : {},
     "High release-before-decide rates suggest hold activation is arriving too late. Try making hold activation a bit faster." : {
       "localizations" : {
         "ja" : {
@@ -30731,7 +30771,6 @@
         }
       }
     },
-    "Show fewer labels on keys with multiple actions." : {},
     "Show Keyboard" : {
       "localizations" : {
         "ja" : {
@@ -30832,6 +30871,7 @@
         }
       }
     },
+    "Show fewer labels on keys with multiple actions." : {},
     "Show in Finder" : {
       "localizations" : {
         "ja" : {
@@ -34177,6 +34217,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "これらのショートカットはすぐに使えます"
+          }
+        }
+      }
+    },
+    "This KeyPath action isn't available from a link opened by another app." : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このKeyPathアクションは、別のアプリから開いたリンクでは利用できません。"
           }
         }
       }
