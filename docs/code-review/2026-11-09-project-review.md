@@ -12,7 +12,7 @@ need a running system to confirm, are marked *unconfirmed*. `External/kanata`
 was not checked out, so statements about the engine's TCP command set come from
 ADR-046 and the Swift client, not the fork's source.
 
-## Status (updated 2026-11-21)
+## Status (updated 2026-11-22)
 
 The latest tracked follow-ups include [#1613](https://github.com/malpern-labs/KeyPath/pull/1613) and [#1615](https://github.com/malpern-labs/KeyPath/pull/1615), both merged. The findings below this status section describe the original review.
 
@@ -20,7 +20,7 @@ Key: ✅ done · 🟡 partly done or in progress · ⬜ not started · 🔒 trac
 
 ### Progress toward the review goals
 
-Twenty-three review-related PRs have merged (#1589–#1605, #1607, #1608, #1610, #1611, #1613, and #1615; excludes unrelated #1575). This count includes #1602, #1613, and #1615, which GitHub confirms are merged. The section table below has 29 tracked rows: 26 complete and three partial (B7, P6, P8). Other security findings remain separately tracked in private. Row counts are not a claim that 90% of the engineering effort or risk is gone.
+Twenty-three review-related PRs have merged (#1589–#1605, #1607, #1608, #1610, #1611, #1613, and #1615; excludes unrelated #1575). This count includes #1602, #1613, and #1615, which GitHub confirms are merged. The section table below has 29 tracked rows: 27 complete and two partial (B7, P8). Other security findings remain separately tracked in private. Row counts are not a claim that 90% of the engineering effort or risk is gone.
 
 ### Progress toward the outcomes
 
@@ -40,7 +40,7 @@ The merged work advances the original review goals as follows:
 |---|---|
 | **Reduce over-engineering (O7)** | #1589 and #1591–#1593 move configuration admission, rule operations, and generation out of the UI framework while retaining the pack gallery, confirmations, dependencies, and rollback. #1609 adds checked CLI pack-install admission, so conflicts are refused without changing the user's configuration. The remaining AppKit use for pack mutations is a deliberate boundary: extraction is deferred unless a shared transaction contract offers measurable build savings without changing behavior. |
 | **Improve localization (P8)** | #1597 and #1598 fix and independently review Japanese strings; #1601 verifies the macOS 27 permission-pane name against Apple’s Japanese system strings. Live onboarding and overlay layout checks remain. |
-| **Improve concurrency and CI reliability (P6/P9)** | #1590 and #1603 remove obsolete runtime/test behavior and isolate shared test state; #1605 removes tests against the retired TCP listener. #1593 adds compiler-checked runtime readiness ownership. #1608 retained one full-test CI lane; #1615 now allows either Mini runner to run it. P9 is complete: the full safe suite passed with two XCTest workers (4,729 XCTest invocations and 847 Swift Testing cases), with zero failures, skips or Swift/module-cache/app warnings; Swift Testing also passed three repetitions. The separate four-worker Mini benchmark passed twice and was faster. P6 still needs live overlay and capture teardown verification. |
+| **Improve concurrency and CI reliability (P6/P9)** | #1590 and #1603 remove obsolete runtime/test behavior and isolate shared test state; #1605 removes tests against the retired TCP listener. #1593 adds compiler-checked runtime readiness ownership. #1608 retained one full-test CI lane; #1615 now allows either Mini runner to run it. P9 is complete: the full safe suite passed with two XCTest workers (4,729 XCTest invocations and 847 Swift Testing cases), with zero failures, skips or Swift/module-cache/app warnings; Swift Testing also passed three repetitions. The separate four-worker Mini benchmark passed twice and was faster. P6 is complete: the last delayed-callback audit bound the drag-to-authorize overlay's work to its presentation, and live overlay timing and capture teardown passed on signed builds (November 20 and 22). |
 | **Reduce CI waste and agent friction** | #1594 removes a cache-warm workflow that warmed no PR job’s cache; #1595 and #1596 move worktrees off ephemeral storage and require bounded build slots. #1615 enables the second Mini runner for full tests and lowers build parallelism to 6 per job. Two-vs-four worker comparison is complete; simultaneous full test jobs on the two daemon runners remain unqualified. |
 | **Improve security and release behavior** | #1600 makes Caps Lock conflict attribution depend on verified ownership evidence and states the limits of macOS attribution; #1604 ignores environment log-level overrides in Release builds. |
 | **Keep process guidance accurate** | #1599 documents the organization’s merge queue so PRs are tested against current `master` before merge. |
@@ -88,7 +88,7 @@ This ledger tracks outcomes toward the review goals: less unnecessary framework 
 | **P3** Blocking subprocesses | ✅ | `SecCodeCopySelf` replaces the signing shell-out and pipes are drained before waiting (#1404). Migration discovery is async and bounded, with retryable unknown states and tested stop routing (#1480). System probes also drain both output pipes concurrently (#1483); the serialized full gate passed 5,534 tests. Latest-master deployment and live verification remain separate release checks. |
 | **P4** Shell-outs with API replacements | ✅ | Hidden flags, editor launch, function key preference writes, and signals use direct APIs. Spotlight search keeps a cancellable subprocess (#1426). |
 | **P5** `os.Logger` in `AppLogger` | ✅ | Unified log output added (#1427). File logger state is synchronized and queued writes flush (#1445). |
-| **P6** Concurrency leftovers | 🟡 | Feature flags and the app icon cache were synchronized (#1439). Three main-actor service conformances are compiler checked (#1481). Capability caches and several runtime callbacks are compiler checked (#1487, #1571). Duplicate configuration watcher code is gone (#1572). Subprocess launch and cancellation are serialized (#1574). Overlay expiry and view timers now respect their current owners (#1579). This pass serializes the session-worker hard-exit fallback with orderly shutdown and adds a race-ordering test. Live overlay timing and remaining framework handoffs are open. |
+| **P6** Concurrency leftovers | ✅ | **Complete.** Feature flags and the app icon cache were synchronized (#1439). Three main-actor service conformances are compiler checked (#1481). Capability caches and several runtime callbacks are compiler checked (#1487, #1571). Duplicate configuration watcher code is gone (#1572). Subprocess launch and cancellation are serialized (#1574). Overlay expiry and view timers now respect their current owners (#1579), and the overlay window owns its sizing and hint work (#1587). The session-worker hard-exit fallback is serialized with orderly shutdown. The final audit of delayed UI callbacks found one owner that could act on stale state, the drag-to-authorize overlay; its delayed work is now bound to the presentation that scheduled it, with seven owner-close tests. Live overlay hide/show timing passed 8 of 8 on signed master `94c96336` (November 22); capture teardown passed on `7b6c369e` (November 20). |
 | **P7** Liquid Glass | ✅ | System glass in `AppGlassBackground` (#1408), checked on screen in light and dark. |
 | **P7** Other idioms | ✅ | Deprecated drawing and activation replaced (#1460, #1508). The window and wrapper audit removed an unused control and records the behavior each remaining bridge supports (#1509). Color conversion stays with individual surface changes. |
 | **P8** Localization | 🟡 | English and Japanese share a CI-checked catalog (#1430–#1433). The five overlay translations in #1578 cover the remaining active entries at that revision, verified by Xcode catalog compilation (3,477 of 3,477). Signed builds verified the virtual-key prompt and four Settings screens. An independent review of all 3,679 Japanese strings (ChatGPT, November 21) found 12 blocking issues; 11 are fixed and approved on re-review. The Japanese name of the macOS 27 Accessibility pane matches Apple's (checked November 21). Broader live layout remains. |
@@ -109,7 +109,7 @@ The test base no longer mutates `AppLogger.shared` during setup and teardown. Co
 
 - O7b: Keep the pack gallery, installation, and dependency features. Rules Core owns the read-only rule, collection, and pack catalog paths and the simulator (#1532, #1543, #1546, #1548). The simulator passed 35 focused tests, including four that run the bundled simulator. Seven comparisons against the preceding CLI matched stdout, stderr and exit status. System inspection and logs moved to CLI Support (#1568). Layout resources, backup storage, and generation inputs moved to Rules Core (#1565, #1586). Current source scan finds only three `KeyPathAppKit` imports in CLI commands: pack install, configure and uninstall. CLI pack installation now uses checked admission: if the app would ask what existing rule or pack to disable, the CLI refuses without changing state and points the user to the Packs gallery. Guided onboarding retains its explicit unchecked path. Keep the remaining UI-backed mutations together until an explicit, shared decision/transaction API can preserve that behavior; do not add a broad engine target solely to remove imports. See the [CLI compile-boundary evaluation](#cli-compile-boundary-evaluation).
 - O8c: The installer pack decisions and validator snapshots use scoped test inputs (#1523, #1525). The unused forced test mode was removed (#1528), and its full safe suite passed 5,529 tests. Removing the unused file-validation route and shared validation-host override preserved the real parser path in 165 focused tests (#1547). The audit found a test writing through `PreferenceDefaults.canonical` to the real standard defaults domain; it now uses its UUID-scoped `IsolatedPreferenceDefaults`. Implicit `PreferenceDefaults.canonical` and `PreferencesService` fallbacks now use a unique process-local test domain. Activity-log encryption previously used a separate real Keychain item in tests; it now keeps test keys in memory, with no Keychain calls. Regression tests cover both boundaries. Other `TestEnvironment` branches redirect fixture paths or suppress external process, permission, UI, and network side effects. The focused preference and activity-encryption tests passed on November 21. The final P9 audit found no remaining test-side mutation of these shared fallbacks; same-process XCTest repetition remains a SwiftPM limitation, not an open isolation task.
-- P6: The mapper cancels delayed resets when the selection changes (#1519, #1540). Stale layer-indicator and tooltip callbacks respect their current window (#1526, #1534). Favicon completion and engine timeout cleanup follow their owning operation (#1538, #1549). In 85 focused tests, the timeout change preserved a replacement connection and its buffer. Capture teardown (#1567) and the overlay window's ownership of sizing and hint work (#1587) merged. The latter passed 51 focused tests and 5,548 full local checks. This pass found that cancelling the owner-exit `DispatchWorkItem` did not serialize an already-enqueued hard exit against orderly shutdown; both paths now share a lock, with four focused tests including the race ordering. Live overlay and capture teardown verification remains. The Layout Tracer compiler trial is recorded below.
+- P6: The mapper cancels delayed resets when the selection changes (#1519, #1540). Stale layer-indicator and tooltip callbacks respect their current window (#1526, #1534). Favicon completion and engine timeout cleanup follow their owning operation (#1538, #1549). In 85 focused tests, the timeout change preserved a replacement connection and its buffer. Capture teardown (#1567) and the overlay window's ownership of sizing and hint work (#1587) merged. The latter passed 51 focused tests and 5,548 full local checks. An earlier pass found that cancelling the owner-exit `DispatchWorkItem` did not serialize an already-enqueued hard exit against orderly shutdown; both paths now share a lock, with four focused tests including the race ordering. The final timer and framework-handoff audit (November 22) bound the drag-to-authorize overlay's delayed work to its presentation and judged the remaining callbacks safe; see the P6 section. Live overlay timing and capture teardown passed on signed builds. P6 is complete. The Layout Tracer compiler trial is recorded below.
 - P8: The Japanese virtual-key confirmation and General Settings stable-update label fit in signed macOS 27.2.1 builds. Settings option cards and Status actions use language-independent IDs (#1535). Xcode compiled eight additional Japanese translations (#1536) and localized the Stable and Beta channel labels (#1542). #1578 added the Japanese remap and navigation labels. The signed guest captured General Settings, Status, Home Row Mods and Repair in Japanese. An independent review of all 3,679 Japanese strings and the permission prompts (ChatGPT through the Codex CLI, November 21) found 12 blocking issues: two swapped menu labels, an unnumbered placeholder reorder, two gesture instructions, three uses of ウインドウ for a reporting period, a shared Start key, a stale setup path, a KindaVim term and the Accessibility pane name. Eleven are fixed (the Vim keycap now has its own key, `vim.keycap.line-start`) and the re-review approved them. Its 33 minor suggestions were then applied too: wording, consistent terms (設定, 上段, 受付時間, 修飾キー, オペレータ, スペースバー in prose), numbered placeholders, and own keys for the Vim Open keycap, the Delete key name and the numpad Operators heading. A second review approved all 87 changed strings. Apple's own macOS 27.3 string tables (SecurityPrivacyExtension, TCC and the authorization prompt, key `ACCESSIBILITY`) give that pane as デバイスの制御とデータへのアクセス in Japanese, which KeyPath already uses, so the reviewer's アクセシビリティ (the pre-macOS 27 name) was not applied. Live layout for onboarding and the overlay remains.
 - P9: Pack and collection tests, Caps Lock selection, leader recovery, the overlay window and onboarding fixtures use isolated test state (#1514, #1521, #1523, #1527, #1531). A safe-runner qualification on master `c2550766` passed 4,734 XCTest invocations with two worker processes plus 844 Swift Testing checks. A focused media-key test reproduced a comment-parsing error on the baseline and candidate. The fix passed all five media tests locally (#1533). #1580 isolates CLI writes and QMK fetch fixtures and fixes the navigation-layer snapshot setup. Device-selection writes now use their own configuration directory (#1585). At overlay candidate `f51656e5`, 83 scoped CLI, device-selection and rule-write cases passed with two XCTest worker processes, with zero failures or skips in the XML report. Seven Swift Testing rule-mutation checks also passed five repetitions in one process. A November 21 audit found one test mutating `UserDefaults.standard`; it now uses its per-test isolated suite. A follow-up source search found no direct `UserDefaults.standard` references under `Tests/KeyPathTests`; generated temporary paths in the sampled writes use UUIDs. Implicit preference defaults now fall back to a process-local test-only domain, and the focused preference suite passes. The current isolation pass injects notification centers into preference, reload, and collection managers; removes host-Keychain/environment-dependent smoke assertions; and changes the QMK search tests to use a fresh database/cache path per test. Focused coordinator (36), persistence, recovery, notification (10), parallel QMK (33), session-start permission-snapshot tests, and the Vallack/runtime mutation tests pass. The lifecycle permission invalidation test now uses its own `PermissionOracle` and injects only the invalidation action into its coordinator; the snapshot unit tests also use local oracles, and a vacuous host Accessibility-permission smoke test was removed. The `AppPaths` sandbox follow-up passed six focused tests. On November 21, the full safe suite passed sequentially (4,744 XCTest invocations + 844 Swift Testing checks) and again with two XCTest workers (4,745 + 844), with zero failures or skips and zero Swift or app warnings/errors. A Swift Testing-only run with `--maximum-repetitions 3` also exited 0 in the safe runner; the log records 842 cases reaching repetitions 2 and 3, and the runner counted 744 passes with zero failures or warnings/errors. These qualify process parallelism and repeated Swift Testing execution. Remaining: SwiftPM's repetition option repeats Swift Testing cases but not XCTest cases in-process. CI intentionally runs one full-test job at a time on the shared host, while each job uses two XCTest workers; parallel jobs would compete for the runner's shared SwiftPM scratch and memory.
 
@@ -647,9 +647,26 @@ Remaining work:
   Its full gate passed 5,525 tests and six post-integration regressions passed.
   BuildInfo now protects its once-only fetch reservation and cached version with
   checked mutex state; no lock is held across asynchronous process execution.
-- Reconcile delayed UI callbacks and timers with their owning view/window
-  lifetimes. Convert only callbacks that require cancellation, and test closing
-  or replacing the owner while a callback is pending.
+- Done November 22: delayed UI callbacks and timers were reconciled with their
+  owning view or window. The audit covered `DispatchQueue.main.asyncAfter`,
+  `Timer`, `Task.sleep` followed by UI work, `perform(_:afterDelay:)` (none),
+  NotificationCenter and `NSEvent` monitors, and AppKit animation completions
+  under `Sources/`. One owner could act on stale state: the drag-to-authorize
+  overlay (`DragToAuthorizeController`), a singleton, so `[weak self]` never
+  released its work. Dismissing before the panel was due still created the
+  panel, polling and Settings tracker on an idle controller, which a later
+  `dismiss` then ignored. Presenting again during the animated fade let the old
+  teardown remove the new panel, and an entrance animation finishing after a
+  dismissal set the overlay back to `.visible`. Its panel creation, fade-out
+  teardown, present retry, retry reset, success dismissal, entrance-animation
+  completion and permission-poll result now carry the presentation generation
+  that scheduled them and do nothing once it is dismissed or replaced. Seven
+  owner-close tests use a manual scheduler. Callbacks left alone are safe for
+  one of these reasons: they only write a SwiftUI view's own `@State`, which is
+  discarded with the view; they post a notification that has no effect without
+  a listener; they are already cancelled or token-checked by their owner
+  (mapper, inspector, layer reveal, wizard resize, hint windows, overlay
+  timers); or their owner is a service that outlives the UI.
 - On November 20, Apple Swift 6.4.2 compiled the Layout Tracer module with
   both isolation settings, targeting macOS 27.0. Four existing downstream
   Swift Testing files type-checked with the current setting. Default
@@ -657,13 +674,20 @@ Remaining work:
   actor-isolated, and those callers failed to type-check. Keep explicit
   isolation at UI boundaries until the pure layout and file APIs can stay
   nonisolated.
-- Live overlay timing and capture teardown still need a desktop guest run. The
-  Mini preflight on November 21 found both Parallels lease slots occupied; no
-  existing lease was inspected or changed. A current-master signed QA build
-  also failed when codesigning the Rust helper (`errSecInternalComponent`), so
-  it is not ready for guest replacement. The cleanup-only Tart attempt failed
-  before guest creation because Tart could not set clone timestamps on its
-  backing volume; its owned lease is now destroyed with cleanup complete.
+- Live verification is done. On November 22 a disposable macOS 27 desktop
+  guest (daily lease `cbx_400b4b88a423`) ran signed master
+  `94c963364838a9da005a1e50f0e446d1641d1d5a`. Overlay hide/show timing passed
+  8 of 8: `keypath://overlay/hide` and `show` were sent in one guest shell with
+  gaps of 0.05, 0.15, 0.30 and 1.00 s, in both orders, and each time the overlay
+  window ended in the last requested state and stayed there across three
+  samples about 1.5 s apart. Capture teardown passed on `7b6c369e`
+  (November 20): no event tap at idle, one enabled tap while the mapper
+  recorded, none after the overlay hid, and none after it reopened. Between
+  `7b6c369e` and `94c96336` the capture and mapper code changed only in one
+  localized key name. Capture teardown was not re-run on the `94c96336` guest,
+  because no UI click tool was available there. Earlier attempts on
+  November 21 did not reach a guest (occupied Parallels slots, a Rust helper
+  codesigning failure, and a Tart clone timestamp error).
 
 ### P7. SwiftUI and AppKit idioms
 
@@ -742,17 +766,15 @@ work is verification, plus private security follow-up:
 2. Complete B7's manual 1.0.1 cleanup rehearsal on a fresh macOS 26 guest,
    preserving and checking the user's rules and verifying no legacy services
    return after reboot.
-3. Complete P6's live overlay timing and capture-teardown checks on a current
-   signed build.
-4. Complete P8's live Japanese onboarding and overlay layout checks. Reuse the
+3. Complete P8's live Japanese onboarding and overlay layout checks. Reuse the
    qualified current guest when its state is suitable; use a fresh guest when
    consent or onboarding state would affect the result.
-5. Finish CI performance qualification separately from P9 by measuring two
+4. Finish CI performance qualification separately from P9 by measuring two
    simultaneous full-test jobs on the self-hosted runner daemons, including
    resource headroom and total PR turnaround. The isolated two-versus-four
    worker comparison is complete; it does not establish safe overlapping-job
    performance.
-6. Retrieve the private security tracker, then close its remaining remediation
+5. Retrieve the private security tracker, then close its remaining remediation
    and release-qualification items without copying those findings into this
    public review.
 
