@@ -131,7 +131,7 @@ final class RemapEndToEndTests: XCTestCase {
             "d:f t:30 u:f t:250",
             "d:f t:250 d:h t:30 u:h t:40 d:j t:30 u:j t:40 d:k t:30 u:k t:40 d:l t:30 u:l t:40 u:f t:250",
             "d:h t:30 u:h t:50",
-            "d:space t:250 u:space t:50 d:n t:30 u:n t:50 d:h t:30 u:h t:50 d:j t:30 u:j t:100"
+            "d:spc t:250 u:spc t:50 d:n t:30 u:n t:50 d:h t:30 u:h t:50 d:j t:30 u:j t:100"
         ].joined(separator: " ")
         let simulator = SimulatorService.forTesting(simulatorPath: simulatorPath)
         let result = try await simulator.simulateRaw(simContent: events, configPath: configPath)
