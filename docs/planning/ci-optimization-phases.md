@@ -1,6 +1,6 @@
 # CI & Build Optimization — Phased Plan
 
-**Status:** Done
+**Status:** Historical plan; implementation and runner routing have since changed.
 **Created:** 2026-05-17
 **Completed:** 2026-05-17
 **Prereq:** Self-hosted Mac Mini runner is live (PR #360, merged)
@@ -20,7 +20,7 @@
 ## Phase 2: Parallel CI ✅
 
 ### 2a. Register a second runner on the Mini ✅
-**Done:** `keypath-mini-2` installed at `~/actions-runner-2` with LaunchAgent. Both runners are online. On macOS 27, only the interactive runner carries `swiftpm-safe`; SwiftPM jobs require that label while lightweight jobs can still run in parallel on the headless runner.
+**Historical:** `keypath-mini-2` was installed as a LaunchAgent. Both Mini registrations now run as LaunchDaemons. The current `test-full` job accepts either runner using the common `self-hosted, macOS, keypath` labels; `swiftpm-safe` remains only for the coverage workflow. See `.github/workflows/ci.yml` and `.github/workflows/runner-health.yml` for the live routing rules.
 
 ### 2b. Add concurrency control to ci.yml ✅
 **Done:** Added `concurrency: group: ci-${{ github.event.pull_request.number || github.ref }}, cancel-in-progress: true`. Verified: stale runs get cancelled on rapid pushes.

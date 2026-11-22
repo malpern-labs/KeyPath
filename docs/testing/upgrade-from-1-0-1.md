@@ -6,14 +6,18 @@ This plan now verifies the **manual cleanup instructions published in**
 [`guides/upgrading-from-1-0-1.md`](../../guides/upgrading-from-1-0-1.md).
 It does not test or imply automatic migration support.
 
-**Status: blocked before guest creation (November 21, 2026).** The official
-1.0.1 ZIP was downloaded and matched its release digest. The first Tart clone
-failed with `utimes(2) failed: Operation not permitted`. A later Parallels
-attempt selected the macOS 26 desktop base but failed while installing the
-lease SSH key (`PrlJob_GetResult: Invalid argument`). vm-lab recorded both
-owned leases as destroyed with cleanup complete. No guest-side steps ran.
-Retry only through `vm-lab` after the provider issue is diagnosed; do not use a
-developer Mac or bypass admission. Keep the lab's base fingerprint check.
+**Status: blocked before UI rehearsal (November 22, 2026).** The official
+1.0.1 ZIP was downloaded and matched its release digest. The current Parallels
+lease (`cbx_67d82d322f17`) boots macOS 26.5.2 and has KeyPath 1.0.1 installed;
+both facts were confirmed with read-only guest commands through the installed
+`vm-lab` launcher. At 2026-11-22 11:38 UTC, the documented UI preflight reached
+the guest in 0.654 seconds and found that Peekaboo 3.10.0 lacks Screen Recording
+and Accessibility in the guest's console account; optional Event Synthesizing
+is also off. Preflight stopped before UI interaction. No cleanup command, rule
+mutation, or reboot was attempted. The owned lease remains `ready` with cleanup
+pending. Resume only after enabling the normal UI permissions for Peekaboo in
+that guest account; do not bypass the lab admission path or use a developer Mac.
+Keep the lab's base fingerprint check.
 
 ## Rehearsal
 
@@ -69,3 +73,4 @@ developer Mac or bypass admission. Keep the lab's base fingerprint check.
 | ---- | ------------------ | ----- | ----- | ------- | ----------------- | ------ | ---------------- | ----- |
 | 2026-11-21 | `cf4797c97b82e04081057bb7688389ab8f681d51e1e8b084a6887f8a68614296` | — | `cbx_af9cbb9f9e31` | not run | not run | not run | not run | Tart clone failed before guest creation (`utimes` permission error); vm-lab cleanup completed; no Parallels lease was touched. |
 | 2026-11-21 | `cf4797c97b82e04081057bb7688389ab8f681d51e1e8b084a6887f8a68614296` | 26 | `cbx_7d9285bef732` | not run | not run | not run | not run | Parallels failed during lease SSH-key installation (`PrlJob_GetResult: Invalid argument`); vm-lab destroyed the owned lease and confirmed cleanup complete; no guest-side steps ran. |
+| 2026-11-22 | `cf4797c97b82e04081057bb7688389ab8f681d51e1e8b084a6887f8a68614296` | 26.5.2 | `cbx_67d82d322f17` | blocked | not run | not run | not run | Guest booted and the installed app reports 1.0.1. UI preflight found Peekaboo Screen Recording and Accessibility ungranted in the guest console account; stopped before UI or cleanup. Lease is still ready; cleanup is pending. |

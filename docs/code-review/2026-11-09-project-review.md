@@ -28,7 +28,7 @@ Twenty-three review-related PRs have merged (#1589–#1605, #1607, #1608, #1610,
 |---|---|---|
 | **Ship a smaller, less tangled app** | The dead-view/assets and cleanup passes removed about 34,000 lines of obsolete scripts, docs, tests and code; the unused BehaviorStatePicker assets removed about 15 MB from the app. The CLI now shares core rule/config work while preserving the Metal onboarding and pack gallery the owner chose to keep. | O7's remaining pack mutations still depend on AppKit. Keep that boundary unless a concrete shared transaction contract makes extraction safe; this is a deliberate stopping point, not a mandate to remove features. |
 | **Make routine changes safer and easier to validate** | P9 is complete: the full safe suite passed with two XCTest workers, 4,729 XCTest cases and 847 Swift Testing cases, zero failures, skips or Swift/module-cache/app warnings. The Swift Testing subset also passed three repetitions. Tests now isolate mutable defaults, stores, loggers, notification centers, caches, temporary files, and runtime bridges. | SwiftPM does not offer same-process XCTest repetition. This tooling limitation does not leave P9 open. Concurrent CI throughput is a separate performance qualification. |
-| **Reduce CI and agent wasted work** | The no-op cache-warm job was removed; worktrees were moved off ephemeral storage; build slots cap concurrent heavy builds; stale automation harnesses were deleted. Earlier Mini CI runs showed a two-worker lane at 308 s (339 s full job) and two four-worker lanes at 195 s and 180 s (209 s and 244 s full jobs); the latter passed 4,729 XCTest and 849 Swift Testing cases without warnings. A repeat of the exact `test-lane.sh full` command on the Mini then passed at two workers in 255 s and at four workers in 152 s and 148 s, with zero failures or Swift/module-cache/app warnings. That matched-command comparison cut lane time by about 41%; `.github/workflows/ci.yml` now uses four XCTest workers and six Swift build jobs on the Mini. #1615 lets either Mini runner take `test-full`. | Measure simultaneous full `test-full` jobs on both self-hosted runner daemons before treating two-lane capacity as qualified. The earlier SSH-launched overlap/control experiment failed the same WindowServer-dependent tests in both conditions; it did not measure daemon-run CI overlap. Keep the two-runner claim limited to available capacity until the overlap is measured. |
+| **Reduce CI and agent wasted work** | The no-op cache-warm job was removed; worktrees were moved off ephemeral storage; build slots cap concurrent heavy builds; stale automation harnesses were deleted. Earlier Mini CI runs showed a two-worker lane at 308 s (339 s full job) and two four-worker lanes at 195 s and 180 s (209 s and 244 s full jobs); the latter passed 4,729 XCTest and 849 Swift Testing cases without warnings. A repeat of the exact `test-lane.sh full` command on the Mini then passed at two workers in 255 s and at four workers in 152 s and 148 s, with zero failures or Swift/module-cache/app warnings. That matched-command comparison cut lane time by about 41%; `.github/workflows/ci.yml` now uses four XCTest workers and six Swift build jobs on the Mini. #1615 lets either Mini runner take `test-full`. Two full GitHub job windows overlapped briefly in runs [3134](https://github.com/malpern-labs/KeyPath/actions/runs/44965218473) and [3135](https://github.com/malpern-labs/KeyPath/actions/runs/44965469829), and both passed. Inspecting the job logs shows this did **not** exercise concurrent Swift builds or tests: the first `swift test` launched at 00:10:44 UTC and ran for 189 s; the second launched at 00:14:07 UTC and ran for 281 s. The second lane's setup/build began only after the first test command had finished. | Measure simultaneous full `test-full` work on both self-hosted runner daemons, capturing resource headroom and end-to-end PR turnaround before treating two-lane capacity as qualified. The earlier SSH-launched overlap/control experiment failed the same WindowServer-dependent tests in both conditions; it did not measure daemon-run CI overlap. Keep the two-runner claim limited to available capacity until the sustained run is measured. |
 | **Keep the runtime secure and release behavior understandable** | ADR-046's unauthenticated TCP listener is gone; engine control uses a private Unix socket with PID and signature checks. Release logging ignores environment overrides, and Caps Lock diagnostics now state the limits of process attribution. | Other security findings remain in private tracking. The public review doc intentionally does not enumerate them. |
 | **Make Japanese and public guidance trustworthy** | The Japanese catalog received a 3,679-string independent review; all 87 changed strings passed re-review. Current organization-hosted setup/privacy/uninstall/migration pages were verified after publishing. On November 21, both the organization and legacy 1.0.1 migration URLs returned HTTP 200 from the Mini. | Live Japanese layout and overlay checks remain. The 1.0.1 cleanup rehearsal remains. |
 
@@ -82,7 +82,7 @@ This ledger tracks outcomes toward the review goals: less unnecessary framework 
 | **B4** Tests for removed behaviour | ✅ | Dead tests removed and two stale references refreshed (#1420). The historical General Settings reference was refreshed to the existing Nothing default in #1478, retaining tolerances. The combined gate passed 5,524 tests. |
 | **B5** Binary assets | ✅ | Unused assets removed (#1397); help assets compressed/deduplicated (#1422). Metal goldens losslessly recompressed in #1479: 28.7% smaller, identical decoded scanlines, full resolution and tolerances retained. |
 | **B6** Root and package stragglers | ✅ | Root cleanup merged (#1395). Process probes moved into Core and the unused wizard screenshot and resource bundle were removed (#1440). Nine unused library product exports removed in #1475; executable products and internal target dependencies remain unchanged. |
-| **B7** Docs | 🟡 | Public docs republished and runtime architecture rewritten (#1394, #1399, #1402, #1437). The live organization Pages setup, privacy, uninstall, and 1.0.1 cleanup pages returned HTTP 200; setup links macOS 27+ and the version-pinned 1.0.1 path. [malpern.github.io#1](https://github.com/malpern/malpern.github.io/pull/1) is merged. Its hourly Pages workflow asserts the generated route and expected title before deployment; run #27 on `main` succeeded at commit `245a246` on November 21. On November 21, both `https://malpern-labs.github.io/KeyPath/guides/upgrading-from-1-0-1/` and the legacy `https://malpern.github.io/KeyPath/guides/upgrading-from-1-0-1/` returned HTTP 200 when checked from the Mini. The cleanup rehearsal plan now tests the supported manual guide, not withdrawn in-app migration. The official 1.0.1 ZIP matched its published digest, but neither provider reached guest creation: the first Tart attempt failed cloning on `utimes(2)`, and a later Parallels attempt failed while installing the lease SSH key (`PrlJob_GetResult: Invalid argument`). vm-lab recorded both owned leases as destroyed with cleanup complete; no guest-side cleanup was performed. The rehearsal remains unrun. |
+| **B7** Docs | 🟡 | Public docs republished and runtime architecture rewritten (#1394, #1399, #1402, #1437). The live organization Pages setup, privacy, uninstall, and 1.0.1 cleanup pages returned HTTP 200; setup links macOS 27+ and the version-pinned 1.0.1 path. [malpern.github.io#1](https://github.com/malpern/malpern.github.io/pull/1) is merged. Its hourly Pages workflow asserts the generated route and expected title before deployment; run #27 on `main` succeeded at commit `245a246` on November 21. Both organization and legacy 1.0.1 migration URLs returned HTTP 200 from the Mini on November 21. The cleanup rehearsal plan tests the supported manual guide, not withdrawn in-app migration. The official 1.0.1 ZIP matched its published digest. A fresh Parallels lease subsequently booted macOS 26.5.2 with KeyPath 1.0.1 installed, confirmed read-only through the installed lab launcher on November 22. UI preflight then blocked because Peekaboo lacks Screen Recording and Accessibility grants in the guest console account; no UI interaction or cleanup ran, and the lease remains ready with cleanup pending. The rehearsal remains incomplete. |
 | **P1** Sparkle | ✅ | See row 5. |
 | **P2** Apple Events usage string | ✅ | #1404. Normal KeyPath → System Events prompt and shipped explanation verified on fresh guest cbx_093147ab40fe, signed candidate f2434116a, November 20. This verifies the requested prompt, not the resulting AppleScript action. |
 | **P3** Blocking subprocesses | ✅ | `SecCodeCopySelf` replaces the signing shell-out and pipes are drained before waiting (#1404). Migration discovery is async and bounded, with retryable unknown states and tested stop routing (#1480). System probes also drain both output pipes concurrently (#1483); the serialized full gate passed 5,534 tests. Latest-master deployment and live verification remain separate release checks. |
@@ -736,22 +736,25 @@ XCTest tests solely for framework consistency.
 The original implementation order above is superseded. The remaining tracked
 work is verification, plus private security follow-up:
 
-1. Restore access to the Mini's installed VM lab, then diagnose the failed
-   Parallels lease preparation before another guest attempt. Do not bypass
-   `vm-lab` admission or its fingerprint check.
+1. Grant the documented UI automation permissions in the existing guest's
+   console account, then resume the cleanup rehearsal through the installed
+   Mini launcher. Keep the base fingerprint check and do not bypass
+   `vm-lab` admission.
 2. Complete B7's manual 1.0.1 cleanup rehearsal on a fresh macOS 26 guest,
    preserving and checking the user's rules and verifying no legacy services
    return after reboot.
 3. Complete P6's live overlay timing and capture-teardown checks on a current
-   signed build.
+   signed build, including the overlay transition during Secure Input and
+   recovery after the session unlocks.
 4. Complete P8's live Japanese onboarding and overlay layout checks. Reuse the
    qualified current guest when its state is suitable; use a fresh guest when
    consent or onboarding state would affect the result.
-5. Finish CI performance qualification separately from P9 by measuring two
-   simultaneous full-test jobs on the self-hosted runner daemons, including
-   resource headroom and total PR turnaround. The isolated two-versus-four
-   worker comparison is complete; it does not establish safe overlapping-job
-   performance.
+5. Finish CI performance qualification separately from P9 by measuring a
+   sustained overlap of two full-test jobs on the self-hosted runner daemons,
+   including resource headroom and total PR turnaround. The earlier two-job
+   sample overlapped only at the GitHub job level; timestamps show the actual
+   `swift test` commands ran sequentially. It does not qualify concurrent
+   throughput. The isolated two-versus-four worker comparison is complete.
 6. Retrieve the private security tracker, then close its remaining remediation
    and release-qualification items without copying those findings into this
    public review.
@@ -765,6 +768,49 @@ work is verification, plus private security follow-up:
 - P2's usage-string prompt was verified on a fresh macOS 27 guest on November
   20; evidence is retained on the Mini under `~/keypath-final-ui-qa.XIYk30` and
   the guest artifact capture `20261120T051303Z`.
+- November 22 Mini lab check: the installed launcher reports the prepared
+  checkout at `e96593e` with no dirty files. The owned macOS 26.5.2 lease
+  `cbx_67d82d322f17` remains `ready`, with cleanup pending; KeyPath 1.0.1 is
+  installed and the base fingerprint check passes. At 11:38 UTC, the
+  documented `vm-lab --host malpern@localhost keypath ui ... -- preflight`
+  reached the guest in 0.654 s. Peekaboo 3.10.0 reported Screen Recording and
+  Accessibility ungranted for the guest console account; optional Event
+  Synthesizing is also ungranted. The command stopped before UI interaction.
+  A direct invocation without `--host malpern@localhost` could read lease
+  metadata but could not access the Parallels guest (`.crabbox` permission
+  denied); using the documented host mode resolved that routing issue. No
+  grant or cleanup command ran. B7 remains gated on enabling the normal UI
+  permissions for Peekaboo in the guest account.
+- November 22 Mini CI capacity snapshot: both KeyPath runner LaunchDaemons were
+  `running`; the Mini has 64 GiB RAM, 67% system memory free, and 2.7 TiB free
+  on `/`. This was an idle snapshot, not telemetry during overlapping CI jobs,
+  and does not close the sustained-overlap qualification.
+- PR #1619's November 22 Actions run provides a fresh single-test-job baseline:
+  `quality-full` ran on `keypath-mini` while `test-full` ran on
+  `keypath-mini-2`. The full test lane completed in 244 s (77 s build, 167 s
+  test), with a warm SwiftPM cache and zero recorded Swift, module-cache, or
+  app warnings/errors. This verifies current routing and one full lane, but it
+  did not run two full-test jobs concurrently and logged no resource samples.
+- The installed `vm-lab keypath daily --ready-only` check returned `no ready
+  daily guest` on November 22. The ready lease above is the separate macOS
+  26.5.2 1.0.1 rehearsal guest; it is not a daily remap guest and will not be
+  repurposed for unrelated checks.
+- November 22 screenshot: the overlay health card showed one issue and disabled
+  quick remapping. On the Air at 05:29, KeyPath observed `com.apple.loginwindow`
+  and its worker exited in `secureInput` state. The app's CLI reported the
+  runtime stopped and keyboard access unverified (not denied). The overlay
+  observer moved to `checking` while still displaying its previous healthy
+  state. At 05:39 the worker restarted with `Session runtime ready (Secure
+  typing ended)`; validation completed with zero blocking issues, and a second
+  validation at 05:52 also found zero. Key-layer events continued through
+  05:53. This supports the diagnosis that macOS Secure Input temporarily
+  pauses remapping and that the runtime recovered after it ended. It does not
+  verify the overlay's visual transition or capture teardown, so P6 remains
+  open. The screenshot's generic issue card does not identify its underlying
+  issue. Do not reset or re-grant permissions based on the CLI's `unverified`
+  result. A separate Mini inspection at 02:22 reported no issues. No
+  `output-queue-overrun` markers were found in the Air's current or rotated
+  logs, so that hypothesis remains unsupported.
 - Parts of the privately tracked findings still need release qualification;
   see the private tracker before declaring security work complete.
 - The function-level dead-code estimate and historical share of `docs/` were
