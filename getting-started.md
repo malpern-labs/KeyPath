@@ -6,23 +6,19 @@ description: Install KeyPath and create your first keyboard remapping
 
 # Getting Started
 
-Welcome to KeyPath! This guide will help you install KeyPath and create your first keyboard remapping in minutes.
+KeyPath needs **macOS 27 or later** on an **Apple Silicon (M-series) Mac**. Setup asks for one permission and installs nothing outside the app: no keyboard driver, no background system service and no admin-level helper.
 
-## Installation
+> Using **KeyPath 1.0.1**? It has its own [1.0.1 setup guide](https://github.com/malpern-labs/KeyPath/blob/v1.0.1/getting-started/installation.md). To move from 1.0.1 to the current version, [remove the old keyboard service first]({{ '/guides/upgrading-from-1-0-1/' | relative_url }}).
 
-### Option 1: Download Release (Recommended)
+## Install
 
-1. Download the latest release from the [Releases page]({{ site.github_url }}/releases)
-2. Open `KeyPath.app`
-3. Follow the setup wizard
+1. Download KeyPath from the [Releases page]({{ site.github_url }}/releases).
+2. Open the disk image and drag **KeyPath** to **Applications**.
+3. Open KeyPath from Applications and follow setup.
 
-The wizard will guide you through:
-- **Permission Setup** - Grants Input Monitoring and Accessibility permissions
-- **Driver Installation** - Installs Karabiner VirtualHID driver if needed
-- **Service Configuration** - Sets up LaunchDaemon services
-- **System Validation** - Verifies everything is working correctly
+The [setup guide]({{ '/getting-started/installation/' | relative_url }}) explains each step, including the one permission KeyPath asks for.
 
-### Option 2: Build from Source
+### Build from source
 
 ```bash
 git clone {{ site.github_url }}.git
@@ -30,60 +26,24 @@ cd KeyPath
 ./build.sh
 ```
 
-The build script automatically compiles, signs, notarizes, and installs to `~/Applications/`.
+Building needs a full Xcode installation, not only the Command Line Tools.
 
-## First Launch
+## Create your first mapping
 
-When you first launch KeyPath, the **Installation Wizard** will:
+[Your First Mapping]({{ '/getting-started/first-mapping' | relative_url }}) walks you through remapping a key, step by step. Changes take effect as soon as you save them.
 
-1. Check for required permissions
-2. Detect and resolve conflicts with other remappers
-3. Install missing components (drivers, binaries)
-4. Configure system services
+## Already using Kanata?
 
-The wizard handles all technical setup automatically and provides one-click fixes for common issues.
+KeyPath can run your existing Kanata configuration. See the [Kanata migration guide]({{ '/migration/kanata-users' | relative_url }}).
 
-## Create Your First Mapping
+## Next steps
 
-1. **Record Input**: Click the record button next to "Input Key"
-   - Press a single key (e.g., Caps Lock)
-   - Or a key combo (e.g., Cmd+Space)
-   - Or a sequence (e.g., press A, then B, then C)
-
-2. **Record Output**: Click the record button next to "Output Key"
-   - Press what you want it to do (e.g., Escape)
-   - Or a combo (e.g., Cmd+C for copy)
-   - Or type multiple keys (e.g., "hello world")
-
-3. **Save**: Click Save - your mapping is now active!
-
-Your remapping is active immediately—no restart, no manual service management, no file editing.
-
-## Already Using Kanata?
-
-If you're already using Kanata on macOS, KeyPath can run your existing configuration with minimal changes. See the [Migration Guide]({{ '/migration/kanata-users' | relative_url }}) for details.
-
-**Quick path:** Copy your config to `~/.config/keypath/keypath.kbd`, add `(include keypath-apps.kbd)` at the top, and run the setup wizard.
-
-## Next Steps
-
-- **[Your First Mapping]({{ '/getting-started/first-mapping' | relative_url }})** - Detailed walkthrough
-- **[Tap-Hold & Tap-Dance]({{ '/guides/tap-hold' | relative_url }})** - Advanced key behaviors
-- **[Action URI System]({{ '/guides/action-uri' | relative_url }})** - Trigger actions via URL scheme
-- **[Window Management]({{ '/guides/window-management' | relative_url }})** - App-specific keymaps
+- **[Tap-Hold & Tap-Dance]({{ '/guides/tap-hold' | relative_url }})**: keys that do one thing when tapped and another when held
+- **[Action URI System]({{ '/guides/action-uri' | relative_url }})**: trigger actions through a URL
+- **[Window Management]({{ '/guides/window-management' | relative_url }})**: snap and move windows from the keyboard
 
 ## Troubleshooting
 
-### KeyPath Won't Start?
+If keys are not remapping, open KeyPath and check its status. If setup asks for the permission again, follow the [setup guide]({{ '/getting-started/installation/' | relative_url }}). KeyPath writes its log to `~/Library/Logs/KeyPath/keypath-debug.log`.
 
-1. **Check macOS version** - Requires macOS 15.0 (Sequoia) or later
-2. **Run setup wizard** - Go to File → Run Setup Wizard
-3. **Check logs** - View system logs: `tail -f /var/log/com.keypath.kanata.stdout.log`
-
-### Keys Not Remapping?
-
-1. **Check status indicator** - Look for green checkmarks in the app
-2. **Verify permissions** - Ensure permissions granted in System Settings
-3. **Use Fix Issues** - Click "Fix Issues" button in the app for automated fixes
-
-For more help, see the [FAQ]({{ '/faq' | relative_url }}) or [Debugging Guide]({{ '/guides/debugging' | relative_url }}).
+For more help, browse [all guides]({{ '/docs' | relative_url }}).

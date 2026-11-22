@@ -12,17 +12,17 @@ KeyPath brings the power of [Kanata](https://github.com/jtroo/kanata) to macOS w
 
 KeyPath is a complete macOS integration layer for Kanata that handles:
 
-- ✅ **Automatic system setup** - Permissions, drivers, and services
+- ✅ **Simple setup** - One permission, no driver, no system service
 - ✅ **Beautiful SwiftUI interface** - Visual key recording and mapping
-- ✅ **Hot reload** - Changes apply instantly via TCP
+- ✅ **Instant changes** - Rules apply as soon as you save them
 - ✅ **Intelligent troubleshooting** - Automated conflict detection and resolution
-- ✅ **Enterprise-grade reliability** - LaunchDaemon architecture with crash recovery
+- ✅ **Runs in your session** - The engine runs as you, started and watched by the app
 
 ## Quick Start
 
 1. **[Install KeyPath]({{ '/getting-started/installation' | relative_url }})** - Download and run the setup wizard
 2. **[Create your first mapping]({{ '/getting-started/first-mapping' | relative_url }})** - Record input and output keys
-3. **[Explore advanced features]({{ '/guides' | relative_url }})** - Tap-hold, tap-dance, action URIs, and more
+3. **[Explore advanced features]({{ '/docs' | relative_url }})** - Tap-hold, tap-dance, action URIs, and more
 
 ## Key Features
 
@@ -41,15 +41,16 @@ Already using Kanata? Start here: **[KeyPath for Kanata users]({{ '/migration/ka
 ## Documentation Sections
 
 - **[Getting Started]({{ '/getting-started' | relative_url }})** - Installation and first steps
-- **[Guides]({{ '/guides' | relative_url }})** - Detailed tutorials and how-tos
+- **[Guides]({{ '/docs' | relative_url }})** - Detailed tutorials and how-tos
 - **[Architecture]({{ '/architecture' | relative_url }})** - System design and patterns
 - **[Migration]({{ '/migration/kanata-users' | relative_url }})** - Migrating from Kanata
-- **[FAQ]({{ '/faq' | relative_url }})** - Common questions and troubleshooting
 
 ## Requirements
 
-- **macOS 15.0 (Sequoia) or later**
-- **Apple Silicon or Intel Mac**
+- **macOS 27 or later**
+- **An Apple Silicon (M-series) Mac**
+
+KeyPath 1.0.1 has different requirements; see its [setup guide](https://github.com/malpern-labs/KeyPath/blob/v1.0.1/getting-started/installation.md).
 
 ## Get Involved
 
