@@ -3,7 +3,7 @@ import Foundation
 import XCTest
 
 /// Links opened by other apps (web pages, documents, Raycast) are limited:
-/// no scripts, web pages only for `open`, and virtual keys ask first.
+/// no scripts, web pages only for `open`, and side-effecting actions ask first.
 @MainActor
 final class ExternalActionPolicyTests: XCTestCase {
     private func decision(_ string: String, allowsVirtualKeys: Bool = false) throws -> ExternalActionPolicy.Decision {
@@ -37,12 +37,25 @@ final class ExternalActionPolicyTests: XCTestCase {
         XCTAssertEqual(try decision("keypath://fakekey/nav-mode/tap", allowsVirtualKeys: true), .allow)
     }
 
-    func testEverydayActionsStayAvailable() throws {
-        for uri in ["keypath://launch/Safari", "keypath://window/left", "keypath://layer/nav",
-                    "keypath://settings/rules", "keypath://overlay/toggle", "keypath://notify?title=Hi",
-                    "keypath://folder/~/Downloads", "keypath://runtime/stop", "keypath://system/mission-control"]
+    func testSafeNavigationActionsStayAvailable() throws {
+        for uri in ["keypath://layer/nav", "keypath://rule/home-row/fired", "keypath://settings/rules",
+                    "keypath://overlay/toggle"]
         {
             XCTAssertEqual(try decision(uri), .allow, uri)
+        }
+    }
+
+    func testSideEffectingActionsAskEveryTime() throws {
+        for uri in ["keypath://launch/Safari", "keypath://window/left", "keypath://notify?title=Hi",
+                    "keypath://folder/~/Downloads", "keypath://runtime/stop", "keypath://system/mission-control"]
+        {
+            XCTAssertEqual(try decision(uri), .confirmAction, uri)
+        }
+    }
+
+    func testUnknownActionsAreRefusedFromExternalLinks() throws {
+        guard case .refuse = try decision("keypath://future-action/do-something") else {
+            return XCTFail("New or unknown actions must be explicitly allowed before external links can invoke them")
         }
     }
 
@@ -109,6 +122,38 @@ final class ExternalActionPolicyTests: XCTestCase {
         XCTAssertFalse(grants.allowsVirtualKeys)
     }
 
+    func testDispatcherAsksBeforeRuntimeActionFromLink() throws {
+        let (dispatcher, _, _, cleanup) = try makeFixture()
+        defer { cleanup() }
+        var ran: RuntimeCommand?
+        var asked: ExternalActionConfirmation?
+        dispatcher.onRuntimeAction = { ran = $0 }
+        dispatcher.onExternalActionConfirmationNeeded = { asked = $0 }
+
+        _ = try dispatcher.dispatch(uri("keypath://runtime/stop"), origin: .externalURL)
+        let request = try XCTUnwrap(asked)
+        XCTAssertNil(request.virtualKey)
+        XCTAssertEqual(request.actionDescription, "keypath://runtime/stop")
+        XCTAssertNil(ran, "The runtime action must wait for confirmation")
+        request.deny()
+        XCTAssertNil(ran, "Denying the prompt must leave the runtime alone")
+
+        _ = try dispatcher.dispatch(uri("keypath://runtime/stop"), origin: .externalURL)
+        try XCTUnwrap(asked).allow()
+        XCTAssertEqual(ran, .stop)
+    }
+
+    func testSideEffectingLinkFailsClosedWhenPromptHandlerIsMissing() throws {
+        let (dispatcher, _, _, cleanup) = try makeFixture()
+        defer { cleanup() }
+        var ran = false
+        dispatcher.onRuntimeAction = { _ in ran = true }
+        guard case .failed = try dispatcher.dispatch(uri("keypath://runtime/stop"), origin: .externalURL) else {
+            return XCTFail("A guarded action must fail closed if KeyPath cannot prompt")
+        }
+        XCTAssertFalse(ran)
+    }
+
     func testVirtualKeyFromConfigDoesNotAsk() throws {
         let (dispatcher, _, _, cleanup) = try makeFixture()
         defer { cleanup() }
@@ -130,7 +175,7 @@ final class ExternalActionPolicyTests: XCTestCase {
         let (dispatcher, _, grants, cleanup) = try makeFixture()
         defer { cleanup() }
         var prompts = 0
-        dispatcher.onExternalActionConfirmationNeeded = { prompts += 1; $0.alwaysAllow() }
+        dispatcher.onExternalActionConfirmationNeeded = { prompts += 1; $0.alwaysAllow?() }
         _ = try dispatcher.dispatch(uri("keypath://fakekey/nav/tap"), origin: .externalURL)
         XCTAssertTrue(grants.allowsVirtualKeys)
         _ = try dispatcher.dispatch(uri("keypath://fakekey/nav/tap"), origin: .externalURL)
@@ -151,7 +196,7 @@ final class ExternalActionPolicyTests: XCTestCase {
         var errors: [String] = []
         var prompts = 0
         dispatcher.onError = { errors.append($0) }
-        dispatcher.onExternalActionConfirmationNeeded = { prompts += 1; $0.alwaysAllow() }
+        dispatcher.onExternalActionConfirmationNeeded = { prompts += 1; $0.alwaysAllow?() }
         _ = try dispatcher.dispatch(uri("keypath://fakekey/nav/tap"), origin: .externalURL)
         _ = try dispatcher.dispatch(uri("keypath://fakekey/nav/tap"), origin: .externalURL)
         XCTAssertEqual(prompts, 2)
@@ -182,13 +227,13 @@ final class ExternalActionPolicyTests: XCTestCase {
         var prompted = false
         dispatcher.onScriptConfirmationNeeded = { _ in prompted = true }
         let result = try dispatcher.dispatch(uri("keypath://Script//bin/bash"), origin: .externalURL)
-        guard case .unknownAction = result else { return XCTFail("Only exact action names route") }
+        guard case .failed = result else { return XCTFail("An unrecognized external action must be refused") }
         XCTAssertFalse(prompted)
     }
 
     /// Every action the router handles has a reviewed decision for links from
-    /// other apps. The policy allows unknown actions by default, so a new action
-    /// fails here until someone decides whether a web page may trigger it.
+    /// other apps. A new route fails here until someone explicitly records its
+    /// link policy in this test and `ExternalActionPolicy`.
     func testEveryRoutedActionHasAReviewedLinkDecision() throws {
         let reviewed: Set = ["launch", "layer", "rule", "notify", "open", "fakekey", "vkey", "system",
                              "window", "settings", "folder", "script", "overlay", "runtime"]

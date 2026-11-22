@@ -34,14 +34,30 @@ public enum ActionOrigin: Sendable {
     case externalURL
 }
 
-/// Asks the user whether a link from another app may press a virtual key.
+/// Asks the user whether a link from another app may perform a guarded action.
 public struct ExternalActionConfirmation {
-    /// The virtual key's name.
-    public let virtualKey: String
+    /// The virtual key's name, when this request is for a virtual key.
+    public let virtualKey: String?
+    /// The full link being confirmed, when this is a one-time action request.
+    public let actionDescription: String?
     public let allow: () -> Void
     /// Let links from other apps press virtual keys without asking from now on.
-    public let alwaysAllow: () -> Void
+    public let alwaysAllow: (() -> Void)?
     public let deny: () -> Void
+
+    init(
+        virtualKey: String? = nil,
+        actionDescription: String? = nil,
+        allow: @escaping () -> Void,
+        alwaysAllow: (() -> Void)? = nil,
+        deny: @escaping () -> Void
+    ) {
+        self.virtualKey = virtualKey
+        self.actionDescription = actionDescription
+        self.allow = allow
+        self.alwaysAllow = alwaysAllow
+        self.deny = deny
+    }
 }
 
 /// Asks the user whether to run a script that has not been approved yet.
@@ -141,7 +157,7 @@ public final class ActionDispatcher {
     /// Dispatch a KeyPath action URI.
     ///
     /// Returns `.success` once the action is accepted. When KeyPath must ask the
-    /// user first (an unapproved script, a virtual key from another app), the
+    /// user first (an unapproved script or a guarded action from another app), the
     /// prompt appears after this returns, and the action runs only if allowed.
     @discardableResult
     public func dispatch(_ uri: KeyPathActionURI, origin: ActionOrigin = .app) -> ActionDispatchResult {
@@ -175,6 +191,20 @@ public final class ActionDispatcher {
                         }
                         _ = route(uri)
                     },
+                    deny: { AppLogger.shared.log("🛡️ [ActionDispatcher] User denied \(uri.action) from another app") }
+                ))
+                return .success
+            case .confirmAction:
+                guard let ask = onExternalActionConfirmationNeeded else {
+                    let message = String(localized: "Another app asked KeyPath to perform an action, but KeyPath could not ask you first.")
+                    onError?(message)
+                    return .failed(uri.action, NSError(domain: "ActionDispatcher", code: 13, userInfo: [
+                        NSLocalizedDescriptionKey: message
+                    ]))
+                }
+                ask(ExternalActionConfirmation(
+                    actionDescription: uri.url.absoluteString,
+                    allow: { [weak self] in _ = self?.route(uri) },
                     deny: { AppLogger.shared.log("🛡️ [ActionDispatcher] User denied \(uri.action) from another app") }
                 ))
                 return .success

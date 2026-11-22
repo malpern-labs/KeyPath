@@ -2,7 +2,7 @@ import AppKit
 import KeyPathCore
 
 /// The prompts KeyPath shows before running a script for the first time, or
-/// before acting on a link from another app that presses a virtual key.
+/// before a link from another app performs a guarded action.
 ///
 /// A prompt never blocks: it is a window (NonModalAlertPresenter), not a modal
 /// run loop, so the engine's event reader and every other main-actor task keep
@@ -43,24 +43,40 @@ enum ActionConfirmationPrompts {
         present(onBusy: request.deny) {
             let alert = NSAlert()
             alert.alertStyle = .warning
-            alert.messageText = String(localized: "Allow another app to press the virtual key “\(request.virtualKey)”?")
-            alert.informativeText = String(localized: """
-            A keypath:// link from another app asked for this. A virtual key does whatever your config binds to it, \
-            which can include running a script. Links can come from web pages and documents, so allow this only if \
-            you started it, for example from Raycast or Hammerspoon. "Always Allow" lets links from other apps press \
-            virtual keys without asking; you can turn that off in Settings.
-            """)
-            addButtons(to: alert, [
-                (String(localized: "Allow"), "link-confirm-allow-button"),
-                (String(localized: "Always Allow"), "link-confirm-always-allow-button"),
-                (String(localized: "Don't Allow"), "link-confirm-deny-button")
-            ])
+            if let virtualKey = request.virtualKey {
+                alert.messageText = String(localized: "Allow another app to press the virtual key “\(virtualKey)”?")
+                alert.informativeText = String(localized: """
+                A keypath:// link from another app asked for this. A virtual key does whatever your config binds to it, \
+                which can include running a script. Links can come from web pages and documents, so allow this only if \
+                you started it, for example from Raycast or Hammerspoon. "Always Allow" lets links from other apps press \
+                virtual keys without asking; you can turn that off in Settings.
+                """)
+                addButtons(to: alert, [
+                    (String(localized: "Allow"), "link-confirm-allow-button"),
+                    (String(localized: "Always Allow"), "link-confirm-always-allow-button"),
+                    (String(localized: "Don't Allow"), "link-confirm-deny-button")
+                ])
+            } else {
+                alert.messageText = String(localized: "Allow this KeyPath action?")
+                alert.informativeText = String(localized: """
+                Another app asked KeyPath to perform this action. Links can come from web pages and documents. \
+                Continue only if you recognize the request.
+
+                \(request.actionDescription ?? "KeyPath action")
+                """)
+                addButtons(to: alert, [
+                    (String(localized: "Allow Once"), "link-action-confirm-allow-button"),
+                    (String(localized: "Don't Allow"), "link-action-confirm-deny-button")
+                ])
+            }
             NonModalAlertPresenter.present(alert) { index in
                 isShowing = false
-                switch index {
-                case 0: request.allow()
-                case 1: request.alwaysAllow()
-                default: request.deny()
+                if request.virtualKey != nil, index == 1 {
+                    request.alwaysAllow?()
+                } else if index == 0 {
+                    request.allow()
+                } else {
+                    request.deny()
                 }
             }
         }

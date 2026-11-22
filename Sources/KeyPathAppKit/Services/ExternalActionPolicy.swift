@@ -39,9 +39,8 @@ public final class InMemoryLinkGrantStore: LinkGrantStore {
 
 /// What a `keypath://` link opened by another app may do.
 ///
-/// Raycast, Alfred, Hammerspoon and Terminal open these links on purpose, so
-/// most actions stay available. A web page or a document can open them too,
-/// so actions that could run code or open local files in other apps are limited:
+/// A `keypath://` link can come from a trusted launcher, a web page or a
+/// document. Only in-app navigation and feedback are safe without confirmation.
 ///
 /// - `script` does not run from a link. Scripts run from a key binding or from
 ///   the Send KeyPath Action shortcut.
@@ -49,17 +48,15 @@ public final class InMemoryLinkGrantStore: LinkGrantStore {
 /// - `fakekey` / `vkey` asks first, unless the user chose "Always Allow". A
 ///   virtual key runs whatever the config binds to it, scripts included, and
 ///   the prompt says so.
-///
-/// Still allowed: `launch` (an app name, never a path), `folder` (shows a
-/// folder in Finder), `layer`, `window`, `system`, `notify`, `settings`,
-/// `overlay`, `rule` (feedback only) and `runtime` (start or stop remapping;
-/// a link can turn remapping off, which is a nuisance, not a way in).
-/// A new action defaults to allowed, so add it here deliberately.
+/// - Other actions ask every time. Their fixed command surface can still
+///   launch apps, reveal local paths, synthesize input, or stop remapping.
+/// New actions are refused until their external-link policy is added here.
 enum ExternalActionPolicy {
     enum Decision: Equatable {
         case allow
         case refuse(String)
         case confirmVirtualKey(name: String)
+        case confirmAction
     }
 
     static func decision(for uri: KeyPathActionURI, allowsVirtualKeys: Bool) -> Decision {
@@ -76,8 +73,12 @@ enum ExternalActionPolicy {
             return .allow
         case "fakekey", "vkey":
             return allowsVirtualKeys ? .allow : .confirmVirtualKey(name: uri.target ?? "?")
-        default:
+        case "layer", "rule", "settings", "overlay":
             return .allow
+        case "launch", "notify", "folder", "window", "system", "runtime":
+            return .confirmAction
+        default:
+            return .refuse(String(localized: "This KeyPath action isn't available from a link opened by another app."))
         }
     }
 
