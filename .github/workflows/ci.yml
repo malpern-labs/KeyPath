@@ -90,8 +90,9 @@ jobs:
     # local state (e.g. RuleCollectionsManager's config file, which broke
     # CLIPackCRUDTests), so one runner ran them one at a time. Test isolation
     # (P9, 2026-11-21) gave every test its own stores, defaults and a per-run
-    # AppPaths sandbox. Two full lanes run side by side on the mini, as clawd,
-    # failed exactly the same tests as one lane run alone (2026-11-21).
+    # AppPaths sandbox. An earlier SSH-launched overlap/control experiment
+    # failed the same WindowServer-dependent tests in both conditions; it did
+    # not qualify simultaneous full lanes running as the self-hosted daemons.
     # Do not add a job-level concurrency group: a group holds one running and
     # one pending job and cancels the older pending one, so with three PRs in
     # CI their jobs cancelled each other (2026-11-14). The runner queue never
@@ -222,10 +223,10 @@ jobs:
         KEYPATH_ALLOW_TEST_RUNNER_CRASH_SUCCESS: ${{ (vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && '0' || '1' }}
         KEYPATH_TEST_ENFORCE_CLEAN_SUMMARY: "1"
         KEYPATH_TEST_RESET_MODULE_CACHE: "0"
-        # The full safe suite passed on the mini with two XCTest worker
-        # processes (2026-11-21). Keep that proven bound in CI: it exposes
-        # cross-process fixture sharing and shortens the test phase.
-        SWIFT_TEST_ARGS: --parallel --num-workers 2
+        # Temporary qualification branch: compare four workers on the actual
+        # Mini CI runner. Keep only if the full lane passes cleanly and is
+        # faster without harming concurrent-job headroom.
+        SWIFT_TEST_ARGS: --parallel --num-workers 4
         # The mini (M4 Pro, 14 cores) can run two test jobs at once, one per
         # runner, so each takes about half its cores. Hosted VMs are smaller.
         KEYPATH_SWIFT_BUILD_JOBS: ${{ (vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && '4' || '6' }}
