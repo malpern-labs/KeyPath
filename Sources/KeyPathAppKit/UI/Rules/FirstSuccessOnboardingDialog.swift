@@ -164,10 +164,21 @@ private struct FirstSuccessOnboardingPaletteKey: EnvironmentKey {
     static let defaultValue = FirstSuccessOnboardingPalette.light
 }
 
+private struct FirstSuccessCompactHeightKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
 private extension EnvironmentValues {
     var firstSuccessOnboardingPalette: FirstSuccessOnboardingPalette {
         get { self[FirstSuccessOnboardingPaletteKey.self] }
         set { self[FirstSuccessOnboardingPaletteKey.self] = newValue }
+    }
+
+    /// A short window (small screen or larger display scaling) tightens the
+    /// lesson column's vertical spacing so each step's controls stay in view.
+    var firstSuccessCompactHeight: Bool {
+        get { self[FirstSuccessCompactHeightKey.self] }
+        set { self[FirstSuccessCompactHeightKey.self] = newValue }
     }
 }
 
@@ -706,8 +717,13 @@ private struct FirstSuccessJourneyContent: View {
             }
             .padding(.leading, 42)
             .padding(.trailing, 0)
-            .padding(.vertical, 40)
+            .padding(.vertical, isCompactHeight(geometry) ? 14 : 40)
+            .environment(\.firstSuccessCompactHeight, isCompactHeight(geometry))
         }
+    }
+
+    private func isCompactHeight(_ geometry: GeometryProxy) -> Bool {
+        geometry.size.height < 480
     }
 
     private var stackedContent: some View {
@@ -743,6 +759,7 @@ private struct FirstSuccessLessonCopy: View {
     let launcherChoice: FirstSuccessLauncherChoiceModel
     let capsTapRevision: UInt64
     @Environment(\.firstSuccessOnboardingPalette) private var palette
+    @Environment(\.firstSuccessCompactHeight) private var compactHeight
     @State private var scrollMetrics = FirstSuccessCopyScrollMetrics()
 
     /// Lesson copy can exceed the column on the launcher step. The scroll view
@@ -764,7 +781,7 @@ private struct FirstSuccessLessonCopy: View {
                     .font(.title.weight(.bold))
                     .foregroundStyle(palette.primaryText.color)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 12)
+                    .padding(.top, compactHeight ? 6 : 12)
                     .accessibilityAddTraits(.isHeader)
 
                 Text(session.step.summary)
@@ -772,14 +789,14 @@ private struct FirstSuccessLessonCopy: View {
                     .foregroundStyle(palette.summaryText.color)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 16)
+                    .padding(.top, compactHeight ? 8 : 16)
 
                 FirstSuccessBenefits(
                     session: session,
                     launcherChoice: launcherChoice,
                     capsTapRevision: capsTapRevision
                 )
-                .padding(.top, 24)
+                .padding(.top, compactHeight ? 12 : 24)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.trailing, 6)
@@ -819,9 +836,10 @@ private struct FirstSuccessBenefits: View {
     let launcherChoice: FirstSuccessLauncherChoiceModel
     let capsTapRevision: UInt64
     @Environment(\.firstSuccessOnboardingPalette) private var palette
+    @Environment(\.firstSuccessCompactHeight) private var compactHeight
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: compactHeight ? 12 : 22) {
             switch session.step {
             case .capsLock:
                 FirstSuccessBenefitRow(

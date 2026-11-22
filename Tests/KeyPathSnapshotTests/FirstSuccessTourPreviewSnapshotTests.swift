@@ -20,4 +20,21 @@ final class FirstSuccessTourPreviewSnapshotTests: ScreenshotTestCase {
             }
         }
     }
+
+    /// The window's minimum size, which a short screen or larger display
+    /// scaling forces. Each page's controls must stay in view here.
+    func testComposedTourPagesAtMinimumWindowSize() {
+        FeatureFlags.$testOverrides.withValue(.init()) {
+            FeatureFlags.setKeyboardStageRendererPreference(.swiftUI)
+            let model = FirstSuccessTourPreviewModel()
+            for page in FirstSuccessOnboardingSession.Step.allCases {
+                model.select(page: page, scenario: page == .launcher ? .selected : .installed)
+                assertScreenshot(
+                    of: model.dialog(),
+                    size: CGSize(width: 960, height: 520),
+                    named: "tour-page-\(page.ordinal)-minimum", precision: 0.99
+                )
+            }
+        }
+    }
 }
