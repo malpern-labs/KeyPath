@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches: [ main, master ]
+  # Manually dispatch from master to qualify two full test lanes on the Mini.
+  # This is intentionally separate from PR CI so ordinary checks keep one
+  # test lane and the experiment does not need synthetic pull requests.
+  workflow_dispatch:
   # Kept for a merge queue, which is not available while the repository is
   # personally owned (GitHub offers it to organization repositories). It is
   # inert until a queue exists; the jobs below already handle both events.
@@ -60,6 +64,11 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         # master's copy of the script: a PR must not decide its own CI by changing it.
         run: |
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            # A dispatched load qualification has no base to diff; run the tests.
+            echo "docs_only=false" | tee -a "$GITHUB_OUTPUT"
+            exit 0
+          fi
           script=$(mktemp)
           if git show "$BASE_SHA:.github/scripts/classify-docs-only.sh" > "$script"; then
             result=$(bash "$script" "$BASE_SHA")
@@ -72,6 +81,12 @@ jobs:
   test-full:
     needs: classify-docs-only
     if: ${{ (success() || failure()) && needs.classify-docs-only.outputs.docs_only != 'true' }}
+    name: test-full (${{ matrix.lane }})
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        lane: ${{ github.event_name == 'workflow_dispatch' && fromJSON('["load-a","load-b"]') || fromJSON('["pr"]') }}
     # Either mini runner takes this job, so two PRs test at once. macOS 27
     # AppSSO once trapped SwiftPM binary-artifact requests from a headless
     # LaunchDaemon (docs: 2026-07-16-headless-swiftpm-appsso-trap.md). Since
@@ -101,6 +116,14 @@ jobs:
     steps:
     - name: Clean stale git credentials
       run: |
+        if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && "$RUNNER_ENVIRONMENT" != self-hosted ]]; then
+          echo "::error::CI load qualification must run on the self-hosted Mini runners"
+          exit 1
+        fi
+        if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && "$GITHUB_REF" != refs/heads/master ]]; then
+          echo "::error::Dispatch CI load qualification from master only"
+          exit 1
+        fi
         git config --global --unset-all http.https://github.com/.extraheader 2>/dev/null || true
         git config --global --unset-all url.https://github.com/.insteadof 2>/dev/null || true
 
@@ -186,10 +209,12 @@ jobs:
           echo "$EXPECTED_ENGINE_SHA" > build/ci-kanata-cache/engine-sha
           echo "KANATA_CACHE_STATUS=miss" >> "$GITHUB_ENV"
         fi
-        cp build/ci-kanata-cache/kanata /opt/homebrew/bin/kanata
-        cp build/ci-kanata-cache/kanata-simulator /opt/homebrew/bin/kanata-simulator
-        kanata --version
-        kanata-simulator --version
+        # Use the job's own copies. Both Mini runners run as one user on one
+        # host, so copying into /opt/homebrew/bin let one job overwrite the
+        # engine another job's tests were running (or pin a different engine).
+        echo "$GITHUB_WORKSPACE/build/ci-kanata-cache" >> "$GITHUB_PATH"
+        build/ci-kanata-cache/kanata --version
+        build/ci-kanata-cache/kanata-simulator --version
 
     - name: Rust tests (host bridge and engine control server)
       # ADR-046: the engine-control peer check, its owner tests and the session
@@ -216,7 +241,7 @@ jobs:
     - name: Run Test Lane - full
       env:
         KP_SIGN_DRY_RUN: "1"
-        KEYPATH_BUNDLED_SIMULATOR_OVERRIDE: /opt/homebrew/bin/kanata-simulator
+        KEYPATH_BUNDLED_SIMULATOR_OVERRIDE: ${{ github.workspace }}/build/ci-kanata-cache/kanata-simulator
         # SwiftPM can wrap XCTest post-run SIGABRT as exit 1 on the self-hosted runner;
         # run-tests-safe.sh still fails if it parses any test failures and emits a warning when this path is used.
         # Not on hosted runners, where that quirk hasn't been seen.
@@ -238,8 +263,22 @@ jobs:
         export TIMEOUT_SECONDS=300
         chmod +x ./Scripts/test-lane.sh
         chmod +x ./Scripts/run-tests-safe.sh
+        if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+          ./Scripts/ci/record-host-resources.sh "$RUNNER_TEMP/ci-host-resources.tsv" 15 &
+          sampler_pid=$!
+          trap 'kill "$sampler_pid" 2>/dev/null || true; wait "$sampler_pid" 2>/dev/null || true' EXIT
+        fi
         rc=0
+        lane_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)
         ./Scripts/test-lane.sh full || rc=$?
+        if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+          # Overlap is proven only by two different runners whose test windows
+          # intersect; record both so the result cannot be misread.
+          lane_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          printf 'lane\t%s\nrunner\t%s\ntest_start\t%s\ntest_end\t%s\nrc\t%s\n' \
+            "${{ matrix.lane }}" "$RUNNER_NAME" "$lane_start" "$lane_end" "$rc" \
+            | tee "$RUNNER_TEMP/ci-lane-window.tsv" >> "$GITHUB_STEP_SUMMARY"
+        fi
         if [ "$rc" -eq 0 ]; then
           echo "TEST_STATUS=passed" >> $GITHUB_ENV
         else
@@ -262,11 +301,22 @@ jobs:
       if: always()
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
-        name: test-results
+        name: test-results-${{ matrix.lane }}
         path: |
           test_output.safe.txt
           test-results/installer-reliability/
         if-no-files-found: ignore
+        retention-days: 7
+
+    - name: Upload Mini resource samples
+      if: always() && github.event_name == 'workflow_dispatch'
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: ci-host-resources-${{ matrix.lane }}
+        path: |
+          ${{ runner.temp }}/ci-host-resources.tsv
+          ${{ runner.temp }}/ci-lane-window.tsv
+        if-no-files-found: warn
         retention-days: 7
 
     - name: Generate Test Summary
@@ -275,7 +325,7 @@ jobs:
         echo "## Test Results" >> $GITHUB_STEP_SUMMARY
 
         if [ "${TEST_STATUS:-unknown}" = "failed" ]; then
-          echo "**Tests Failed** - Check the test-results artifact for details." >> $GITHUB_STEP_SUMMARY
+          echo "**Tests Failed** - Check the test-results-${{ matrix.lane }} artifact for details." >> $GITHUB_STEP_SUMMARY
         elif [ "${TEST_STATUS:-unknown}" = "passed" ]; then
           echo "**All Tests Passed**" >> $GITHUB_STEP_SUMMARY
         else
@@ -308,7 +358,7 @@ jobs:
 
   quality-full:
     needs: classify-docs-only
-    if: ${{ (success() || failure()) && needs.classify-docs-only.outputs.docs_only != 'true' }}
+    if: ${{ github.event_name != 'workflow_dispatch' && (success() || failure()) && needs.classify-docs-only.outputs.docs_only != 'true' }}
     runs-on: ${{ fromJSON((vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && '"xcode-27"' || '["self-hosted", "macOS", "keypath"]') }}
     # Hosted runs also install mise and SwiftLint on a smaller machine.
     timeout-minutes: ${{ (vars.KEYPATH_CI_RUNNER == 'hosted' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && 30 || 15 }}
@@ -518,6 +568,8 @@ jobs:
           echo "classifier=$CLASSIFIER docs_only=$DOCS_ONLY full=$FULL"
           [[ "$FULL" == success ]] || [[ "$CLASSIFIER" == success && "$DOCS_ONLY" == true ]]
 
+  # On a dispatched load qualification quality-full is skipped, so this job
+  # reports failure there by design; judge that run by its two test-full lanes.
   code-quality:
     needs: [classify-docs-only, quality-full]
     if: always()

@@ -47,12 +47,14 @@ minutes and Swift had compiled 1,380 of 1,457 test-build steps when GitHub
 cancelled it. Twenty-five minutes preserves a finite failure bound while leaving
 room to link and execute the tests after a healthy cold rebuild.
 
-On macOS 27, SwiftPM binary-artifact requests crash in AppSSO when they run from
-the boot-available `keypath-mini` LaunchDaemon. The interactive
-`keypath-mini-2` LaunchAgent is the proven SwiftPM execution context and carries
-the `swiftpm-safe` label. Build and coverage workflows require that
-label; code-quality and health checks may still use either runner. See
-`docs/bugs/2026-07-16-headless-swiftpm-appsso-trap.md`.
+Historical note: AppSSO once trapped SwiftPM binary-artifact requests from the
+headless `keypath-mini` LaunchDaemon. Since October 19, 2026, both Mini runners
+run as LaunchDaemons; `test-full` accepts either runner with the common
+`self-hosted, macOS, keypath` labels. The `swiftpm-safe` label is retained on
+`keypath-mini-2` only for the separate coverage workflow; it does not serialize
+or route `test-full`. Current behavior is defined by
+`.github/workflows/ci.yml` and `.github/workflows/runner-health.yml`. See
+`docs/bugs/2026-07-16-headless-swiftpm-appsso-trap.md` for the history.
 
 ### Security
 - [x] Fork PR approval set to "Require approval for all external contributors"
