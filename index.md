@@ -21,7 +21,7 @@ content_class: content-full kanata-landing
         <a class="button button-orange" href="https://github.com/malpern-labs/KeyPath/releases/download/v1.0.1/KeyPath-1.0.1.dmg">Download KeyPath 1.0.1 <span class="button-badge">Free</span></a>
       </div>
 
-      <p class="kanata-landing-requirements hero-animate hero-animate-5">Pre-release · Requires macOS 15+ (Sequoia) · Apple Silicon or Intel · <a href="https://github.com/malpern-labs/KeyPath/blob/v1.0.1/getting-started/installation.md">1.0.1 setup guide</a></p>
+      <p class="kanata-landing-requirements hero-animate hero-animate-5">Pre-release · Requires macOS 27+ · Apple Silicon · <a href="{{ '/getting-started/installation/' | relative_url }}">Setup guide</a> · <a href="{{ '/guides/upgrading-from-1-0-1/' | relative_url }}">Moving from 1.0.1?</a></p>
     </div>
 
     <!-- App screenshot -->
