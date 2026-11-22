@@ -568,9 +568,11 @@ jobs:
           echo "classifier=$CLASSIFIER docs_only=$DOCS_ONLY full=$FULL"
           [[ "$FULL" == success ]] || [[ "$CLASSIFIER" == success && "$DOCS_ONLY" == true ]]
 
+  # On a dispatched load qualification quality-full is skipped, so this job
+  # reports failure there by design; judge that run by its two test-full lanes.
   code-quality:
     needs: [classify-docs-only, quality-full]
-    if: ${{ github.event_name != 'workflow_dispatch' && always() }}
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Require the full job, unless the PR is docs-only

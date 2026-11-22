@@ -83,9 +83,51 @@ public final class DragToAuthorizeController {
     private var tracker: SettingsWindowTracker?
     private var stateModel: DragToAuthorizeStateModel?
     private var permissionPollTimer: Timer?
-    private var dismissWorkItem: DispatchWorkItem?
 
-    private init() {}
+    /// Identifies the presentation that delayed work belongs to. `present` and
+    /// `dismiss` advance it, so a callback scheduled for an earlier presentation
+    /// (panel creation, the animated teardown, the retry reset, the success
+    /// dismissal, an animation completion or a permission poll) does nothing
+    /// once that presentation has been dismissed or replaced.
+    @ObservationIgnored private(set) var presentationGeneration: UInt64 = 0
+
+    /// Runs `work` on the main actor after a delay. Injected so tests can close
+    /// or replace the presentation while work is pending, without real sleeps.
+    typealias Scheduler = @MainActor (TimeInterval, @escaping @MainActor () -> Void) -> Void
+    /// Opens System Settings at the target pane.
+    typealias SettingsOpener = @MainActor (URL) -> Void
+    /// Builds and shows the floating panel for one presentation.
+    typealias PanelPresenter = @MainActor (
+        DragToAuthorizeController, PermissionTarget, PermissionSubject, NSRect?, NSWindow?, UInt64
+    ) -> Void
+
+    @ObservationIgnored private let schedule: Scheduler
+    @ObservationIgnored private let openSettings: SettingsOpener
+    @ObservationIgnored private let presentPanel: PanelPresenter?
+
+    private convenience init() {
+        self.init(
+            schedule: { delay, work in
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    MainActor.assumeIsolated { work() }
+                }
+            },
+            openSettings: { url in
+                NSWorkspace.shared.open(url)
+                // Record that we opened System Settings so the wizard's cleanup
+                // closes it when the flow finishes.
+                WizardWindowManager.shared.markSystemSettingsOpened()
+            },
+            presentPanel: nil
+        )
+    }
+
+    /// `presentPanel` nil means the real AppKit panel. Tests pass a recorder.
+    init(schedule: @escaping Scheduler, openSettings: @escaping SettingsOpener, presentPanel: PanelPresenter?) {
+        self.schedule = schedule
+        self.openSettings = openSettings
+        self.presentPanel = presentPanel
+    }
 
     // MARK: - Public API
 
@@ -101,24 +143,34 @@ public final class DragToAuthorizeController {
     ) {
         guard state == .idle else {
             dismiss(animated: false)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                self?.present(for: target, subject: subject, sourceRect: sourceRect, in: sourceWindow)
+            let generation = presentationGeneration
+            schedule(0.1) { [weak self] in
+                // A later present or dismiss supersedes this retry.
+                guard let self, presentationGeneration == generation else { return }
+                present(for: target, subject: subject, sourceRect: sourceRect, in: sourceWindow)
             }
             return
         }
 
+        presentationGeneration &+= 1
+        let generation = presentationGeneration
         currentTarget = target
         currentSubject = subject
         state = .presenting
 
-        NSWorkspace.shared.open(target.settingsURL)
-        // Record that we opened System Settings so the wizard's cleanup closes it
-        // when the flow finishes (permission pages previously did this before it
-        // routed through this overlay).
-        WizardWindowManager.shared.markSystemSettingsOpened()
+        openSettings(target.settingsURL)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            self?.createAndShowPanel(for: target, subject: subject, sourceRect: sourceRect, sourceWindow: sourceWindow)
+        schedule(0.8) { [weak self] in
+            // Dismissed or replaced before the panel was due: show nothing.
+            guard let self, presentationGeneration == generation else { return }
+            if let presentPanel {
+                presentPanel(self, target, subject, sourceRect, sourceWindow, generation)
+            } else {
+                createAndShowPanel(
+                    for: target, subject: subject, sourceRect: sourceRect, sourceWindow: sourceWindow,
+                    generation: generation
+                )
+            }
         }
 
         AppLogger.shared.log("🎯 [DragToAuthorize] Presenting \(subject.displayName) for \(target.displayName)")
@@ -126,9 +178,10 @@ public final class DragToAuthorizeController {
 
     /// Dismiss the overlay with optional animation.
     public func dismiss(animated: Bool = true) {
+        // Advance even when idle, so a pending retry of `present` is dropped too.
+        presentationGeneration &+= 1
         guard state != .idle else { return }
 
-        dismissWorkItem?.cancel()
         permissionPollTimer?.invalidate()
         permissionPollTimer = nil
         tracker?.stopTracking()
@@ -138,8 +191,11 @@ public final class DragToAuthorizeController {
             state = .dismissing
             stateModel?.transitionTo(.dismissing)
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                self?.tearDown()
+            let generation = presentationGeneration
+            schedule(0.3) { [weak self] in
+                // A presentation started during the fade must not be torn down.
+                guard let self, presentationGeneration == generation else { return }
+                tearDown()
             }
         } else {
             tearDown()
@@ -162,10 +218,11 @@ public final class DragToAuthorizeController {
             stateModel?.transitionTo(.retrying)
             AppLogger.shared.log("❌ [DragToAuthorize] Drop rejected — showing retry")
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-                guard self?.state == .retrying else { return }
-                self?.state = .visible
-                self?.stateModel?.transitionTo(.visible)
+            let generation = presentationGeneration
+            schedule(2.0) { [weak self] in
+                guard let self, presentationGeneration == generation, state == .retrying else { return }
+                state = .visible
+                stateModel?.transitionTo(.visible)
             }
         }
     }
@@ -178,7 +235,13 @@ public final class DragToAuthorizeController {
 
     // MARK: - Private Implementation
 
-    private func createAndShowPanel(for target: PermissionTarget, subject: PermissionSubject, sourceRect: NSRect?, sourceWindow: NSWindow?) {
+    private func createAndShowPanel(
+        for target: PermissionTarget,
+        subject: PermissionSubject,
+        sourceRect: NSRect?,
+        sourceWindow: NSWindow?,
+        generation: UInt64
+    ) {
         let panelWidth: CGFloat = 300
         let panelHeight: CGFloat = 170
 
@@ -226,7 +289,9 @@ public final class DragToAuthorizeController {
 
             if !panel.isVisible {
                 panel.orderFront(nil)
-                self?.animatePresentation(panel: panel, sourceRect: sourceRect, sourceWindow: sourceWindow)
+                self?.animatePresentation(
+                    panel: panel, sourceRect: sourceRect, sourceWindow: sourceWindow, generation: generation
+                )
             }
         }
         newTracker.onWindowDisappeared = { [weak self] in
@@ -236,10 +301,12 @@ public final class DragToAuthorizeController {
         newTracker.startTracking()
         tracker = newTracker
 
-        startPermissionPolling(for: target, subject: subject)
+        startPermissionPolling(for: target, subject: subject, generation: generation)
     }
 
-    private func animatePresentation(panel: DragToAuthorizePanel, sourceRect: NSRect?, sourceWindow: NSWindow?) {
+    private func animatePresentation(
+        panel: DragToAuthorizePanel, sourceRect: NSRect?, sourceWindow: NSWindow?, generation: UInt64
+    ) {
         if let sourceRect, let sourceWindow {
             // Animate from source rect (wizard button)
             let screenSourceRect = sourceWindow.convertToScreen(sourceRect)
@@ -257,7 +324,7 @@ public final class DragToAuthorizeController {
                 panel.animator().alphaValue = 1.0
             } completionHandler: { [weak self] in
                 Task { @MainActor [weak self] in
-                    self?.transitionToVisible()
+                    self?.presentationAnimationDidFinish(generation: generation)
                 }
             }
         } else {
@@ -272,13 +339,17 @@ public final class DragToAuthorizeController {
                 panel.animator().alphaValue = 1.0
             } completionHandler: { [weak self] in
                 Task { @MainActor [weak self] in
-                    self?.transitionToVisible()
+                    self?.presentationAnimationDidFinish(generation: generation)
                 }
             }
         }
     }
 
-    private func transitionToVisible() {
+    /// The panel's entrance animation finished. It applies only while that
+    /// presentation is still being presented: a dismissal during the animation
+    /// must not bring the overlay back to `.visible`.
+    func presentationAnimationDidFinish(generation: UInt64) {
+        guard presentationGeneration == generation, state == .presenting else { return }
         state = .visible
         stateModel?.transitionTo(.visible)
     }
@@ -288,27 +359,35 @@ public final class DragToAuthorizeController {
         stateModel?.transitionTo(.success)
         AppLogger.shared.log("✅ [DragToAuthorize] Permission granted!")
 
-        dismissWorkItem = DispatchWorkItem { [weak self] in
-            self?.dismiss(animated: true)
+        let generation = presentationGeneration
+        schedule(1.8) { [weak self] in
+            // A newer presentation replaced this one: leave it alone.
+            guard let self, presentationGeneration == generation else { return }
+            dismiss(animated: true)
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8, execute: dismissWorkItem!)
     }
 
-    private func startPermissionPolling(for target: PermissionTarget, subject: PermissionSubject) {
+    private func startPermissionPolling(for target: PermissionTarget, subject: PermissionSubject, generation: UInt64) {
         permissionPollTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
-                await self?.checkPermission(for: target, subject: subject)
+                await self?.checkPermission(for: target, subject: subject, generation: generation)
             }
         }
     }
 
-    private func checkPermission(for target: PermissionTarget, subject: PermissionSubject) async {
+    private func checkPermission(for target: PermissionTarget, subject: PermissionSubject, generation: UInt64) async {
         let snapshot = await SystemStateProvider.shared.refreshPermissionSnapshot()
-        if Self.grantResolved(
-            target: target, subject: subject, snapshot: snapshot
-        ) {
-            permissionGrantDetected()
-        }
+        permissionPollDidResolve(
+            granted: Self.grantResolved(target: target, subject: subject, snapshot: snapshot),
+            generation: generation
+        )
+    }
+
+    /// A permission poll finished. The refresh is asynchronous, so a result can
+    /// arrive after its presentation was dismissed or replaced; it then has no effect.
+    func permissionPollDidResolve(granted: Bool, generation: UInt64) {
+        guard granted, presentationGeneration == generation else { return }
+        permissionGrantDetected()
     }
 
     /// Pure decision: is `subject`'s `target` permission granted in this snapshot?
