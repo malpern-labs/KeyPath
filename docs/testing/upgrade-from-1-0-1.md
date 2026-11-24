@@ -7,19 +7,20 @@ This plan now verifies the **manual cleanup instructions published in**
 It does not test or imply automatic migration support.
 
 **Status: blocked on a person at the guest (November 24, 2026).** The official
-1.0.1 ZIP was downloaded and matched its release digest. Two macOS 26
-Parallels guests had KeyPath 1.0.1 installed, but neither completed its setup:
-1.0.1 needs an administrator password for its helper and approval of the driver
-extension and background item. The lab's consent tool cannot give those (it
-grants only Accessibility), and Peekaboo itself lacked Screen Recording and
-Accessibility in the guest's console account. On `cbx_67d82d322f17`, read-only
-checks found no KeyPath LaunchDaemons and no privileged helper, so there was
-nothing for the guide to clean up. No cleanup command, rule mutation, or reboot
-ran on either guest. Both were destroyed through `vm-lab` with cleanup complete
-(`cbx_67d82d322f17` and `cbx_179c65eed51e`). To finish, a person at a fresh guest's
-screen completes 1.0.1's setup prompts; the cleanup steps, rule checks and
-reboot can then run through the lab. Do not bypass the lab admission path or use
-a developer Mac. Keep the lab's base fingerprint check.
+1.0.1 ZIP was downloaded and matched its release digest. Two macOS 26 Parallels
+guests had KeyPath 1.0.1 installed; neither completed 1.0.1's setup, which needs
+an administrator password for its helper and approval of the driver extension
+and background item. The lab's consent tool grants only Accessibility, so it
+cannot give those. On `cbx_67d82d322f17` (macOS 26.5.2), UI preflight found
+Peekaboo without Screen Recording and Accessibility in the guest's console
+account, and read-only checks found no KeyPath LaunchDaemons and no privileged
+helper, so there was nothing for the guide to clean up. `cbx_179c65eed51e` was
+created by another session and expired unused; it was not inspected before it
+was destroyed. No cleanup command, rule mutation, or reboot ran on either guest.
+Both were destroyed through `vm-lab` with cleanup complete. To finish, a person
+at a fresh guest's screen completes 1.0.1's setup prompts; the cleanup steps,
+rule checks and reboot can then run through the lab. Do not bypass the lab
+admission path or use a developer Mac. Keep the lab's base fingerprint check.
 
 ## Rehearsal
 
@@ -76,4 +77,4 @@ a developer Mac. Keep the lab's base fingerprint check.
 | 2026-11-21 | `cf4797c97b82e04081057bb7688389ab8f681d51e1e8b084a6887f8a68614296` | — | `cbx_af9cbb9f9e31` | not run | not run | not run | not run | Tart clone failed before guest creation (`utimes` permission error); vm-lab cleanup completed; no Parallels lease was touched. |
 | 2026-11-21 | `cf4797c97b82e04081057bb7688389ab8f681d51e1e8b084a6887f8a68614296` | 26 | `cbx_7d9285bef732` | not run | not run | not run | not run | Parallels failed during lease SSH-key installation (`PrlJob_GetResult: Invalid argument`); vm-lab destroyed the owned lease and confirmed cleanup complete; no guest-side steps ran. |
 | 2026-11-22 | `cf4797c97b82e04081057bb7688389ab8f681d51e1e8b084a6887f8a68614296` | 26.5.2 | `cbx_67d82d322f17` | blocked | not run | not run | not run | Guest booted and the installed app reports 1.0.1. UI preflight found Peekaboo Screen Recording and Accessibility ungranted in the guest console account; stopped before UI or cleanup. 1.0.1 setup never ran: no KeyPath LaunchDaemons or helper were installed. Destroyed through `vm-lab` on November 22, cleanup complete. |
-| 2026-11-22 | `cf4797c97b82e04081057bb7688389ab8f681d51e1e8b084a6887f8a68614296` | 26 | `cbx_179c65eed51e` | not run | not run | not run | not run | 1.0.1 installed; setup not completed (it needs an administrator password and approvals the lab cannot give). Expired unused; destroyed through `vm-lab` on November 24, cleanup complete. Artifact download was partial (`download_status 5`). |
+| 2026-11-22 | `cf4797c97b82e04081057bb7688389ab8f681d51e1e8b084a6887f8a68614296` | 26 | `cbx_179c65eed51e` | not run | not run | not run | not run | 1.0.1 installed by another session, which recorded setup as not completed; not inspected here. Expired unused; destroyed through `vm-lab` on November 24, cleanup complete. Artifact download was partial (`download_status 5`). |
